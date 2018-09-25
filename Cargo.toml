@@ -3,6 +3,9 @@ name = "amethyst_protocol"
 version = "0.1.0"
 authors = ["Lucio Franco <luciofranco14@gmail.com>"]
 
+readme = "README.md"
+license = "MIT/Apache-2.0"
+
 [dependencies]
 serde = "1.0"
 serde_derive = "1.0"
