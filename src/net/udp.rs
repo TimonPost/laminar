@@ -43,6 +43,10 @@ impl UdpSocket {
 
         self.socket.send_to(&buf, addr)
     }
+
+    pub fn set_nonblocking(&mut self, nonblocking: bool) -> io::Result<()> {
+        self.socket.set_nonblocking(nonblocking)
+    }
 }
 
 pub struct SocketState;
