@@ -1,5 +1,5 @@
 //! Net module holds all sockets
 
-mod udp;
+mod reliable_udp;
 
-pub use self::udp::UdpSocket;
+pub use self::reliable_udp::UdpSocket;

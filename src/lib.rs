@@ -9,4 +9,5 @@ extern crate serde_derive;
 mod net;
 mod packet;
 
+use packet::Packet;
 pub use net::UdpSocket;
