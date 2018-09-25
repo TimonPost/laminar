@@ -1,0 +1,14 @@
+# Set up the Rust toolchain.
+language: rust
+rust:
+  - stable
+  - beta
+  - nightly
+
+# Allow for occasional compiler breakage on nightly Rust.
+matrix:
+  allow_failures:
+    - rust: nightly
+  fast_finish: true
+script:
+  - cargo test
