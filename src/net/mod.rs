@@ -1,3 +1,5 @@
+//! Net module holds all sockets
+
 mod connection;
 mod external_ack;
 mod local_ack;
