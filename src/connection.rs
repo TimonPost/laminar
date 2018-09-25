@@ -8,8 +8,14 @@ use std::default::Default;
 
 use amethyst_error::AmethystNetworkError;
 
-/// Default timeout of 10 seconds
+
+/// Type aliases
+/// Number of seconds we will wait until we consider a Connection to have timed out
 type ConnectionTimeout = u8;
+/// The port associated with this Connection
+type NetworkPort = u16;
+
+/// Default timeout of 10 seconds
 const TIMEOUT_DEFAULT: ConnectionTimeout = 10;
 
 
@@ -46,18 +52,20 @@ impl Manager {
     }
 }
 
-/// Represents a virtual circuit to a remote end
+/// Represents a virtual circuit to a remote endpoint
 pub struct Connection {
     /// IP Address of the remote endpoint
     remote_ip: IpAddr,
     /// Port the client is using
-    remote_port: u16,
+    remote_port: NetworkPort,
     /// The last moment in time we heard from this client. This is used to help detect if a client has disconnected
     last_heard: Instant,
 }
 
 impl Connection {
-    pub fn new(remote_ip: &str, remote_port: u16) -> Result<Connection, AddrParseError> {
+    /// Creates a new connection based off a unique IP and Port combination
+    /// TODO: Should we use a where clause for the remote_ip arg, to only allow things that implement Into<IpAddr>?
+    pub fn new(remote_ip: &str, remote_port: NetworkPort) -> Result<Connection, AddrParseError> {
         match remote_ip.parse::<IpAddr>() {
             Ok(addr) => {
                 Ok(Connection {
@@ -72,12 +80,11 @@ impl Connection {
         }
     }
 
+    /// Returns the duration since we last received a packet from this client
     pub fn last_heard(&self) -> Duration {
         let now = Instant::now();
         self.last_heard.duration_since(now)
     }
-
-
 }
 
 impl ToString for Connection {
@@ -110,5 +117,11 @@ mod test {
         assert!(new_conn.is_ok());
         let new_conn = new_conn.unwrap();
         assert_eq!(new_conn.to_string(), "127.0.0.1:20000");
+    }
+
+    #[test]
+    fn test_invalid_addr_fails() {
+        let new_conn = Connection::new("800.0.0.1", TEST_PORT);
+        assert!(new_conn.is_err());
     }
 }
