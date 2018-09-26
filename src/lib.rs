@@ -13,5 +13,5 @@ pub mod server;
 pub mod connection;
 pub mod amethyst_error;
 
-pub use net::UdpSocket;
+pub use net::udp::UdpSocket;
 use packet::{Packet, RawPacket};
