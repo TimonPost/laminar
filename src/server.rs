@@ -18,9 +18,6 @@ impl UdpServer {
                 manager: Manager::new(),
             })
         })
-
-            // UdpSocket::bind(i.next()
-            //.and_then(|socket| UdpServer{socket: socket, manager: Manager::new()})
     }
 }
 
