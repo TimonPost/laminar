@@ -60,17 +60,18 @@ mod test {
 
     #[test]
     fn send_receive_1_pckt() {
-        let mut send_socket = UdpSocket::bind("127.0.0.1:12345").unwrap();
-        let mut recv_socket = UdpSocket::bind("127.0.0.1:12346").unwrap();
+        let mut send_socket = UdpSocket::bind("127.0.0.1:12347").unwrap();
+        let mut recv_socket = UdpSocket::bind("127.0.0.1:12348").unwrap();
 
         let addr = SocketAddr::new(
-            IpAddr::from_str("0.0.0.0").expect("Unreadable input IP."),
-            12345,
+            IpAddr::from_str("127.0.0.1").expect("Unreadable input IP."),
+            12348,
         );
 
         let dummy_packet = Packet::new(addr, vec![1, 2, 3]);
 
         let send_result: io::Result<usize> = send_socket.send(dummy_packet);
+        println!("{:?}", send_result);
         assert!(send_result.is_ok());
 
         let packet: io::Result<Option<Packet>> = recv_socket.recv();
@@ -79,7 +80,7 @@ mod test {
         assert!(packet_payload.is_some());
         let received_packet = packet_payload.unwrap();
 
-        assert_eq!(received_packet.addr().to_string(), "127.0.0.1:12345");
+        assert_eq!(received_packet.addr().to_string(), "127.0.0.1:12347");
         assert_eq!(received_packet.payload(), &[1, 2, 3]);
     }
 
@@ -109,10 +110,10 @@ mod test {
                 let send_result: io::Result<usize> = send_socket.send(dummy_packet);
 
                 assert!(send_result.is_ok());
-                println!(
-                    "sending packet_count: {} packet_id: {}",
-                    packet_count, stub.id
-                );
+                // println!(
+                //     "sending packet_count: {} packet_id: {}",
+                //     packet_count, stub.id
+                // );
                 //                assert_eq!(send_result.unwrap(), len);
             }
         });
@@ -135,10 +136,10 @@ mod test {
                 assert_eq!(stub_data.id, received_packages_count);
                 assert_eq!(stub_data.b, 1);
 
-                println!(
-                    "receiving packet_count: {} packet_id: {}",
-                    received_packages_count, stub_data.id
-                );
+                // println!(
+                //     "receiving packet_count: {} packet_id: {}",
+                //     received_packages_count, stub_data.id
+                // );
 
                 received_packages_count += 1;
 
