@@ -1,15 +1,24 @@
-use amethyst_error::AmethystNetworkError;
+use std;
 use std::collections::HashMap;
-use std::net::SocketAddr;
+use std::net::{AddrParseError, IpAddr, Ipv4Addr, Ipv6Addr};
+use std::str::{FromStr};
 use std::string::ToString;
+use std::error::Error;
 use std::time::{Duration, Instant};
+use std::default::Default;
+use std::net::{ToSocketAddrs, SocketAddr};
+use amethyst_error::AmethystNetworkError;
+
 
 // Type aliases
 // Number of seconds we will wait until we consider a Connection to have timed out
 type ConnectionTimeout = u8;
+// The port associated with this Connection
+type NetworkPort = u16;
 
 // Default timeout of 10 seconds
 const TIMEOUT_DEFAULT: ConnectionTimeout = 10;
+
 
 /// Maintains a list of all Connections and allows adding/removing them
 #[derive(Default)]
@@ -17,14 +26,14 @@ pub struct Manager {
     // The collection of currently connected clients
     connections: HashMap<String, Connection>,
     // The number of seconds before we consider a client to have timed out
-    timeout: ConnectionTimeout,
+    timeout: ConnectionTimeout
 }
 
 impl Manager {
     pub fn new() -> Manager {
         Manager {
             connections: HashMap::new(),
-            timeout: TIMEOUT_DEFAULT,
+            timeout: TIMEOUT_DEFAULT
         }
     }
 
@@ -39,9 +48,7 @@ impl Manager {
             self.connections.insert(conn.to_string(), conn);
             Ok(())
         } else {
-            Err(AmethystNetworkError::AddConnectionToManagerFailed {
-                reason: "Entry already exists".to_string(),
-            })
+            Err(AmethystNetworkError::AddConnectionToManagerFailed{reason: "Entry already exists".to_string()})
         }
     }
 }
@@ -72,11 +79,7 @@ impl Connection {
 
 impl ToString for Connection {
     fn to_string(&self) -> String {
-        format!(
-            "{}:{}",
-            self.remote_address.ip(),
-            self.remote_address.port()
-        )
+        format!("{}:{}", self.remote_address.ip(), self.remote_address.port())
     }
 }
 
