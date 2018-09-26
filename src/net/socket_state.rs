@@ -2,16 +2,18 @@ use std::collections::HashMap;
 
 use bincode::{deserialize, serialize};
 
-use super::{Connection, Packet, SocketAddr, RawPacket};
+use super::{Connection, Packet, RawPacket, SocketAddr};
 
 /// This holds the 'virtual connections' currently (connected) to the udp socket.
-pub struct SocketState  {
-    connections: HashMap<SocketAddr, Connection>
+pub struct SocketState {
+    connections: HashMap<SocketAddr, Connection>,
 }
 
 impl SocketState {
     pub fn new() -> SocketState {
-        SocketState { connections: HashMap::new() }
+        SocketState {
+            connections: HashMap::new(),
+        }
     }
 
     /// This will initialize the seq number, ack number and give back the raw data of the packet with the updated information.
@@ -19,7 +21,9 @@ impl SocketState {
         let connection = self.create_connection_if_not_exists(&packet.addr);
 
         // queue new packet
-        connection.waiting_packets.enqueue(connection.seq_num, packet.clone());
+        connection
+            .waiting_packets
+            .enqueue(connection.seq_num, packet.clone());
 
         // initialize packet data, seq, acked_seq etc.
         let raw_packet = RawPacket::new(connection.seq_num, &packet, connection);
@@ -45,16 +49,20 @@ impl SocketState {
         connection.their_acks.ack(packet.seq);
 
         // Update dropped packets if there are any.
-        let dropped_packets = connection.waiting_packets.ack(packet.ack_seq, packet.ack_field);
+        let dropped_packets = connection
+            .waiting_packets
+            .ack(packet.ack_seq, packet.ack_field);
         connection.dropped_packets = dropped_packets.into_iter().map(|(_, p)| p).collect();
 
-        Packet { addr, payload: packet.payload.clone() }
+        Packet {
+            addr,
+            payload: packet.payload.clone(),
+        }
     }
 
     #[inline]
     /// If there is no connection with the given socket address an new connection will be made.
-    fn create_connection_if_not_exists(&mut self, addr: &SocketAddr) -> &mut Connection
-    {
+    fn create_connection_if_not_exists(&mut self, addr: &SocketAddr) -> &mut Connection {
         self.connections.entry(*addr).or_insert(Connection::new())
     }
 }

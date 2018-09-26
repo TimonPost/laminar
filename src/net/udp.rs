@@ -1,9 +1,9 @@
-use std::io;
-use std::net::{self, ToSocketAddrs, SocketAddr};
 use std::collections::HashMap;
+use std::io;
+use std::net::{self, SocketAddr, ToSocketAddrs};
 
-use bincode::{deserialize, serialize};
 use super::{Packet, RawPacket, SocketState};
+use bincode::{deserialize, serialize};
 
 const BUFFER_SIZE: usize = 1024;
 
@@ -48,19 +48,18 @@ impl UdpSocket {
     }
 }
 
-mod test
-{
+#[cfg(test)]
+mod test {
     use super::UdpSocket;
+    use bincode::{deserialize, serialize};
     use packet::Packet;
     use std::io;
-    use std::net::{SocketAddr, IpAddr};
+    use std::net::{IpAddr, SocketAddr};
     use std::str::FromStr;
     use std::{thread, time};
-    use bincode::{serialize, deserialize};
 
     #[test]
-    fn send_receive_1_pckt()
-    {
+    fn send_receive_1_pckt() {
         let mut send_socket = UdpSocket::bind("127.0.0.1:12345").unwrap();
         let mut recv_socket = UdpSocket::bind("127.0.0.1:12346").unwrap();
 
@@ -69,7 +68,7 @@ mod test
             12345,
         );
 
-        let dummy_packet = Packet::new(addr, vec![1,2,3]);
+        let dummy_packet = Packet::new(addr, vec![1, 2, 3]);
 
         let send_result: io::Result<usize> = send_socket.send(dummy_packet);
         assert!(send_result.is_ok());
@@ -81,12 +80,11 @@ mod test
         let received_packet = packet_payload.unwrap();
 
         assert_eq!(received_packet.addr().to_string(), "127.0.0.1:12345");
-        assert_eq!(received_packet.payload(), &[1,2,3]);
+        assert_eq!(received_packet.payload(), &[1, 2, 3]);
     }
 
     #[test]
-    pub fn send_receive_stress_test()
-    {
+    pub fn send_receive_stress_test() {
         const TOTAL_PACKAGES: u16 = 10000;
 
         thread::spawn(|| {
@@ -99,9 +97,11 @@ mod test
                 12346,
             );
 
-            for packet_count in 0..TOTAL_PACKAGES
-            {
-                let stub = StubData { id: packet_count, b: 1};
+            for packet_count in 0..TOTAL_PACKAGES {
+                let stub = StubData {
+                    id: packet_count,
+                    b: 1,
+                };
                 let data = serialize(&stub).unwrap();
                 let len = data.len();
                 let dummy_packet = Packet::new(addr, data);
@@ -109,8 +109,11 @@ mod test
                 let send_result: io::Result<usize> = send_socket.send(dummy_packet);
 
                 assert!(send_result.is_ok());
-                println!("sending packet_count: {} packet_id: {}", packet_count, stub.id);
-//                assert_eq!(send_result.unwrap(), len);
+                println!(
+                    "sending packet_count: {} packet_id: {}",
+                    packet_count, stub.id
+                );
+                //                assert_eq!(send_result.unwrap(), len);
             }
         });
 
@@ -120,7 +123,6 @@ mod test
             let mut received_packages_count = 0;
 
             loop {
-
                 let packet: io::Result<Option<Packet>> = recv_socket.recv();
                 assert!(packet.is_ok());
                 let packet_payload: Option<Packet> = packet.unwrap();
@@ -133,7 +135,10 @@ mod test
                 assert_eq!(stub_data.id, received_packages_count);
                 assert_eq!(stub_data.b, 1);
 
-                println!("receiving packet_count: {} packet_id: {}", received_packages_count, stub_data.id);
+                println!(
+                    "receiving packet_count: {} packet_id: {}",
+                    received_packages_count, stub_data.id
+                );
 
                 received_packages_count += 1;
 
@@ -145,10 +150,9 @@ mod test
     }
 
     #[derive(Serialize, Deserialize, Clone, Copy)]
-    struct StubData
-    {
+    struct StubData {
         pub id: u16,
-        pub b: u16
+        pub b: u16,
     }
 
     pub fn dummy_packet() -> Packet {

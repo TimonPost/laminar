@@ -1,5 +1,5 @@
-use Packet;
 use std::collections::HashMap;
+use Packet;
 
 /// Packets waiting for an ack
 ///
@@ -9,12 +9,14 @@ use std::collections::HashMap;
 #[derive(Debug)]
 pub struct LocalAckRecord {
     // packets waiting for acknowledgement.
-    packets: HashMap<u16, Packet>
+    packets: HashMap<u16, Packet>,
 }
 
 impl LocalAckRecord {
     pub fn new() -> LocalAckRecord {
-        LocalAckRecord { packets: HashMap::new() }
+        LocalAckRecord {
+            packets: HashMap::new(),
+        }
     }
 
     /// Checks if there are packets in the queue to be aknowleged.
@@ -54,17 +56,21 @@ impl LocalAckRecord {
             }
         }
 
-        for seq_number in acked_packets.iter(){
+        for seq_number in acked_packets.iter() {
             self.packets.remove(seq_number);
         }
 
-        dropped_packets.into_iter().map(|seq| (seq, self.packets.remove(&seq).unwrap())).collect()
+        dropped_packets
+            .into_iter()
+            .map(|seq| (seq, self.packets.remove(&seq).unwrap()))
+            .collect()
     }
 }
 
-mod ack_record {
-    use super::super::{LocalAckRecord, ExternalAcks, Packet};
-    use std::net::{SocketAddr, IpAddr};
+#[cfg(test)]
+mod test {
+    use super::super::{ExternalAcks, LocalAckRecord, Packet};
+    use std::net::{IpAddr, SocketAddr};
     use std::str;
     use std::str::FromStr;
 
@@ -92,8 +98,7 @@ mod ack_record {
     fn acking_a_full_set_of_packets() {
         let mut record = LocalAckRecord::new();
 
-        for i in 0..33
-        {
+        for i in 0..33 {
             record.enqueue(i, dummy_packet())
         }
 
@@ -122,7 +127,7 @@ mod ack_record {
         let mut record = LocalAckRecord::new();
 
         for i in 0..33_u16 {
-           record.enqueue(i.wrapping_sub(16), dummy_packet());
+            record.enqueue(i.wrapping_sub(16), dummy_packet());
         }
 
         let dropped = record.ack(16, !0);

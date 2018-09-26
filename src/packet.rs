@@ -1,5 +1,5 @@
-use std::net::SocketAddr;
 use net::Connection;
+use std::net::SocketAddr;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Packet {
@@ -17,9 +17,8 @@ impl Packet {
         }
     }
 
-    pub fn payload(&self) -> &[u8]
-    {
-        return &self.payload
+    pub fn payload(&self) -> &[u8] {
+        return &self.payload;
     }
 
     pub fn addr(&self) -> SocketAddr {
@@ -40,17 +39,16 @@ pub struct RawPacket {
     // this is an bitfield of all last 32 acknowledged packages
     pub ack_field: u32,
     // this is the payload in witch the packet data is stored.
-    pub payload: Box<[u8]>
+    pub payload: Box<[u8]>,
 }
 
-impl RawPacket
-{
-    pub fn new( seq_num: u16, p: &Packet, connection: &Connection) -> RawPacket {
+impl RawPacket {
+    pub fn new(seq_num: u16, p: &Packet, connection: &Connection) -> RawPacket {
         RawPacket {
             seq: seq_num,
             ack_seq: connection.their_acks.last_seq,
             ack_field: connection.their_acks.field,
-            payload: p.payload.clone()
+            payload: p.payload.clone(),
         }
     }
 }

@@ -9,12 +9,16 @@ pub struct ExternalAcks {
     /// the last sequence number we have received from the other side.
     pub last_seq: u16,
     pub field: u32,
-    initialized: bool
+    initialized: bool,
 }
 
 impl ExternalAcks {
     pub fn new() -> ExternalAcks {
-        ExternalAcks { last_seq: 0, field: 0, initialized: false }
+        ExternalAcks {
+            last_seq: 0,
+            field: 0,
+            initialized: false,
+        }
     }
 
     pub fn ack(&mut self, seq_num: u16) {
@@ -33,7 +37,7 @@ impl ExternalAcks {
 
         if pos_diff < 32000 {
             if pos_diff <= 32 {
-                self.field = ((self.field << 1 ) | 1) << (pos_diff - 1);
+                self.field = ((self.field << 1) | 1) << (pos_diff - 1);
             } else {
                 self.field = 0;
             }
@@ -44,7 +48,8 @@ impl ExternalAcks {
     }
 }
 
-mod external_acks {
+#[cfg(test)]
+mod test {
     use super::ExternalAcks;
 
     #[test]
@@ -82,8 +87,7 @@ mod external_acks {
     fn acking_a_nearly_full_set_of_packets() {
         let mut acks = ExternalAcks::new();
 
-        for i in 0..32
-        {
+        for i in 0..32 {
             acks.ack(i);
         }
 
@@ -134,7 +138,6 @@ mod external_acks {
         assert_eq!(acks.field, 0);
     }
 
-
     #[test]
     fn acking_too_far_backward() {
         let mut acks = ExternalAcks::new();
@@ -149,12 +152,11 @@ mod external_acks {
     fn acking_around_zero() {
         let mut acks = ExternalAcks::new();
 
-        for i in 0..33_u16
-        {
+        for i in 0..33_u16 {
             acks.ack(i.wrapping_sub(16));
         }
-            assert_eq!(acks.last_seq, 16);
-            assert_eq!(acks.field, !0);
+        assert_eq!(acks.last_seq, 16);
+        assert_eq!(acks.field, !0);
     }
 
     #[test]
@@ -183,13 +185,14 @@ mod external_acks {
         acks.ack(6);
         acks.ack(4);
         assert_eq!(acks.last_seq, 6);
-        assert_eq!(acks.field,
-                   0        | // 5 (missing)
+        assert_eq!(
+            acks.field,
+            0        | // 5 (missing)
                        (1 << 1) | // 4 (present)
                        (0 << 2) | // 3 (missing)
                        (0 << 3) | // 2 (missing)
                        (1 << 4) | // 1 (present)
-                       (1 << 5)   // 0 (present)
+                       (1 << 5) // 0 (present)
         );
     }
 }
