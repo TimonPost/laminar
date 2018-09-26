@@ -1,5 +1,5 @@
-use std;
-use std::net::{SocketAddr, ToSocketAddrs};
+use std::io::Error;
+use std::net::ToSocketAddrs;
 
 use connection::Manager;
 use net::udp::UdpSocket;
@@ -11,11 +11,11 @@ pub struct UdpServer {
 }
 
 impl UdpServer {
-    pub fn new<A: ToSocketAddrs>(addr: A) -> Result<UdpServer, std::io::Error> {
+    pub fn new<A: ToSocketAddrs>(addr: A) -> Result<UdpServer, Error> {
         let socket = UdpSocket::bind(addr)?;
         Ok(UdpServer {
-            socket: socket,
-            manager: Manager::default()
+            socket,
+            manager: Manager::default(),
         })
     }
 }

@@ -1,6 +1,5 @@
 use net::Connection;
 use std::net::SocketAddr;
-use net::Connection;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Packet {
