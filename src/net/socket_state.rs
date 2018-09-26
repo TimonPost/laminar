@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use bincode::{deserialize, serialize};
+use bincode::serialize;
 
 use super::{Connection, Packet, RawPacket, SocketAddr};
 
@@ -45,7 +45,7 @@ impl SocketState {
 
     /// This will process an incoming packet and update acknowledgement information.
     pub fn process_received(&mut self, addr: SocketAddr, packet: &RawPacket) -> Packet {
-        let mut connection = self.create_connection_if_not_exists(&addr);
+        let connection = self.create_connection_if_not_exists(&addr);
         connection.their_acks.ack(packet.seq);
 
         // Update dropped packets if there are any.

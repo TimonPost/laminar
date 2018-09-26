@@ -9,5 +9,9 @@ extern crate serde_derive;
 mod net;
 mod packet;
 
-pub use net::UdpSocket;
+pub mod amethyst_error;
+pub mod connection;
+pub mod server;
+
+pub use net::udp::UdpSocket;
 use packet::{Packet, RawPacket};

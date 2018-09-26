@@ -1,9 +1,8 @@
-use std::collections::HashMap;
 use std::io;
-use std::net::{self, SocketAddr, ToSocketAddrs};
+use std::net::{self, ToSocketAddrs};
 
 use super::{Packet, RawPacket, SocketState};
-use bincode::{deserialize, serialize};
+use bincode::deserialize;
 
 const BUFFER_SIZE: usize = 1024;
 
@@ -38,7 +37,7 @@ impl UdpSocket {
         }
     }
 
-    pub fn send(&mut self, mut packet: Packet) -> io::Result<usize> {
+    pub fn send(&mut self, packet: Packet) -> io::Result<usize> {
         let (addr, payload) = self.state.pre_process_packet(packet);
         self.socket.send_to(&payload, addr)
     }
