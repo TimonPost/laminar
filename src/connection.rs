@@ -1,3 +1,4 @@
+use std;
 use std::collections::HashMap;
 use std::net::{AddrParseError, IpAddr, Ipv4Addr, Ipv6Addr};
 use std::str::{FromStr};
@@ -5,26 +6,26 @@ use std::string::ToString;
 use std::error::Error;
 use std::time::{Duration, Instant};
 use std::default::Default;
-
+use std::net::{ToSocketAddrs, SocketAddr};
 use amethyst_error::AmethystNetworkError;
 
 
-/// Type aliases
-/// Number of seconds we will wait until we consider a Connection to have timed out
+// Type aliases
+// Number of seconds we will wait until we consider a Connection to have timed out
 type ConnectionTimeout = u8;
-/// The port associated with this Connection
+// The port associated with this Connection
 type NetworkPort = u16;
 
-/// Default timeout of 10 seconds
+// Default timeout of 10 seconds
 const TIMEOUT_DEFAULT: ConnectionTimeout = 10;
 
 
 /// Maintains a list of all Connections and allows adding/removing them
 #[derive(Default)]
 pub struct Manager {
-    /// The collection of currently connected clients
+    // The collection of currently connected clients
     connections: HashMap<String, Connection>,
-    /// The number of seconds before we consider a client to have timed out
+    // The number of seconds before we consider a client to have timed out
     timeout: ConnectionTimeout
 }
 
@@ -41,7 +42,7 @@ impl Manager {
         self
     }
 
-    /// Adds a new connection to the manager.
+    // Adds a new connection to the manager.
     pub fn add_connection(&mut self, conn: Connection) -> Result<(), AmethystNetworkError> {
         if !self.connections.contains_key(&conn.to_string()) {
             self.connections.insert(conn.to_string(), conn);
@@ -54,29 +55,18 @@ impl Manager {
 
 /// Represents a virtual circuit to a remote endpoint
 pub struct Connection {
-    /// IP Address of the remote endpoint
-    remote_ip: IpAddr,
-    /// Port the client is using
-    remote_port: NetworkPort,
-    /// The last moment in time we heard from this client. This is used to help detect if a client has disconnected
+    // IP Address of the remote endpoint
+    remote_address: SocketAddr,
+    // The last moment in time we heard from this client. This is used to help detect if a client has disconnected
     last_heard: Instant,
 }
 
 impl Connection {
     /// Creates a new connection based off a unique IP and Port combination
-    /// TODO: Should we use a where clause for the remote_ip arg, to only allow things that implement Into<IpAddr>?
-    pub fn new(remote_ip: &str, remote_port: NetworkPort) -> Result<Connection, AddrParseError> {
-        match remote_ip.parse::<IpAddr>() {
-            Ok(addr) => {
-                Ok(Connection {
-                    remote_ip: addr,
-                    remote_port,
-                    last_heard: Instant::now(),
-                })
-            },
-            Err(e) => {
-                Err(e)
-            }
+    pub fn new(addr: SocketAddr) -> Connection {
+        Connection {
+            remote_address: addr,
+            last_heard: Instant::now(),
         }
     }
 
@@ -89,7 +79,7 @@ impl Connection {
 
 impl ToString for Connection {
     fn to_string(&self) -> String {
-        String::from(format!("{}", self.remote_ip)) + ":" + &self.remote_port.to_string()
+        format!("{}:{}", self.remote_address.ip(), self.remote_address.port())
     }
 }
 
@@ -97,7 +87,9 @@ impl ToString for Connection {
 mod test {
     use super::*;
 
-    const TEST_PORT: u16 = 20000;
+    static TEST_HOST_IP: &'static str = "127.0.0.1";
+    static TEST_BAD_HOST_IP: &'static str = "800.0.0.1";
+    static TEST_PORT: &'static str = "20000";
 
     #[test]
     fn test_create_manager() {
@@ -107,21 +99,24 @@ mod test {
 
     #[test]
     fn test_create_connection() {
-        let new_conn = Connection::new("127.0.0.1", TEST_PORT);
-        assert!(new_conn.is_ok());
+        let mut addr = format!("{}:{}", TEST_HOST_IP, TEST_PORT).to_socket_addrs();
+        assert!(addr.is_ok());
+        let mut addr = addr.unwrap();
+        let new_conn = Connection::new(addr.next().unwrap());
     }
 
     #[test]
     fn test_conn_to_string() {
-        let new_conn = Connection::new("127.0.0.1", TEST_PORT);
-        assert!(new_conn.is_ok());
-        let new_conn = new_conn.unwrap();
+        let mut addr = format!("{}:{}", TEST_HOST_IP, TEST_PORT).to_socket_addrs();
+        assert!(addr.is_ok());
+        let mut addr = addr.unwrap();
+        let new_conn = Connection::new(addr.next().unwrap());
         assert_eq!(new_conn.to_string(), "127.0.0.1:20000");
     }
 
     #[test]
     fn test_invalid_addr_fails() {
-        let new_conn = Connection::new("800.0.0.1", TEST_PORT);
-        assert!(new_conn.is_err());
+        let mut addr = format!("{}:{}", TEST_BAD_HOST_IP, TEST_PORT).to_socket_addrs();
+        assert!(addr.is_err());
     }
 }
