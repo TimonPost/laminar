@@ -1,3 +1,6 @@
+use std::time::{Instant, Duration};
+use std::net::SocketAddr;
+
 use super::{ExternalAcks, LocalAckRecord, Packet};
 
 /// Contains the information about a certain 'virtual connection' over udp.
@@ -7,16 +10,37 @@ pub struct Connection {
     pub dropped_packets: Vec<Packet>,
     pub waiting_packets: LocalAckRecord,
     pub their_acks: ExternalAcks,
+    pub last_heard: Instant,
+    pub remote_address: SocketAddr,
+    pub quality: Quality,
 }
 
 impl Connection {
-    pub fn new() -> Connection {
+    pub fn new(addr: SocketAddr) -> Connection {
         Connection {
             seq_num: 0,
             dropped_packets: Vec::new(),
             waiting_packets: LocalAckRecord::new(),
             their_acks: ExternalAcks::new(),
+            last_heard: Instant::now(),
+            quality: Quality::Good,
+            remote_address: addr
         }
+    }
+
+    pub fn last_heard(&self) -> Duration {
+        let now = Instant::now();
+        self.last_heard.duration_since(now)
+    }
+}
+
+impl ToString for Connection {
+    fn to_string(&self) -> String {
+        format!(
+            "{}:{}",
+            self.remote_address.ip(),
+            self.remote_address.port()
+        )
     }
 }
 
@@ -28,4 +52,10 @@ impl Connection {
 pub enum Quality {
     Good,
     Bad,
+}
+
+#[cfg(test)]
+mod test {
+    use super::Connection;
+
 }
