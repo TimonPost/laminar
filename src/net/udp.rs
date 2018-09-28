@@ -4,6 +4,8 @@ use std::net::{self, ToSocketAddrs};
 use super::{Packet, RawPacket, SocketState};
 use bincode::deserialize;
 
+use error::AmethystNetworkError;
+
 const BUFFER_SIZE: usize = 1024;
 
 pub struct UdpSocket {
@@ -26,20 +28,19 @@ impl UdpSocket {
 
     pub fn recv(&mut self) -> io::Result<Option<Packet>> {
         let (len, _addr) = self.socket.recv_from(&mut self.recv_buffer)?;
-
         if len > 0 {
             // TODO: Remove unwrap and funnel result error types
             let raw_packet: RawPacket = deserialize(&self.recv_buffer[..len]).unwrap();
-            let packet = self.state.process_received(_addr, &raw_packet);
+            let packet = self.state.process_received(_addr, &raw_packet).unwrap();
             Ok(Some(packet))
         } else {
             Ok(None)
         }
     }
 
-    pub fn send(&mut self, packet: Packet) -> io::Result<usize> {
-        let (addr, payload) = self.state.pre_process_packet(packet);
-        self.socket.send_to(&payload, addr)
+    pub fn send(&mut self, packet: Packet) -> Result<io::Result<usize>, AmethystNetworkError> {
+        let (addr, payload) = self.state.pre_process_packet(packet)?;
+        Ok(self.socket.send_to(&payload, addr))
     }
 
     pub fn set_nonblocking(&mut self, nonblocking: bool) -> io::Result<()> {
@@ -69,8 +70,7 @@ mod test {
 
         let dummy_packet = Packet::new(addr, vec![1, 2, 3]);
 
-        let send_result: io::Result<usize> = send_socket.send(dummy_packet);
-        println!("{:?}", send_result);
+        let send_result = send_socket.send(dummy_packet);
         assert!(send_result.is_ok());
 
         let packet: io::Result<Option<Packet>> = recv_socket.recv();
@@ -105,15 +105,8 @@ mod test {
                 let data = serialize(&stub).unwrap();
                 let len = data.len();
                 let dummy_packet = Packet::new(addr, data);
-
-                let send_result: io::Result<usize> = send_socket.send(dummy_packet);
-
+                let send_result = send_socket.send(dummy_packet);
                 assert!(send_result.is_ok());
-                // println!(
-                //     "sending packet_count: {} packet_id: {}",
-                //     packet_count, stub.id
-                // );
-                //                assert_eq!(send_result.unwrap(), len);
             }
         });
 
@@ -134,11 +127,6 @@ mod test {
                 assert_eq!(received_packet.addr().to_string(), "127.0.0.1:12345");
                 assert_eq!(stub_data.id, received_packages_count);
                 assert_eq!(stub_data.b, 1);
-
-                // println!(
-                //     "receiving packet_count: {} packet_id: {}",
-                //     received_packages_count, stub_data.id
-                // );
 
                 received_packages_count += 1;
 

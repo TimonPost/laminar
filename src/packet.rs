@@ -43,11 +43,11 @@ pub struct RawPacket {
 }
 
 impl RawPacket {
-    pub fn new(seq_num: u16, p: &Packet, connection: &Connection) -> RawPacket {
+    pub fn new(seq_num: u16, p: &Packet, last_seq: u16, field: u32) -> RawPacket {
         RawPacket {
             seq: seq_num,
-            ack_seq: connection.their_acks.last_seq,
-            ack_field: connection.their_acks.field,
+            ack_seq: last_seq,
+            ack_field: field,
             payload: p.payload.clone(),
         }
     }

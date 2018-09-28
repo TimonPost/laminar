@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use connection::Connection;
+use net::connection::Connection;
 use net::connection::Quality;
 
 /// Events that are generated in response to a change in state of the connected client
@@ -19,7 +19,7 @@ pub enum ConnectionEvent {
 #[cfg(test)]
 mod test {
     use super::ConnectionEvent;
-    use connection::Connection;
+    use net::connection::Connection;
     use std::sync::Arc;
     use std::net::ToSocketAddrs;
 
@@ -33,5 +33,4 @@ mod test {
         let test_conn = Arc::new(Connection::new(addr.next().unwrap()));
         let _ = ConnectionEvent::Connected{conn: test_conn};
     }
-
 }
