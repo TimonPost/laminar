@@ -1,21 +1,22 @@
 use std::sync::{Arc, RwLock};
 use std::collections::HashMap;
-
+use std::thread;
+use std::time::Duration;
 use bincode::serialize;
 
 use super::{Connection, Packet, RawPacket, SocketAddr};
-use amethyst_error::AmethystNetworkError;
+use error::AmethystNetworkError;
 
 // Type aliases
 // Number of seconds we will wait until we consider a Connection to have timed out
-type ConnectionTimeout = u8;
+type ConnectionTimeout = u64;
 type ConnectionMap = Arc<RwLock<HashMap<SocketAddr, Arc<RwLock<Connection>>>>>;
 
 // Default timeout of 10 seconds
 const TIMEOUT_DEFAULT: ConnectionTimeout = 10;
 
 // Default time between checks of all clients for timeouts in seconds
-const TIMEOUT_POLL_INTERVAL: u8 = 1;
+const TIMEOUT_POLL_INTERVAL: u64 = 1;
 
 /// This holds the 'virtual connections' currently (connected) to the udp socket.
 pub struct SocketState {
@@ -25,10 +26,12 @@ pub struct SocketState {
 
 impl SocketState {
     pub fn new() -> SocketState {
-        SocketState {
+        let mut socket_state = SocketState {
             connections: Arc::new(RwLock::new(HashMap::new())),
             timeout: TIMEOUT_DEFAULT,
-        }
+        };
+        socket_state.check_for_timeouts();
+        socket_state
     }
 
     pub fn with_client_timeout(mut self, timeout: ConnectionTimeout) -> SocketState {
@@ -40,26 +43,22 @@ impl SocketState {
     pub fn pre_process_packet(&mut self, packet: Packet) -> Result<(SocketAddr, Vec<u8>), AmethystNetworkError> {
         let connection = self.create_connection_if_not_exists(&packet.addr)?;
         // queue new packet
-        if let Ok(mut l) = connection.write() {
-            l
-                .waiting_packets
-                .enqueue(connection.write().unwrap().seq_num, packet.clone());
+        if let Ok(mut lock) = connection.write() {
+            let seq_num = lock.seq_num;
+            lock.waiting_packets.enqueue(seq_num, packet.clone());
         }
 
-        let mut raw_packet: RawPacket;
+        let raw_packet: RawPacket;
         // initialize packet data, seq, acked_seq etc.
         if let Ok(mut l) = connection.write() {
             raw_packet = RawPacket::new(l.seq_num, &packet, l.their_acks.last_seq, l.their_acks.field);
             // increase sequence number
             l.seq_num = l.seq_num.wrapping_add(1);
-            // TODO: remove unwrap
-            let buffer = serialize(&raw_packet).unwrap();
-            return Ok((packet.addr, buffer));
+            if let Ok(buffer) = serialize(&raw_packet) {
+                return Ok((packet.addr, buffer));
+            }
         }
-
         Err(AmethystNetworkError::Unknown)
-
-
     }
 
     /// This will return all dropped packets from this connection.
@@ -95,9 +94,24 @@ impl SocketState {
 
     // Regularly checks the last_heard attribute of all the connections in the manager to see if any have timed out
     fn check_for_timeouts(&mut self) {
-        loop {
-
-        }
+        let connections_lock = self.connections.clone();
+        let sleepy_time = Duration::from_secs(self.timeout);
+        let poll_interval = Duration::from_secs(TIMEOUT_POLL_INTERVAL);
+        thread::Builder::new().name("check_for_timeouts".into()).spawn(move || {
+            loop {
+                if let Ok(connections) = connections_lock.read() {
+                    for (key, value) in connections.iter() {
+                        if let Ok(connection) = value.read() {
+                            let last_heard = connection.last_heard();
+                            if last_heard >= sleepy_time {
+                                error!("Client has timed out: {:?}", key);
+                            }
+                        }
+                    }
+                }
+                thread::sleep(poll_interval)
+            }
+        });
     }
 
     #[inline]
@@ -110,7 +124,8 @@ impl SocketState {
                 }
             } else {
                 let new_conn = Arc::new(RwLock::new(Connection::new(*addr)));
-                lock.insert(*addr, new_conn);
+                lock.insert(*addr, new_conn.clone());
+                return Ok(new_conn);
             }
         }
         return Err(AmethystNetworkError::AddConnectionToManagerFailed{err: String::from("Unable to acquire lock on connection hash")});
@@ -120,18 +135,13 @@ impl SocketState {
 
 #[cfg(test)]
 mod test {
-    use super::{Manager};
+    use super::SocketState;
     use net::connection::Connection;
     use std::net::{ToSocketAddrs};
+    use std::{time, thread};
     static TEST_HOST_IP: &'static str = "127.0.0.1";
     static TEST_BAD_HOST_IP: &'static str = "800.0.0.1";
     static TEST_PORT: &'static str = "20000";
-
-    #[test]
-    fn test_create_manager() {
-        let manager = Manager::new().with_client_timeout(60);
-        assert_eq!(manager.timeout, 60);
-    }
 
     #[test]
     fn test_create_connection() {
@@ -142,17 +152,15 @@ mod test {
     }
 
     #[test]
-    fn test_conn_to_string() {
-        let addr = format!("{}:{}", TEST_HOST_IP, TEST_PORT).to_socket_addrs();
-        assert!(addr.is_ok());
-        let mut addr = addr.unwrap();
-        let new_conn = Connection::new(addr.next().unwrap());
-        assert_eq!(new_conn.to_string(), "127.0.0.1:20000");
-    }
-
-    #[test]
     fn test_invalid_addr_fails() {
         let addr = format!("{}:{}", TEST_BAD_HOST_IP, TEST_PORT).to_socket_addrs();
         assert!(addr.is_err());
+    }
+
+    #[test]
+    fn test_poll_for_invalid_clients() {
+        let mut socket_state = SocketState::new();
+        socket_state.check_for_timeouts();
+        thread::sleep(time::Duration::from_millis(10000));
     }
 }

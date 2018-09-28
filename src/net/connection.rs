@@ -1,6 +1,6 @@
 use std::time::{Instant, Duration};
 use std::net::SocketAddr;
-
+use std::fmt;
 use super::{ExternalAcks, LocalAckRecord, Packet};
 
 /// Contains the information about a certain 'virtual connection' over udp.
@@ -16,6 +16,7 @@ pub struct Connection {
 }
 
 impl Connection {
+    /// Creates and returns a new Connection that wraps the provided socket address
     pub fn new(addr: SocketAddr) -> Connection {
         Connection {
             seq_num: 0,
@@ -28,19 +29,16 @@ impl Connection {
         }
     }
 
+    /// Returns a Duration representing since we last heard from the client
     pub fn last_heard(&self) -> Duration {
         let now = Instant::now();
         self.last_heard.duration_since(now)
     }
 }
 
-impl ToString for Connection {
-    fn to_string(&self) -> String {
-        format!(
-            "{}:{}",
-            self.remote_address.ip(),
-            self.remote_address.port()
-        )
+impl fmt::Debug for Connection {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}:{}", self.remote_address.ip(), self.remote_address.port())
     }
 }
 
@@ -56,6 +54,17 @@ pub enum Quality {
 
 #[cfg(test)]
 mod test {
-    use super::Connection;
+    use net::connection::Connection;
+    use std::net::{ToSocketAddrs};
 
+    static TEST_HOST_IP: &'static str = "127.0.0.1";
+    static TEST_BAD_HOST_IP: &'static str = "800.0.0.1";
+    static TEST_PORT: &'static str = "20000";
+
+    #[test]
+    fn test_create_connection() {
+        let mut addr = format!("{}:{}", TEST_HOST_IP, TEST_PORT).to_socket_addrs().unwrap();
+        let _new_conn = Connection::new(addr.next().unwrap());
+
+    }
 }
