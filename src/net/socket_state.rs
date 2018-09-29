@@ -100,19 +100,21 @@ impl SocketState {
         let connections_lock = self.connections.clone();
         let sleepy_time = Duration::from_secs(self.timeout);
         let poll_interval = Duration::from_secs(TIMEOUT_POLL_INTERVAL);
+
         thread::Builder::new()
             .name("check_for_timeouts".into())
             .spawn(move || loop {
-                if let Ok(connections) = connections_lock.read() {
-                    for (key, value) in connections.iter() {
-                        if let Ok(connection) = value.read() {
-                            let last_heard = connection.last_heard();
-                            if last_heard >= sleepy_time {
-                                error!("Client has timed out: {:?}", key);
-                            }
-                        }
+                let connections = connections_lock.read().expect("Unable to aquire read lock");
+
+                for (key, value) in connections.iter() {
+                    let connection = value.read().expect("Unable to aquire read lock");
+                    let last_heard = connection.last_heard();
+                    if last_heard >= sleepy_time {
+                        // TODO: pass up client TimedOut event
+                        error!("Client has timed out: {:?}", key);
                     }
                 }
+
                 thread::sleep(poll_interval)
             });
     }
