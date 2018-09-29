@@ -4,12 +4,13 @@ use std::net::TcpListener;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::io::{BufRead, Write};
 use std::io::{BufReader, BufWriter};
-use std::net::TcpStream;
+use std::net::{Shutdown, TcpStream};
 use std::thread;
 use std::thread::JoinHandle;
 use std::sync::{Arc, Mutex, RwLock};
-use error::AmethystNetworkError;
 use std::sync::mpsc::*;
+
+use error::NetworkError;
 
 /* Summary of How This Works
 This module has three main components:
@@ -43,8 +44,8 @@ impl TcpSocketState {
     }
 
     /// This starts a TCP server on the provided SocketAddr. It is important to note that it also passes an Arc reference down to the server.
-    pub fn start(&mut self, addr: SocketAddr) {
-        TcpServer::listen(addr, self.connections.clone());
+    pub fn start(&mut self, addr: SocketAddr) -> Result<JoinHandle<()>, io::Error> {
+        TcpServer::listen(addr, self.connections.clone())
     }
 }
 
@@ -55,28 +56,50 @@ pub struct TcpServer;
 impl TcpServer {
 
     /// Starts the TcpServer listening socket. When a new connection is accepted, it spawns a new thread dedicated to that client and goes back to listening for more connections.
-    pub fn listen(addr: SocketAddr, connections: Connections) {
-        thread::spawn(move || {
-            let listener = TcpListener::bind(addr).unwrap();
+    pub fn listen(addr: SocketAddr, connections: Connections) -> Result<JoinHandle<()>, io::Error> {
+        Ok(thread::spawn(move || {
+            let listener = match TcpListener::bind(addr) {
+                Ok(l) => { l }
+                Err(e) => {
+                    error!("Error binding to listening socket: {}", e);
+                    return;
+                }
+            };
             /// This is a blocking call, so the thread waits here until it gets a new connection
             for stream in listener.incoming() {
-                /// Now we call a function and pass it the stream, and a clone of the connections hash
-                TcpServer::handle_connection(stream.unwrap(), connections.clone());
+                match stream {
+                    Ok(stream) => {
+                        /// Now we call a function and pass it the stream, and a clone of the connections hash
+                        match TcpServer::handle_connection(stream, connections.clone()) {
+                            Ok(c) => {
+                                debug!("New TCP connection: {:?}", c);
+                            },
+                            Err(e) => {
+                                error!("Error accepting new TCP connection: {}", e);
+                            }
+                        };
+                    },
+                    Err(e) => { debug!("Error accepting new TCP stream: {}", e); }
+                };
             }
-        });
+        }))
     }
 
     /// This function inserts a reference to the connection into the connections hash
-    pub fn handle_connection(stream: TcpStream, connections: Connections) {
-        let peer_addr = stream.peer_addr().unwrap();
-        let mut tcp_client = Arc::new(Mutex::new(TcpClient::new(stream)));
+    pub fn handle_connection(stream: TcpStream, connections: Connections) -> Result<(), io::Error> {
+        let peer_addr = stream.peer_addr()?;
+        let tmp_stream = stream.try_clone()?;
+        let mut tcp_client = Arc::new(Mutex::new(TcpClient::new(stream)?));
         if let Ok(mut lock) = connections.lock() {
             lock.insert(peer_addr, tcp_client.clone());
+            // Pass it off to a function to handle setting up the client-specific background threads
+            TcpClient::run(tcp_client);
+            Ok(())
+        } else {
+            // If we can't get the lock, send a shutdown to the client and they will have to try again
+            tmp_stream.shutdown(Shutdown::Both)
         }
-        /// Pass it off to a function to handle setting up the client-specific background threads
-        TcpClient::run(tcp_client);
     }
-
 }
 
 /// A remote client connected via a TcpStream
@@ -90,17 +113,17 @@ pub struct TcpClient {
 
 impl TcpClient {
     /// Creates and returns a new TcpClient. It makes a few references to the raw stream and wraps them in BufReader and BufWriter for convenience.
-    pub fn new(stream: TcpStream) -> TcpClient {
-        let reader = BufReader::new(stream.try_clone().unwrap());
-        let writer = BufWriter::new(stream.try_clone().unwrap());
+    pub fn new(stream: TcpStream) -> Result<TcpClient, io::Error> {
+        let reader = BufReader::new(stream.try_clone()?);
+        let writer = BufWriter::new(stream.try_clone()?);
         let (tx, rx) = channel();
-        TcpClient{
+        Ok(TcpClient{
             reader,
             writer,
             raw_stream: stream,
             tx: Some(tx),
             rx: Some(rx),
-        }
+        })
     }
 
     /// Sets up the background loop that waits for data to be received on the rx channel that is meant to be sent to the remote client, then enters a loop to watch for input *from* the remote endpoint.
@@ -144,11 +167,24 @@ impl TcpClient {
     }
 
     // Starts a thread that watches for incoming messages from the application and writes it to the client
-    fn outgoing_loop(&mut self) {
-        let mut writer = self.raw_stream.try_clone().unwrap();
+    fn outgoing_loop(&mut self) -> Result<JoinHandle<()>, NetworkError> {
+        let mut writer = match self.raw_stream.try_clone() {
+            Ok(w) => { w },
+            Err(e) => {
+                return Err(NetworkError::TcpStreamCloneFailed);
+            }
+        };
+
         // We use take here because we can only have one copy of a receiver and we want to the thread to own it
-        let rx = self.rx.take().unwrap();
-        thread::spawn(move || {
+        // The match is used becaused `std::option::NoneError` is still on nightly
+        let rx = match self.rx.take() {
+            Some(rx) => { rx },
+            None => {
+                return Err(NetworkError::TcpSteamFailedTakeRx);
+            }
+        };
+
+        Ok(thread::spawn(move || {
             // TODO: Remove this when error handling is figured out
             loop {
                 match rx.recv() {
@@ -167,7 +203,7 @@ impl TcpClient {
                     Err(_e) => {}
                 }
             }
-        });
+        }))
     }
 }
 
@@ -177,7 +213,7 @@ mod test {
 
     #[test]
     fn test_create_tcp_socket_state() {
-        let mut test_state = TcpSocketState::new(("127.0.0.1".to_string() + ":"+ "27000").parse().unwrap());
+        let test_state = TcpSocketState::new(("127.0.0.1".to_string() + ":"+ "27000").parse().unwrap());
 
     }
 }
