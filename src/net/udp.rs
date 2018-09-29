@@ -4,7 +4,7 @@ use std::net::{self, ToSocketAddrs};
 use super::{Packet, RawPacket, SocketState};
 use bincode::deserialize;
 
-use error::AmethystNetworkError;
+use error::Result;
 
 const BUFFER_SIZE: usize = 1024;
 
@@ -38,7 +38,7 @@ impl UdpSocket {
         }
     }
 
-    pub fn send(&mut self, packet: Packet) -> Result<io::Result<usize>, AmethystNetworkError> {
+    pub fn send(&mut self, packet: Packet) -> Result<io::Result<usize>> {
         let (addr, payload) = self.state.pre_process_packet(packet)?;
         Ok(self.socket.send_to(&payload, addr))
     }

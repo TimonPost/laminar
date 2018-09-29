@@ -1,11 +1,12 @@
-use std::sync::{Arc, RwLock};
+use bincode::serialize;
 use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::Duration;
-use bincode::serialize;
 
 use super::{Connection, Packet, RawPacket, SocketAddr};
 use error::AmethystNetworkError;
+use error::{NetworkError, Result};
 
 // Type aliases
 // Number of seconds we will wait until we consider a Connection to have timed out
@@ -21,7 +22,7 @@ const TIMEOUT_POLL_INTERVAL: u64 = 1;
 /// This holds the 'virtual connections' currently (connected) to the udp socket.
 pub struct SocketState {
     timeout: ConnectionTimeout,
-    connections: ConnectionMap
+    connections: ConnectionMap,
 }
 
 impl SocketState {
@@ -40,7 +41,7 @@ impl SocketState {
     }
 
     /// This will initialize the seq number, ack number and give back the raw data of the packet with the updated information.
-    pub fn pre_process_packet(&mut self, packet: Packet) -> Result<(SocketAddr, Vec<u8>), AmethystNetworkError> {
+    pub fn pre_process_packet(&mut self, packet: Packet) -> Result<(SocketAddr, Vec<u8>)> {
         let connection = self.create_connection_if_not_exists(&packet.addr)?;
         // queue new packet
         if let Ok(mut lock) = connection.write() {
@@ -50,46 +51,48 @@ impl SocketState {
 
         let raw_packet: RawPacket;
         // initialize packet data, seq, acked_seq etc.
-        if let Ok(mut l) = connection.write() {
-            raw_packet = RawPacket::new(l.seq_num, &packet, l.their_acks.last_seq, l.their_acks.field);
-            // increase sequence number
-            l.seq_num = l.seq_num.wrapping_add(1);
-            if let Ok(buffer) = serialize(&raw_packet) {
-                return Ok((packet.addr, buffer));
-            }
-        }
-        Err(AmethystNetworkError::Unknown)
+        let mut l = connection
+            .write()
+            .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;
+
+        raw_packet = RawPacket::new(
+            l.seq_num,
+            &packet,
+            l.their_acks.last_seq,
+            l.their_acks.field,
+        );
+        // increase sequence number
+        l.seq_num = l.seq_num.wrapping_add(1);
+        let buffer = serialize(&raw_packet)?;
+        Ok((packet.addr, buffer))
     }
 
     /// This will return all dropped packets from this connection.
-    pub fn dropped_packets(&mut self, addr: SocketAddr) -> Result<Vec<Packet>, AmethystNetworkError> {
+    pub fn dropped_packets(&mut self, addr: SocketAddr) -> Result<Vec<Packet>> {
         let connection = self.create_connection_if_not_exists(&addr)?;
-        if let Ok(mut lock) = connection.write() {
-            let packets = lock.dropped_packets.drain(..).collect();
-            return Ok(packets);
-        }
-        Err(AmethystNetworkError::Unknown)
+        let mut lock = connection
+            .write()
+            .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;
+
+        let packets = lock.dropped_packets.drain(..).collect();
+        Ok(packets)
     }
 
     /// This will process an incoming packet and update acknowledgement information.
-    pub fn process_received(&mut self, addr: SocketAddr, packet: &RawPacket) -> Result<Packet, AmethystNetworkError> {
+    pub fn process_received(&mut self, addr: SocketAddr, packet: &RawPacket) -> Result<Packet> {
         let connection = self.create_connection_if_not_exists(&addr)?;
-        if let Ok(mut lock) = connection.write() {
-            lock.their_acks.ack(packet.seq);
-        }
+        let mut lock = connection
+            .write()
+            .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;;
 
+        lock.their_acks.ack(packet.seq);
         // Update dropped packets if there are any.
-        if let Ok(mut lock) = connection.write() {
-            let dropped_packets = lock
-                .waiting_packets
-                .ack(packet.ack_seq, packet.ack_field);
-            lock.dropped_packets = dropped_packets.into_iter().map(|(_, p)| p).collect();
-            return Ok(Packet {
-                addr,
-                payload: packet.payload.clone(),
-            });
-        }
-        Err(AmethystNetworkError::Unknown)
+        let dropped_packets = lock.waiting_packets.ack(packet.ack_seq, packet.ack_field);
+        lock.dropped_packets = dropped_packets.into_iter().map(|(_, p)| p).collect();
+        Ok(Packet {
+            addr,
+            payload: packet.payload.clone(),
+        })
     }
 
     // Regularly checks the last_heard attribute of all the connections in the manager to see if any have timed out
@@ -97,8 +100,9 @@ impl SocketState {
         let connections_lock = self.connections.clone();
         let sleepy_time = Duration::from_secs(self.timeout);
         let poll_interval = Duration::from_secs(TIMEOUT_POLL_INTERVAL);
-        thread::Builder::new().name("check_for_timeouts".into()).spawn(move || {
-            loop {
+        thread::Builder::new()
+            .name("check_for_timeouts".into())
+            .spawn(move || loop {
                 if let Ok(connections) = connections_lock.read() {
                     for (key, value) in connections.iter() {
                         if let Ok(connection) = value.read() {
@@ -110,35 +114,34 @@ impl SocketState {
                     }
                 }
                 thread::sleep(poll_interval)
-            }
-        });
+            });
     }
 
     #[inline]
     /// If there is no connection with the given socket address an new connection will be made.
-    fn create_connection_if_not_exists(&mut self, addr: &SocketAddr) -> Result<Arc<RwLock<Connection>>, AmethystNetworkError> {
-        if let Ok(mut lock) = self.connections.write() {
-            if lock.contains_key(addr) {
-                if let Some(c) = lock.get_mut(addr) {
-                    return Ok(c.clone());
-                }
-            } else {
-                let new_conn = Arc::new(RwLock::new(Connection::new(*addr)));
-                lock.insert(*addr, new_conn.clone());
-                return Ok(new_conn);
-            }
-        }
-        return Err(AmethystNetworkError::AddConnectionToManagerFailed{err: String::from("Unable to acquire lock on connection hash")});
+    fn create_connection_if_not_exists(
+        &mut self,
+        addr: &SocketAddr,
+    ) -> Result<Arc<RwLock<Connection>>> {
+        let mut lock = self
+            .connections
+            .write()
+            .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;
+
+        let connection = lock
+            .entry(*addr)
+            .or_insert_with(|| Arc::new(RwLock::new(Connection::new(*addr))));
+
+        Ok(connection.clone())
     }
 }
-
 
 #[cfg(test)]
 mod test {
     use super::SocketState;
     use net::connection::Connection;
-    use std::net::{ToSocketAddrs};
-    use std::{time, thread};
+    use std::net::ToSocketAddrs;
+    use std::{thread, time};
     static TEST_HOST_IP: &'static str = "127.0.0.1";
     static TEST_BAD_HOST_IP: &'static str = "800.0.0.1";
     static TEST_PORT: &'static str = "20000";
