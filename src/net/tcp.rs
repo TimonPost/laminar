@@ -7,52 +7,76 @@ use std::io::{BufReader, BufWriter};
 use std::net::TcpStream;
 use std::thread;
 use std::thread::JoinHandle;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 use error::AmethystNetworkError;
 use std::sync::mpsc::*;
 
-// Type alias for a thread-safe hashmap of connections
-type ConnectionMap = Arc<RwLock<HashMap<SocketAddr, Arc<RwLock<TcpClient>>>>>;
-type MessageSender = Option<Box<Sender<String>>>;
-type MessageReceiver = Option<Box<Receiver<String>>>;
+/* Summary of How This Works
+This module has three main components:
+1. The connections hash
+2. The TcpServer struct
+3. The TcpClient
 
-/// Wrapper around a TcpListener
-pub struct TcpServer {
-    connections: ConnectionMap,
-    // Control channel used to send messages to the *server* itself, *not* a specific client. Shutdown might be an example.
-    rx: MessageReceiver,
-    // Channel used for the server to send messages back up to the application
-    tx: MessageSender,
-    addr: SocketAddr,
+The desired flow is:
+1. Asynchronously listen for new client connections in a background thread. This thread blocks until a new connection is attempted.
+2. Create a TCP client and add it to the connections hash
+3. The TCP client starts a background thread that listens for incoming data, which it can then do whatever it wants with
+4. The TCP client starts a background thread that listens for incoming data on the *Rust mpsc channel*, and sends it out to the client. This is an important distinction. The TCP client has incoming data from both the application (game) and the remote endpoint. How each of those send data to the client is different.
+*/
+
+// Type alias for a thread-safe hashmap of connections
+type Connections = Arc<Mutex<HashMap<SocketAddr, Arc<Mutex<TcpClient>>>>>;
+type MessageSender = Option<Sender<String>>;
+type MessageReceiver = Option<Receiver<String>>;
+
+/// Container struct that keeps the hash map of connections
+pub struct TcpSocketState {
+    connections: Connections,
 }
 
-impl TcpServer {
-    /// Creates a new TCP server
-    pub fn new(addr: SocketAddr) ->  Result<TcpServer, io::Error> {
-        let tcp_server = TcpServer {
-            connections: Arc::new(RwLock::new(HashMap::new())),
-            rx: None,
-            tx: None,
-            addr: addr,
-        };
-        Ok(tcp_server)
+impl TcpSocketState {
+    /// Creates and returns a new TcpSocketState
+    pub fn new(addr: SocketAddr) -> TcpSocketState {
+        TcpSocketState{
+            connections: Arc::new(Mutex::new(HashMap::new()))
+        }
     }
 
+    /// This starts a TCP server on the provided SocketAddr. It is important to note that it also passes an Arc reference down to the server.
+    pub fn start(&mut self, addr: SocketAddr) {
+        TcpServer::listen(addr, self.connections.clone());
+    }
+}
+
+/// Wrapper around a TcpListener
+pub struct TcpServer;
+
+/// Using `self` to do deal with the threading proved to be very complicated. That is why these functions do use `self`.
+impl TcpServer {
+
     /// Starts the TcpServer listening socket. When a new connection is accepted, it spawns a new thread dedicated to that client and goes back to listening for more connections.
-    pub fn listen(&mut self, addr: SocketAddr) {
-        // TODO: Remove unwraps once we figure out error handling
-        let (tx, rx) = channel();
-        self.tx = Some(Box::new(tx));
-        self.rx = Some(Box::new(rx));
+    pub fn listen(addr: SocketAddr, connections: Connections) {
         thread::spawn(move || {
             let listener = TcpListener::bind(addr).unwrap();
+            /// This is a blocking call, so the thread waits here until it gets a new connection
             for stream in listener.incoming() {
-                thread::spawn(|| {
-                    let tcp_client = TcpClient::new(stream.unwrap());
-                });
+                /// Now we call a function and pass it the stream, and a clone of the connections hash
+                TcpServer::handle_connection(stream.unwrap(), connections.clone());
             }
         });
     }
+
+    /// This function inserts a reference to the connection into the connections hash
+    pub fn handle_connection(stream: TcpStream, connections: Connections) {
+        let peer_addr = stream.peer_addr().unwrap();
+        let mut tcp_client = Arc::new(Mutex::new(TcpClient::new(stream)));
+        if let Ok(mut lock) = connections.lock() {
+            lock.insert(peer_addr, tcp_client.clone());
+        }
+        /// Pass it off to a function to handle setting up the client-specific background threads
+        TcpClient::run(tcp_client);
+    }
+
 }
 
 /// A remote client connected via a TcpStream
@@ -65,22 +89,40 @@ pub struct TcpClient {
 }
 
 impl TcpClient {
-    /// Creates and returns a TcpClient wrapper from a raw TcpStream. This is so that we can create separate BufReader and BufWriters around the stream.
+    /// Creates and returns a new TcpClient. It makes a few references to the raw stream and wraps them in BufReader and BufWriter for convenience.
     pub fn new(stream: TcpStream) -> TcpClient {
-        // TODO: Handle this better
-        // Note that this does not create a seperate stream for each clone, so any setting changes made on one propagates to the others.
-        let reader = stream.try_clone().unwrap();
-        let writer = stream.try_clone().unwrap();
-        TcpClient {
-            reader: BufReader::new(reader),
-            writer: BufWriter::new(writer),
+        let reader = BufReader::new(stream.try_clone().unwrap());
+        let writer = BufWriter::new(stream.try_clone().unwrap());
+        let (tx, rx) = channel();
+        TcpClient{
+            reader,
+            writer,
             raw_stream: stream,
-            tx: None,
-            rx: None,
+            tx: Some(tx),
+            rx: Some(rx),
         }
     }
 
-    /// Writes a &str to the client
+    /// Sets up the background loop that waits for data to be received on the rx channel that is meant to be sent to the remote client, then enters a loop to watch for input *from* the remote endpoint.
+    pub fn run(client: Arc<Mutex<TcpClient>>) {
+        if let Ok(mut l) = client.lock() {
+            l.outgoing_loop();
+        }
+        let mut buf = String::new();
+        loop {
+            if let Ok(mut l) = client.lock() {
+                match l.reader.read_line(&mut buf) {
+                    Ok(_) => {
+                        // TODO: Generate an event here with the payload?
+                    }
+                    Err(e) => {
+                        error!("Error receiving: {:#?}", e);
+                    }
+                }
+            }
+        }
+    }
+
     pub fn write(&mut self, msg: &str) -> bool {
         match self.writer.write_all(msg.as_bytes()) {
             Ok(_) => {
@@ -105,10 +147,9 @@ impl TcpClient {
     fn outgoing_loop(&mut self) {
         let mut writer = self.raw_stream.try_clone().unwrap();
         // We use take here because we can only have one copy of a receiver and we want to the thread to own it
-        let rx = self.rx.take();
+        let rx = self.rx.take().unwrap();
         thread::spawn(move || {
             // TODO: Remove this when error handling is figured out
-            let rx = rx.unwrap();
             loop {
                 match rx.recv() {
                     Ok(msg) => {
@@ -128,19 +169,15 @@ impl TcpClient {
             }
         });
     }
+}
 
-    pub fn run(&mut self) {
-        self.outgoing_loop();
-        let mut buf = String::new();
-        loop {
-            match self.reader.read_line(&mut buf) {
-                Ok(_) => {
-                    // TODO: Generate an event here with the payload?
-                }
-                Err(e) => {
-                    error!("Error receiving: {:#?}", e);
-                }
-            }
-        }
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_create_tcp_socket_state() {
+        let mut test_state = TcpSocketState::new(("127.0.0.1".to_string() + ":"+ "27000").parse().unwrap());
+
     }
 }
