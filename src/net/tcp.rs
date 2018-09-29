@@ -1,13 +1,13 @@
 use std::io;
 use std::collections::HashMap;
 use std::net::TcpListener;
-use std::net::{SocketAddr, ToSocketAddrs};
+use std::net::{SocketAddr};
 use std::io::{BufRead, Write};
 use std::io::{BufReader, BufWriter};
 use std::net::{Shutdown, TcpStream};
 use std::thread;
 use std::thread::JoinHandle;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 use std::sync::mpsc::*;
 
 use error::NetworkError;
@@ -65,11 +65,11 @@ impl TcpServer {
                     return;
                 }
             };
-            /// This is a blocking call, so the thread waits here until it gets a new connection
+            // This is a blocking call, so the thread waits here until it gets a new connection
             for stream in listener.incoming() {
                 match stream {
                     Ok(stream) => {
-                        /// Now we call a function and pass it the stream, and a clone of the connections hash
+                        // Now we call a function and pass it the stream, and a clone of the connections hash
                         match TcpServer::handle_connection(stream, connections.clone()) {
                             Ok(c) => {
                                 debug!("New TCP connection: {:?}", c);
@@ -89,7 +89,7 @@ impl TcpServer {
     pub fn handle_connection(stream: TcpStream, connections: Connections) -> Result<(), io::Error> {
         let peer_addr = stream.peer_addr()?;
         let tmp_stream = stream.try_clone()?;
-        let mut tcp_client = Arc::new(Mutex::new(TcpClient::new(stream)?));
+        let tcp_client = Arc::new(Mutex::new(TcpClient::new(stream)?));
         if let Ok(mut lock) = connections.lock() {
             lock.insert(peer_addr, tcp_client.clone());
             // Pass it off to a function to handle setting up the client-specific background threads
@@ -129,7 +129,10 @@ impl TcpClient {
     /// Sets up the background loop that waits for data to be received on the rx channel that is meant to be sent to the remote client, then enters a loop to watch for input *from* the remote endpoint.
     pub fn run(client: Arc<Mutex<TcpClient>>) -> Result<(), NetworkError>{
         if let Ok(mut l) = client.lock() {
-            l.outgoing_loop();
+            match l.outgoing_loop() {
+                Ok(_) => {},
+                Err(e) => { return Err(e); }
+            };
         } else {
             return Err(NetworkError::TcpStreamFailedClientLock);
         }
