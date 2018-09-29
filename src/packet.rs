@@ -1,4 +1,3 @@
-use net::Connection;
 use std::net::SocketAddr;
 
 #[derive(Clone, PartialEq, Eq, Debug)]

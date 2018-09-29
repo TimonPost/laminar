@@ -5,7 +5,6 @@ use std::thread;
 use std::time::Duration;
 
 use super::{Connection, Packet, RawPacket, SocketAddr};
-use error::AmethystNetworkError;
 use error::{NetworkError, Result};
 
 // Type aliases
@@ -116,7 +115,7 @@ impl SocketState {
                 }
 
                 thread::sleep(poll_interval)
-            });
+            }).unwrap();
     }
 
     #[inline]
