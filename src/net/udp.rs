@@ -59,6 +59,7 @@ mod test {
     use std::{thread, time};
 
     #[test]
+    #[ignore]
     fn send_receive_1_pckt() {
         let mut send_socket = UdpSocket::bind("127.0.0.1:12347").unwrap();
         let mut recv_socket = UdpSocket::bind("127.0.0.1:12348").unwrap();
