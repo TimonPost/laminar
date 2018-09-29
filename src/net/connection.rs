@@ -1,7 +1,7 @@
-use std::time::{Instant, Duration};
-use std::net::SocketAddr;
-use std::fmt;
 use super::{ExternalAcks, LocalAckRecord, Packet};
+use std::fmt;
+use std::net::SocketAddr;
+use std::time::{Duration, Instant};
 
 /// Contains the information about a certain 'virtual connection' over udp.
 /// This stores information about the last sequence number, dropped packages, packages waiting for acknowledgement and acknowledgements gotten from the other side.
@@ -25,20 +25,25 @@ impl Connection {
             their_acks: ExternalAcks::new(),
             last_heard: Instant::now(),
             quality: Quality::Good,
-            remote_address: addr
+            remote_address: addr,
         }
     }
 
     /// Returns a Duration representing since we last heard from the client
     pub fn last_heard(&self) -> Duration {
         let now = Instant::now();
-        self.last_heard.duration_since(now)
+        now.duration_since(self.last_heard)
     }
 }
 
 impl fmt::Debug for Connection {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}:{}", self.remote_address.ip(), self.remote_address.port())
+        write!(
+            f,
+            "{}:{}",
+            self.remote_address.ip(),
+            self.remote_address.port()
+        )
     }
 }
 
@@ -55,7 +60,7 @@ pub enum Quality {
 #[cfg(test)]
 mod test {
     use net::connection::Connection;
-    use std::net::{ToSocketAddrs};
+    use std::net::ToSocketAddrs;
 
     static TEST_HOST_IP: &'static str = "127.0.0.1";
     static TEST_BAD_HOST_IP: &'static str = "800.0.0.1";
@@ -63,8 +68,9 @@ mod test {
 
     #[test]
     fn test_create_connection() {
-        let mut addr = format!("{}:{}", TEST_HOST_IP, TEST_PORT).to_socket_addrs().unwrap();
+        let mut addr = format!("{}:{}", TEST_HOST_IP, TEST_PORT)
+            .to_socket_addrs()
+            .unwrap();
         let _new_conn = Connection::new(addr.next().unwrap());
-
     }
 }
