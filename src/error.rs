@@ -12,5 +12,7 @@ pub enum NetworkError {
     #[fail(display = "TcpStream clone failed")]
     TcpStreamCloneFailed,
     #[fail(display = "TcpStream failed to take the rx channel in outgoing loop")]
-    TcpSteamFailedTakeRx
+    TcpSteamFailedTakeRx,
+    #[fail(display = "Failed to get client lock to start outgoing loop")]
+    TcpStreamFailedClientLock
 }
