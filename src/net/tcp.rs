@@ -10,7 +10,7 @@ use std::thread::JoinHandle;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::*;
 
-use error::NetworkError;
+use error::{Error, Result, NetworkError};
 
 /* Summary of How This Works
 This module has three main components:
@@ -44,7 +44,7 @@ impl TcpSocketState {
     }
 
     /// This starts a TCP server on the provided SocketAddr. It is important to note that it also passes an Arc reference down to the server.
-    pub fn start(&mut self, addr: SocketAddr) -> Result<JoinHandle<()>, io::Error> {
+    pub fn start(&mut self, addr: SocketAddr) -> Result<JoinHandle<()>> {
         TcpServer::listen(addr, self.connections.clone())
     }
 }
@@ -56,7 +56,7 @@ pub struct TcpServer;
 impl TcpServer {
 
     /// Starts the TcpServer listening socket. When a new connection is accepted, it spawns a new thread dedicated to that client and goes back to listening for more connections.
-    pub fn listen(addr: SocketAddr, connections: Connections) -> Result<JoinHandle<()>, io::Error> {
+    pub fn listen(addr: SocketAddr, connections: Connections) -> Result<JoinHandle<()>> {
         Ok(thread::spawn(move || {
             let listener = match TcpListener::bind(addr) {
                 Ok(l) => { l }
@@ -86,7 +86,7 @@ impl TcpServer {
     }
 
     /// This function inserts a reference to the connection into the connections hash
-    pub fn handle_connection(stream: TcpStream, connections: Connections) -> Result<(), io::Error> {
+    pub fn handle_connection(stream: TcpStream, connections: Connections) -> Result<()> {
         let peer_addr = stream.peer_addr()?;
         let tmp_stream = stream.try_clone()?;
         let tcp_client = Arc::new(Mutex::new(TcpClient::new(stream)?));
@@ -97,7 +97,8 @@ impl TcpServer {
             Ok(())
         } else {
             // If we can't get the lock, send a shutdown to the client and they will have to try again
-            tmp_stream.shutdown(Shutdown::Both)
+            tmp_stream.shutdown(Shutdown::Both);
+            Ok(())
         }
     }
 }
@@ -113,7 +114,7 @@ pub struct TcpClient {
 
 impl TcpClient {
     /// Creates and returns a new TcpClient. It makes a few references to the raw stream and wraps them in BufReader and BufWriter for convenience.
-    pub fn new(stream: TcpStream) -> Result<TcpClient, io::Error> {
+    pub fn new(stream: TcpStream) -> Result<TcpClient> {
         let reader = BufReader::new(stream.try_clone()?);
         let writer = BufWriter::new(stream.try_clone()?);
         let (tx, rx) = channel();
@@ -127,14 +128,14 @@ impl TcpClient {
     }
 
     /// Sets up the background loop that waits for data to be received on the rx channel that is meant to be sent to the remote client, then enters a loop to watch for input *from* the remote endpoint.
-    pub fn run(client: Arc<Mutex<TcpClient>>) -> Result<(), NetworkError>{
+    pub fn run(client: Arc<Mutex<TcpClient>>) -> Result<()>{
         if let Ok(mut l) = client.lock() {
             match l.outgoing_loop() {
                 Ok(_) => {},
                 Err(e) => { return Err(e); }
             };
         } else {
-            return Err(NetworkError::TcpStreamFailedClientLock);
+            return Err(Error::from(NetworkError::TcpStreamFailedClientLock));
         }
 
         let mut buf = String::new();
@@ -173,11 +174,11 @@ impl TcpClient {
     }
 
     // Starts a thread that watches for incoming messages from the application and writes it to the client
-    fn outgoing_loop(&mut self) -> Result<JoinHandle<()>, NetworkError> {
+    fn outgoing_loop(&mut self) -> Result<JoinHandle<()>> {
         let mut writer = match self.raw_stream.try_clone() {
             Ok(w) => { w },
             Err(e) => {
-                return Err(NetworkError::TcpStreamCloneFailed);
+                return Err(Error::from(NetworkError::TcpStreamCloneFailed));
             }
         };
 
@@ -186,7 +187,7 @@ impl TcpClient {
         let rx = match self.rx.take() {
             Some(rx) => { rx },
             None => {
-                return Err(NetworkError::TcpSteamFailedTakeRx);
+                return Err(Error::from(NetworkError::TcpSteamFailedTakeRx));
             }
         };
 
