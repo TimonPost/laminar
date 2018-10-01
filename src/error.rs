@@ -13,8 +13,8 @@ pub enum NetworkError {
     TcpStreamCloneFailed,
     #[fail(display = "TcpStream failed to take the rx channel in outgoing loop")]
     TcpSteamFailedTakeRx,
-    #[fail(display = "Failed to get client lock to start outgoing loop")]
-    TcpStreamFailedClientLock,
     #[fail(display = "TCP client connections hash was poisoned")]
-    TcpClientConnectionsHashPoisoned
+    TcpClientConnectionsHashPoisoned,
+    #[fail(display = "The lock for a specific TCP client was poisoned")]
+    TcpClientLockFailed
 }

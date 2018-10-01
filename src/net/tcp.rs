@@ -136,15 +136,7 @@ impl TcpClient {
 
     /// Sets up the background loop that waits for data to be received on the rx channel that is meant to be sent to the remote client, then enters a loop to watch for input *from* the remote endpoint.
     pub fn run(client: Arc<Mutex<TcpClient>>) -> Result<()>{
-        if let Ok(mut l) = client.lock() {
-            match l.outgoing_loop() {
-                Ok(_) => {},
-                Err(e) => { return Err(e); }
-            };
-        } else {
-            return Err(Error::from(NetworkError::TcpStreamFailedClientLock));
-        }
-
+        TcpClient::start_recv(client.clone())?;
         let mut buf = String::new();
         loop {
             if let Ok(mut l) = client.lock() {
@@ -156,7 +148,24 @@ impl TcpClient {
                         error!("Error receiving: {:#?}", e);
                     }
                 }
+            } else {
+                return Err(Error::from(NetworkError::TcpClientLockFailed));
             }
+        }
+    }
+
+    fn start_recv(client: Arc<Mutex<TcpClient>>) -> Result<()> {
+        if let Ok(mut l) = client.lock() {
+            match l.outgoing_loop() {
+                Ok(_) => {
+                    Ok(())
+                }
+                Err(e) => {
+                    return Err(e);
+                }
+            }
+        } else {
+            return Err(Error::from(NetworkError::TcpClientLockFailed));
         }
     }
 
