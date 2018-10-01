@@ -37,7 +37,7 @@ pub struct TcpSocketState {
 
 impl TcpSocketState {
     /// Creates and returns a new TcpSocketState
-    pub fn new(addr: SocketAddr) -> TcpSocketState {
+    pub fn new() -> TcpSocketState {
         TcpSocketState{
             connections: Arc::new(Mutex::new(HashMap::new()))
         }
@@ -90,20 +90,27 @@ impl TcpServer {
         let peer_addr = stream.peer_addr()?;
         let tmp_stream = stream.try_clone()?;
         let tcp_client = Arc::new(Mutex::new(TcpClient::new(stream)?));
-        if let Ok(mut lock) = connections.lock() {
-            lock.insert(peer_addr, tcp_client.clone());
-            // Pass it off to a function to handle setting up the client-specific background threads
-            TcpClient::run(tcp_client);
-            Ok(())
+
+        if !connections.is_poisoned() {
+            if let Ok(mut locked_connections) = connections.lock() {
+                locked_connections.insert(peer_addr, tcp_client.clone());
+                // Pass it off to a function to handle setting up the client-specific background threads
+                TcpClient::run(tcp_client);
+                Ok(())
+            } else {
+                // If we can't get the lock, send a shutdown to the client and they will have to try again
+                tmp_stream.shutdown(Shutdown::Both);
+                Ok(())
+            }
         } else {
-            // If we can't get the lock, send a shutdown to the client and they will have to try again
             tmp_stream.shutdown(Shutdown::Both);
-            Ok(())
+            return Err(Error::from(NetworkError::TcpClientConnectionsHashPoisoned));
         }
     }
 }
 
 /// A remote client connected via a TcpStream
+#[derive(Debug)]
 pub struct TcpClient {
     reader: BufReader<TcpStream>,
     writer: BufWriter<TcpStream>,
@@ -217,10 +224,24 @@ impl TcpClient {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::sync::{Arc, Mutex};
+    use std::thread;
 
     #[test]
     fn test_create_tcp_socket_state() {
-        let test_state = TcpSocketState::new(("127.0.0.1".to_string() + ":"+ "27000").parse().unwrap());
+        let test_state = TcpSocketState::new();
+    }
 
+    #[test]
+    fn test_lock_poisoning() {
+        let addr: SocketAddr = ("127.0.0.1".to_string() + ":"+ "27000").parse().unwrap();
+        let mut test_state = TcpSocketState::new();
+        test_state.start(addr);
+        let test_lock = test_state.connections.clone();
+        let _ = thread::spawn(move || {
+            let _lock = test_lock.lock().unwrap();
+            panic!();
+        }).join();
+        assert_eq!(test_state.connections.is_poisoned(), true);
     }
 }
