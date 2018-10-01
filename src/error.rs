@@ -9,4 +9,12 @@ pub enum NetworkError {
     // TODO: write more informative error
     #[fail(display = "Lock posioned")]
     AddConnectionToManagerFailed,
+    #[fail(display = "TcpStream clone failed")]
+    TcpStreamCloneFailed,
+    #[fail(display = "TcpStream failed to take the rx channel in outgoing loop")]
+    TcpSteamFailedTakeRx,
+    #[fail(display = "TCP client connections hash was poisoned")]
+    TcpClientConnectionsHashPoisoned,
+    #[fail(display = "The lock for a specific TCP client was poisoned")]
+    TcpClientLockFailed
 }
