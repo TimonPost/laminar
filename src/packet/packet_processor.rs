@@ -59,16 +59,16 @@ impl PacketProcessor {
             // get entry of previous received fragments
             let reassembly_data = match self.reassembly_buffer.get_mut(fragment_header.sequence) {
                 Some(val) => val,
-                None => return Err(NetworkError::FragmentInvalid.into())
+                None => return Err(NetworkError::InvalidFragmentHeader.into())
             };
 
             // Got the data
             if reassembly_data.num_fragments_total != fragment_header.num_fragments {
-                return Err(NetworkError::FragmentInvalid.into());
+                return Err(NetworkError::InvalidFragmentHeader.into());
             }
 
             if reassembly_data.fragments_received[usize::from(fragment_header.id)] {
-                return Err(NetworkError::FragmentInvalid.into());
+                return Err(NetworkError::InvalidFragmentHeader.into());
             }
 
             // increase number of received fragments and set the specific fragment to received.
@@ -112,8 +112,8 @@ impl PacketProcessor {
                 cursor.read_to_end(&mut payload)?;
 
                 Ok(Some(payload))
-            }
-            Err(e) => {  return Err(NetworkError::HeaderParsingFailed.into());}
+            },
+            Err(e) => Err(NetworkError::HeaderParsingFailed.into())
         }
     }
 
@@ -122,19 +122,18 @@ impl PacketProcessor {
     {
         if !self.reassembly_buffer.exists(fragment_header.sequence) {
             if fragment_header.id == 0 {
-                if fragment_header.packet_header.is_none() {
-                    return Err(NetworkError::AddConnectionToManagerFailed.into());
+
+                match fragment_header.packet_header
+                {
+                    Some(header) => {
+                        let reassembly_data = ReassemblyData::new(fragment_header.sequence, header.ack_seq, header.ack_field, fragment_header.num_fragments, fragment_header.size() as usize, (9 + self.config.fragment_size) as usize);
+
+                        self.reassembly_buffer.insert(reassembly_data.clone(), fragment_header.sequence);
+                    },
+                    None => return Err(NetworkError::Empty.into())
                 }
-
-                let packet_header = fragment_header.packet_header.unwrap();
-                let ack = packet_header.ack_seq;
-                let ack_bits = packet_header.ack_field;
-
-                let reassembly_data = ReassemblyData::new(fragment_header.sequence, ack, ack_bits, fragment_header.num_fragments, fragment_header.size() as usize, (9 + self.config.fragment_size) as usize);
-
-                self.reassembly_buffer.insert(reassembly_data.clone(), fragment_header.sequence);
             } else {
-                return Err(NetworkError::AddConnectionToManagerFailed.into());
+                return Err(NetworkError::Empty.into());
             }
         }
 

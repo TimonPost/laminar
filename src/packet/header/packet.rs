@@ -1,6 +1,9 @@
 use std::io::{self, Cursor};
 use super::{HeaderParser, HeaderReader};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use net::constants::PACKET_HEADER_SIZE;
+use error::{NetworkError, Result};
+
 
 #[derive(Copy, Clone, Debug)]
 /// This is the default header.
@@ -26,7 +29,7 @@ impl PacketHeader {
     /// Get the size of this header.
     pub fn size(&self) -> u8
     {
-        return 8;
+        return PACKET_HEADER_SIZE;
     }
 }
 

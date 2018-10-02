@@ -3,8 +3,8 @@ use super::RawPacketData;
 
 use std::io::{Result};
 
-#[derive(Debug)]
 /// Contains the raw data this packet exists of. Note that an packet can be divided into seperate fragments
+#[derive(Debug)]
 pub struct PacketData
 {
     parts: Vec<RawPacketData>
@@ -14,6 +14,11 @@ impl PacketData {
     pub fn new() -> PacketData
     {
         PacketData { parts: Vec::new() }
+    }
+
+    pub fn with_capacity(size: usize) -> PacketData
+    {
+        PacketData { parts: Vec::with_capacity(size) }
     }
 
     /// Add fragment to this packet

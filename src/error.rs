@@ -18,7 +18,7 @@ pub enum NetworkError {
     #[fail(display = "The lock for a specific TCP client was poisoned")]
     TcpClientLockFailed,
     #[fail(display = "The fragment of an packet is invalid")]
-    FragmentInvalid,
+    InvalidFragmentHeader,
     #[fail(display = "The parsing of the header went wrong")]
     HeaderParsingFailed,
     #[fail(display = "Something went wrong when sending")]
@@ -29,6 +29,8 @@ pub enum NetworkError {
     ExceededMaxPacketSize,
     #[fail(display = "The total of fragments the packet was divided into is bigger than the allowed fragments.")]
     ExceededMaxFragments,
-
-
+    #[fail(display = "The packet header is invalid.")]
+    InvalidPacketHeader,
+    #[fail(display = "Just an error where we don't care about the type.")]
+    Empty
 }

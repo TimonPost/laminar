@@ -72,6 +72,6 @@ impl<T> FragmentBuffer<T> where T: Default + Clone + Send + Sync {
 
     /// converts an sequence number to an index that could be used for the inner storage.
     fn index(&self, sequence: u16) -> usize {
-        (sequence % self.entries.len() as u16) as usize
+        sequence as usize % self.entries.len()
     }
 }

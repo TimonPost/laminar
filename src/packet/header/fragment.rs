@@ -1,6 +1,7 @@
 use super::{HeaderParser, HeaderReader};
 use super::PacketHeader;
 use error::{Result, NetworkError};
+use net::constants::{FRAGMENT_HEADER_SIZE};
 
 use std::io::{self, Cursor, Error, ErrorKind, Write};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
@@ -24,14 +25,16 @@ impl FragmentHeader {
     pub fn size(&self) -> u8
     {
         if self.id == 0 {
-            if self.packet_header.is_some() {
-                return self.packet_header.as_ref().unwrap().size() + 5;
-            }else {
-                error!("Attemtping to retrieve size on a 0 ID packet with no packet header");
-                0
+            match self.packet_header
+            {
+                Some(header) => header.size() + FRAGMENT_HEADER_SIZE,
+                None => {
+                    error!("Attempting to retrieve size on a 0 ID packet with no packet header");
+                    0
+                }
             }
         } else {
-            5
+            FRAGMENT_HEADER_SIZE
         }
     }
 }
@@ -41,6 +44,7 @@ impl HeaderParser for FragmentHeader
     type Output = io::Result<Vec<u8>>;
 
     fn parse(&self) -> <Self as HeaderParser>::Output {
+
         let mut wtr = Vec::new();
         wtr.write_u8(1)?;
         wtr.write_u16::<BigEndian>(self.sequence)?;
@@ -48,10 +52,14 @@ impl HeaderParser for FragmentHeader
         wtr.write_u8(self.num_fragments)?;
 
         if self.id == 0 {
-            if self.packet_header.is_some() {
-                wtr.write(&self.packet_header.as_ref().unwrap().parse()?);
-            } else {
-                return Err(Error::new(ErrorKind::Other, "Expected packet header to be some but was instead non"));
+            match self.packet_header
+            {
+                Some(header) => {
+                    wtr.write(&header.parse()?)?;
+                },
+                None => {
+                    return Err(Error::new(ErrorKind::Other, "Invalid fragment header"));
+                }
             }
         }
 
@@ -61,13 +69,13 @@ impl HeaderParser for FragmentHeader
 
 impl HeaderReader for FragmentHeader
 {
-    type Header =  Result<FragmentHeader>;
+    type Header =  io::Result<FragmentHeader>;
 
     fn read(rdr: &mut Cursor<Vec<u8>>) -> <Self as HeaderReader>::Header {
         let prefix_byte = rdr.read_u8()?;
 
         if prefix_byte != 1 {
-            return Err(NetworkError::FragmentInvalid.into())
+            return  Err(Error::new(ErrorKind::Other, "Invalid fragment header"));
         }
 
         let sequence = rdr.read_u16::<BigEndian>()?;
