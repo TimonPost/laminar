@@ -1,0 +1,1 @@
+pub const DEFAULT_MTU: usize = 1452;
