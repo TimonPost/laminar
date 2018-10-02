@@ -1,10 +1,18 @@
 [package]
-name = "amethyst_protocol"
-version = "0.1.0"
+name = "laminar"
+version = "0.0.0"
 authors = ["Lucio Franco <luciofranco14@gmail.com>"]
+description = "A simple semi-reliable UDP/TCP protocol for multiplayer games"
+keywords = ["gamedev", "networking", "udp", "amethyst"]
+categories = ["game-engines", "network-programming"]
 
 readme = "README.md"
 license = "MIT/Apache-2.0"
+
+repository = "https://github.com/amethyst/laminar"
+
+[badges]
+travis-ci = { repository = "amethyst/laminar", branch = "master" }
 
 [dependencies]
 serde = "1.0"
