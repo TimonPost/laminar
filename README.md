@@ -1,6 +1,6 @@
 # Laminar
 
-[![Build Status](https://travis-ci.org/LucioFranco/amethyst-protocol.svg?branch=master)](https://travis-ci.org/LucioFranco/amethyst-protocol)
+[![Build Status](https://travis-ci.org/amethyst/laminar.svg?branch=master)](https://travis-ci.org/amethyst/laminar)
 
 A UDP protocol that provides partial reliablity. Coming soon!
 
