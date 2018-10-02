@@ -1,4 +1,4 @@
-# Amethyst Protocol
+# Laminar
 
 [![Build Status](https://travis-ci.org/LucioFranco/amethyst-protocol.svg?branch=master)](https://travis-ci.org/LucioFranco/amethyst-protocol)
 
