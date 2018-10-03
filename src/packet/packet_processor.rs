@@ -140,3 +140,81 @@ impl PacketProcessor {
         Ok(())
     }
 }
+
+mod tests
+{
+    use super::PacketProcessor;
+    use net::{NetworkConfig, SocketState};
+    use packet::{Packet, header};
+    use std::io::Cursor;
+    use get_times_number_fits_in_number;
+
+    /// Tests if an packet will be processed right.
+    ///
+    /// 1. first create test Packet
+    /// 2. process it with `pre_process_packet` so we have valid raw data
+    /// 3. then assert that the Packet we've gotten from contains the right data.
+    #[test]
+    fn process_normal_packet_test()
+    {
+        let config = NetworkConfig::default();
+        let mut packet_processor = PacketProcessor::new(config.clone());
+
+        let mut test_data: Vec<u8> = vec![1,2,3,4,5];
+
+        // first setup packet data
+        let packet = Packet::new("127.0.0.1:12345".parse().unwrap(), test_data.clone());
+
+        let mut socket_sate = SocketState::new();
+        let mut result = socket_sate.pre_process_packet(packet, &config).unwrap();
+
+        let mut packet_data = result.1.parts();
+
+        assert_eq!(packet_data.len(), 1);
+
+        for part in packet_data {
+            let packet: Packet = packet_processor.process_data(part, result.0, &mut socket_sate).unwrap().unwrap(); /* unwrap should not fail and if it would test failed :) */
+            assert_eq!(packet.payload(), test_data.as_slice());
+            assert_eq!(packet.addr(), "127.0.0.1:12345".parse().unwrap());
+        }
+    }
+
+    /// Tests if an fragmented packet will be reassembled and processed right.
+    /// 1. first create an test Packet
+    /// 2. process it with `pre_process_packet` so we have valid raw data
+    /// 3. then assert that the Packet we've gotten from contains the right data.
+    #[test]
+    fn process_fragment_packet_test()
+    {
+        let config = NetworkConfig::default();
+        let mut packet_processor = PacketProcessor::new(config.clone());
+
+        let mut test_data: Vec<u8> = vec![1;4000];
+
+        // first setup packet data
+        let packet = Packet::new("127.0.0.1:12345".parse().unwrap(), test_data.clone());
+
+        let mut socket_sate = SocketState::new();
+        let mut result = socket_sate.pre_process_packet(packet, &config).unwrap();
+
+        let mut packet_data = result.1.parts();
+
+        let expected_fragments = get_times_number_fits_in_number(test_data.len() as u16, config.fragment_size) as usize;
+        assert_eq!(packet_data.len(), expected_fragments);
+
+        let mut is_packet_reassembled = false;
+
+        for part in packet_data {
+            let result: Option<Packet> = packet_processor.process_data(part, result.0, &mut socket_sate).unwrap(); /* unwrap should not fail and if it would test failed :) */
+
+            if let Some(packet) = result
+            {
+                assert_eq!(packet.payload(), test_data.as_slice());
+                assert_eq!(packet.addr(), "127.0.0.1:12345".parse().unwrap());
+                is_packet_reassembled = true;
+            }
+        }
+
+        assert!(is_packet_reassembled);
+    }
+}

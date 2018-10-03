@@ -29,3 +29,19 @@ impl RawPacketData
     }
 }
 
+mod tests {
+    use super::RawPacketData;
+    use packet::header::PacketHeader;
+    use net::constants::PACKET_HEADER_SIZE;
+
+    #[test]
+    fn serialize_raw_data_test()
+    {
+        let header = PacketHeader::new(1,1,1);
+
+        let data = vec![1,2,3,4,5];
+        let mut raw_packet_data = RawPacketData::new(&header,data.clone());
+        assert_eq!( raw_packet_data.serialize().len(), ((PACKET_HEADER_SIZE as usize) + data.len()));
+    }
+}
+

@@ -223,7 +223,7 @@ mod test {
         let mut data = vec![0; config.fragment_size as usize - 1];
 
         // do some test processing of the data.
-        let mut processed_packet = simulate_packet_processing(data.clone(), &config);
+        let mut processed_packet: (SocketAddr, PacketData) = simulate_packet_processing(data.clone(), &config);
 
         // check that there is only one fragment and that the data is right.
         assert_eq!(processed_packet.1.fragment_count(), 1);
@@ -239,7 +239,7 @@ mod test {
         let data = vec![0; config.fragment_size as usize * 4];
 
         // do some test processing of the data.
-        let mut processed_packet = simulate_packet_processing(data.clone(), &config);
+        let mut processed_packet: (SocketAddr, PacketData) = simulate_packet_processing(data.clone(), &config);
 
         let num_fragments = get_times_number_fits_in_number(data.len() as u16, config.fragment_size);
 

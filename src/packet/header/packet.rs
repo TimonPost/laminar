@@ -62,3 +62,24 @@ impl HeaderReader for PacketHeader
         })
     }
 }
+
+mod tests
+{
+    use packet::header::{PacketHeader, FragmentHeader, HeaderParser, HeaderReader};
+    use byteorder::ReadBytesExt;
+    use std::io::Cursor;
+
+    #[test]
+    pub fn serializes_deserialize_packet_header_test()
+    {
+        let packet_header = PacketHeader::new(1,1,5421);
+        let packet_serialized: Vec<u8> = packet_header.parse().unwrap();
+
+        let mut cursor = Cursor::new(packet_serialized);
+        let packet_deserialized: PacketHeader = PacketHeader::read(&mut cursor).unwrap();
+
+        assert_eq!(packet_header.seq, 1);
+        assert_eq!(packet_header.ack_seq, 1);
+        assert_eq!(packet_header.ack_field, 5421);
+    }
+}

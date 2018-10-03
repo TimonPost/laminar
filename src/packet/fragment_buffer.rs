@@ -35,7 +35,6 @@ impl<T> FragmentBuffer<T> where T: Default + Clone + Send + Sync {
         Some(&mut self.entries[index])
     }
 
-    #[cfg_attr(feature = "cargo-clippy", allow(cast_possible_truncation))]
     /// Insert new entry into the collection.
     pub fn insert(&mut self, data: T, sequence: u16) -> Result<&mut T> {
         let index = self.index(sequence);
@@ -73,5 +72,38 @@ impl<T> FragmentBuffer<T> where T: Default + Clone + Send + Sync {
     /// converts an sequence number to an index that could be used for the inner storage.
     fn index(&self, sequence: u16) -> usize {
         sequence as usize % self.entries.len()
+    }
+}
+
+mod tests {
+    use super::FragmentBuffer;
+
+    #[derive(Clone, Default)]
+    struct DataStub;
+
+    #[test]
+    fn insert_into_fragment_buffer_test()
+    {
+        let mut fragment_buffer = FragmentBuffer::with_capacity(2);
+        fragment_buffer.insert(DataStub, 1);
+        assert!(fragment_buffer.exists(1));
+    }
+
+    #[test]
+    fn remove_from_fragment_buffer_test()
+    {
+        let mut fragment_buffer = FragmentBuffer::with_capacity(2);
+        fragment_buffer.insert(DataStub, 1);
+        fragment_buffer.remove(1);
+        assert!(!fragment_buffer.exists(1));
+    }
+
+    #[test]
+    fn fragment_buffer_len_test()
+    {
+        let mut fragment_buffer = FragmentBuffer::with_capacity(2);
+        fragment_buffer.insert(DataStub, 1);
+        fragment_buffer.insert(DataStub, 2);
+        assert_eq!(fragment_buffer.len(), 2);
     }
 }

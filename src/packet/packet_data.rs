@@ -46,3 +46,23 @@ impl PacketData {
     }
 }
 
+mod tests {
+    use super::PacketData;
+    use packet::header::PacketHeader;
+
+    #[test]
+    fn add_ang_get_parts()
+    {
+        let header = PacketHeader::new(1,1,1);
+
+        let mut packet_data = PacketData::new();
+        packet_data.add_fragment(&header, vec![1,2,3,4,5]);
+        packet_data.add_fragment(&header, vec![1,2,3,4,5]);
+        packet_data.add_fragment(&header, vec![1,2,3,4,5]);
+
+        assert_eq!(packet_data.fragment_count(), 3);
+
+        packet_data.parts().into_iter().map(|x| { assert_eq!(x, vec![1, 2, 3, 4, 5]); });
+    }
+}
+

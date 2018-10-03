@@ -29,6 +29,7 @@ impl UdpSocket {
         })
     }
 
+    /// Receives a single datagram message on the socket. On success, returns the packet containing origin and data.
     pub fn recv(&mut self) -> Result<Option<Packet>> {
         let (len, addr) = self.socket.recv_from(&mut self.recv_buffer).map_err(|_| NetworkError::ReceiveFailed)?;
 
@@ -41,6 +42,7 @@ impl UdpSocket {
         }
     }
 
+    /// Sends data on the socket to the given address. On success, returns the number of bytes written.
     pub fn send(&mut self, mut packet: Packet) -> Result<usize> {
         let (addr, mut packet_data) = self.state.pre_process_packet(packet, &self.config)?;
 
@@ -53,6 +55,7 @@ impl UdpSocket {
         Ok(bytes_send)
     }
 
+    /// Moves this UDP socket into or out of nonblocking mode.
     pub fn set_nonblocking(&mut self, nonblocking: bool) -> io::Result<()> {
         self.socket.set_nonblocking(nonblocking)
     }
