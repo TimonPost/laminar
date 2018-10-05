@@ -51,18 +51,27 @@ impl SocketState {
 
         let connection = self.create_connection_if_not_exists(&packet.addr())?;
 
-        let mut lock = connection
-            .write()
-            .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;
+        let mut connection_seq: u16 = 0;
+        let mut their_last_seq: u16 = 0;
+        let mut their_ack_field: u32 = 0;
 
-        let connection_seq = lock.seq_num;
-        // queue new packet
-        lock.waiting_packets.enqueue(connection_seq, packet.clone());
+        {
+            let mut lock = connection
+                .write()
+                .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;
+
+            connection_seq = lock.seq_num;
+            their_last_seq = lock.their_acks.last_seq;
+            their_ack_field = lock.their_acks.field;
+
+            // queue new packet
+            lock.waiting_packets.enqueue(connection_seq, packet.clone());
+        }
 
         let mut packet_data = PacketData::new();
 
         // create packet header
-        let packet_header = PacketHeader::new(connection_seq, lock.their_acks.last_seq, lock.their_acks.field);
+        let packet_header = PacketHeader::new(connection_seq, their_last_seq, their_ack_field);
 
         let payload = packet.payload();
         let payload_length = payload.len() as u16; /* safe cast because max packet size is u16 */
@@ -96,7 +105,12 @@ impl SocketState {
             }
         }
 
+        let mut lock = connection
+            .write()
+            .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;
+
         lock.seq_num = lock.seq_num.wrapping_add(1);
+
         Ok((packet.addr(), packet_data))
     }
 

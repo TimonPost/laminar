@@ -1,8 +1,16 @@
 use failure;
 use std::result;
+use std::io::{self, ErrorKind};
 
 pub type Error = failure::Error;
 pub type Result<T> = result::Result<T, Error>;
+
+//impl From<io::Error> for Error
+//{
+//    fn from(error: io::Error) -> Self {
+//        NetworkError::IoError { kind: error.kind(), msg: error.description().to_owned() }.into()
+//    }
+//}
 
 #[derive(Fail, Debug)]
 pub enum NetworkError {
@@ -31,6 +39,6 @@ pub enum NetworkError {
     ExceededMaxFragments,
     #[fail(display = "The packet header is invalid.")]
     InvalidPacketHeader,
-    #[fail(display = "Just an error where we don't care about the type.")]
-    Empty
+    #[fail(display = "Error type for wrapping an io error")]
+    IoError { kind: ErrorKind, msg: String }
 }

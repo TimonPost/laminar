@@ -47,7 +47,7 @@ impl FragmentHeader {
     /// Get the sequence number from this packet.
     pub fn sequence(&self) -> u16
     {
-        self.sequence()
+        self.sequence
     }
 
     /// Get the total number of fragments from an packet this fragment is part of.
@@ -81,7 +81,7 @@ impl HeaderParser for FragmentHeader
                     wtr.write(&header.parse()?)?;
                 },
                 None => {
-                    return Err(Error::new(ErrorKind::Other, "Invalid fragment header"));
+                    return Err(Error::new(ErrorKind::Other, "Invalid fragment header"))
                 }
             }
         }

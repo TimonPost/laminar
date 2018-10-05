@@ -42,7 +42,7 @@ pub use net::udp::UdpSocket;
 /// - number 1 / number 2 = 3,90625 (this will be rounded to 3)
 /// - add remainder from above to 3 = 4.
 ///
-/// An you will that for all numbers you push into this method it will return an nice result.
+/// The above described method will figure out for all number how many times it fits into another number rounded up.
 ///
 /// So an example of dividing an packet of bytes we get these fragments:
 ///

@@ -122,7 +122,6 @@ impl PacketProcessor {
     {
         if !self.reassembly_buffer.exists(fragment_header.sequence()) {
             if fragment_header.id() == 0 {
-
                 match fragment_header.packet_header()
                 {
                     Some(header) => {
@@ -130,10 +129,10 @@ impl PacketProcessor {
 
                         self.reassembly_buffer.insert(reassembly_data.clone(), fragment_header.sequence());
                     },
-                    None => return Err(NetworkError::Empty.into())
+                    None => return Err(NetworkError::InvalidFragmentHeader.into())
                 }
             } else {
-                return Err(NetworkError::Empty.into());
+                return Err( NetworkError::InvalidFragmentHeader.into());
             }
         }
 

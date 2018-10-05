@@ -8,7 +8,7 @@ use error::{NetworkError, Result};
 pub struct UdpSocket {
     socket: net::UdpSocket,
     state: SocketState,
-    recv_buffer: [u8; constants::DEFAULT_MTU],
+    recv_buffer: Vec<u8>,
     config: NetworkConfig,
     packet_processor: PacketProcessor
 }
@@ -21,7 +21,7 @@ impl UdpSocket {
         Ok(UdpSocket {
             socket,
             state,
-            recv_buffer: [0; constants::DEFAULT_MTU],
+            recv_buffer: Vec::with_capacity(config.receive_buffer_max_size),
             packet_processor: PacketProcessor::new(config.clone()),
             config,
         })
@@ -109,7 +109,7 @@ mod test {
                         assert_eq!(packet.payload(), vec![123; 4000].as_slice());
                         break;
                     }
-                    Err(e) => { panic!(); },
+                    Err(e) => { panic!("{:?}",e); },
                     _ => { }
                 };
             }
