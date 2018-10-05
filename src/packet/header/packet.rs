@@ -12,9 +12,9 @@ pub struct PacketHeader
     // this is the sequence number so that we can know where in the sequence of packages this packet belongs.
     pub seq: u16,
     // this is the last acknowledged sequence number.
-    pub ack_seq: u16,
+    ack_seq: u16,
     // this is an bitfield of all last 32 acknowledged packages
-    pub ack_field: u32,
+    ack_field: u32,
 }
 
 impl PacketHeader {
@@ -29,7 +29,25 @@ impl PacketHeader {
     /// Get the size of this header.
     pub fn size(&self) -> u8
     {
-        return PACKET_HEADER_SIZE;
+        PACKET_HEADER_SIZE
+    }
+
+    /// Get the sequence number from this packet.
+    pub fn sequence(&self) -> u16
+    {
+        self.sequence()
+    }
+
+    /// Get bit field of all last 32 acknowledged packages
+    pub fn ack_field(&self) -> u32
+    {
+        self.ack_field
+    }
+
+    /// Get last acknowledged sequence number.
+    pub fn ack_seq(&self) -> u16
+    {
+        self.ack_seq
     }
 }
 

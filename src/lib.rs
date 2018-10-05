@@ -11,8 +11,8 @@ extern crate log;
 #[macro_use]
 extern crate failure_derive;
 
-mod net;
-mod packet;
+pub mod net;
+pub mod packet;
 
 pub mod error;
 pub mod events;
@@ -48,9 +48,9 @@ pub use net::udp::UdpSocket;
 ///
 /// So for 4000 bytes whe need 4 fragments
 /// [fragment: 1024] [fragment: 1024] [fragment: 1024] [fragment: 928]
-pub fn get_times_number_fits_in_number(number: u16, fitting_number: u16) -> u16
+fn total_fragments_needed(payload_length: u16, fragment_size: u16) -> u16
 {
-    let remainder = if number % fitting_number > 0 { 1 } else { 0 };
-     ((number / fitting_number) + remainder)
+    let remainder = if payload_length % fragment_size > 0 { 1 } else { 0 };
+     ((payload_length / fragment_size) + remainder)
 }
 

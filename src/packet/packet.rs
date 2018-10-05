@@ -4,9 +4,9 @@ use std::net::SocketAddr;
 /// This is a user friendly packet containing the payload from the packet and the enpoint from where it came.
 pub struct Packet {
     // the address to witch the packet will be send
-    pub addr: SocketAddr,
+    addr: SocketAddr,
     // the raw payload of the packet
-    pub payload: Box<[u8]>,
+    payload: Box<[u8]>,
 }
 
 impl Packet {
@@ -22,7 +22,7 @@ impl Packet {
         return &self.payload;
     }
 
-    /// Get the enpoint from this packet.
+    /// Get the endpoint from this packet.
     pub fn addr(&self) -> SocketAddr {
         self.addr
     }

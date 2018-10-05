@@ -7,7 +7,7 @@ use packet::{header, Packet, PacketData};
 use super::{Connection,SocketAddr, NetworkConfig};
 use self::header::{FragmentHeader, PacketHeader};
 use error::{NetworkError, Result};
-use get_times_number_fits_in_number;
+use total_fragments_needed;
 
 // Type aliases
 // Number of seconds we will wait until we consider a Connection to have timed out
@@ -49,7 +49,7 @@ impl SocketState {
             return Err(NetworkError::ExceededMaxPacketSize.into());
         }
 
-        let connection = self.create_connection_if_not_exists(&packet.addr)?;
+        let connection = self.create_connection_if_not_exists(&packet.addr())?;
 
         let mut lock = connection
             .write()
@@ -67,11 +67,11 @@ impl SocketState {
         let payload = packet.payload();
         let payload_length = payload.len() as u16; /* safe cast because max packet size is u16 */
 
+        // spit the packet if the payload lenght is greater than the allowrd fragment size.
         if payload_length <= config.fragment_size {
-            // we don't need to split up the packet packet
             packet_data.add_fragment(&packet_header, payload.to_vec());
         }else {
-            let num_fragments = get_times_number_fits_in_number(payload_length, config.fragment_size) as u8; /* safe cast max fragments is u8 */
+            let num_fragments = total_fragments_needed(payload_length, config.fragment_size) as u8; /* safe cast max fragments is u8 */
 
             if num_fragments > config.max_fragments {
                 return Err(NetworkError::ExceededMaxFragments.into());
@@ -93,12 +93,11 @@ impl SocketState {
                 let fragment_data = &payload[start_fragment_pos as usize..end_fragment_pos as usize]; /* upcast is safe */
 
                 packet_data.add_fragment(&fragment, fragment_data.to_vec());
-
             }
         }
 
         lock.seq_num = lock.seq_num.wrapping_add(1);
-        Ok((packet.addr, packet_data))
+        Ok((packet.addr(), packet_data))
     }
 
     /// This will return all dropped packets from this connection.
@@ -124,7 +123,7 @@ impl SocketState {
         // Update dropped packets if there are any.
         let dropped_packets = lock
             .waiting_packets
-            .ack(packet.ack_seq, packet.ack_field);
+            .ack(packet.ack_seq(), packet.ack_field());
 
         lock.dropped_packets = dropped_packets.into_iter().map(|(_, p)| p).collect();
 
@@ -187,7 +186,7 @@ mod test {
     use std::str::FromStr;
     use std::{thread, time};
 
-    use get_times_number_fits_in_number;
+    use total_fragments_needed;
 
     static TEST_HOST_IP: &'static str = "127.0.0.1";
     static TEST_BAD_HOST_IP: &'static str = "800.0.0.1";
@@ -241,7 +240,7 @@ mod test {
         // do some test processing of the data.
         let mut processed_packet: (SocketAddr, PacketData) = simulate_packet_processing(data.clone(), &config);
 
-        let num_fragments = get_times_number_fits_in_number(data.len() as u16, config.fragment_size);
+        let num_fragments = total_fragments_needed(data.len() as u16, config.fragment_size);
 
         // check if packet is divided into fragment right
         assert_eq!(processed_packet.1.fragment_count(), num_fragments as usize);

@@ -36,8 +36,8 @@ impl PacketProcessor {
         }
 
         return match received_bytes {
-            Ok(Some(payload)) => return Ok(Some(Packet::new(addr, payload))),
-            Ok(None) => return Ok(None),
+            Ok(Some(payload)) => Ok(Some(Packet::new(addr, payload))),
+            Ok(None) => Ok(None),
             Err(e) => Err (NetworkError::ReceiveFailed.into())
         }
     }
@@ -57,23 +57,23 @@ impl PacketProcessor {
 
         {
             // get entry of previous received fragments
-            let reassembly_data = match self.reassembly_buffer.get_mut(fragment_header.sequence) {
+            let reassembly_data = match self.reassembly_buffer.get_mut(fragment_header.sequence()) {
                 Some(val) => val,
                 None => return Err(NetworkError::InvalidFragmentHeader.into())
             };
 
             // Got the data
-            if reassembly_data.num_fragments_total != fragment_header.num_fragments {
+            if reassembly_data.num_fragments_total != fragment_header.fragment_count() {
                 return Err(NetworkError::InvalidFragmentHeader.into());
             }
 
-            if reassembly_data.fragments_received[usize::from(fragment_header.id)] {
+            if reassembly_data.fragments_received[usize::from(fragment_header.id())] {
                 return Err(NetworkError::InvalidFragmentHeader.into());
             }
 
             // increase number of received fragments and set the specific fragment to received.
             reassembly_data.num_fragments_received += 1;
-            reassembly_data.fragments_received[usize::from(fragment_header.id)] = true;
+            reassembly_data.fragments_received[usize::from(fragment_header.id())] = true;
 
             // read payload after fragment header
             let mut payload = Vec::new();
@@ -120,15 +120,15 @@ impl PacketProcessor {
     /// if fragment does not exists we need to insert a new entry
     fn create_fragment_if_not_exists(&mut self, fragment_header: &FragmentHeader) -> Result<()>
     {
-        if !self.reassembly_buffer.exists(fragment_header.sequence) {
-            if fragment_header.id == 0 {
+        if !self.reassembly_buffer.exists(fragment_header.sequence()) {
+            if fragment_header.id() == 0 {
 
-                match fragment_header.packet_header
+                match fragment_header.packet_header()
                 {
                     Some(header) => {
-                        let reassembly_data = ReassemblyData::new(fragment_header.sequence, header.ack_seq, header.ack_field, fragment_header.num_fragments, fragment_header.size() as usize, (9 + self.config.fragment_size) as usize);
+                        let reassembly_data = ReassemblyData::new(fragment_header.sequence(), header.ack_seq(), header.ack_field(), fragment_header.fragment_count(), fragment_header.size() as usize, (9 + self.config.fragment_size) as usize);
 
-                        self.reassembly_buffer.insert(reassembly_data.clone(), fragment_header.sequence);
+                        self.reassembly_buffer.insert(reassembly_data.clone(), fragment_header.sequence());
                     },
                     None => return Err(NetworkError::Empty.into())
                 }
@@ -147,7 +147,7 @@ mod tests
     use net::{NetworkConfig, SocketState};
     use packet::{Packet, header};
     use std::io::Cursor;
-    use get_times_number_fits_in_number;
+    use total_fragments_needed;
 
     /// Tests if an packet will be processed right.
     ///
@@ -199,7 +199,7 @@ mod tests
 
         let mut packet_data = result.1.parts();
 
-        let expected_fragments = get_times_number_fits_in_number(test_data.len() as u16, config.fragment_size) as usize;
+        let expected_fragments = total_fragments_needed(test_data.len() as u16, config.fragment_size) as usize;
         assert_eq!(packet_data.len(), expected_fragments);
 
         let mut is_packet_reassembled = false;

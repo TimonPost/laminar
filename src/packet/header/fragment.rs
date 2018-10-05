@@ -9,10 +9,10 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 #[derive(Copy, Clone, Debug)]
 /// This header represents an fragmented packet header.
 pub struct FragmentHeader {
-    pub sequence: u16,
-    pub id: u8,
-    pub num_fragments: u8,
-    pub packet_header: Option<PacketHeader>,
+    sequence: u16,
+    id: u8,
+    num_fragments: u8,
+    packet_header: Option<PacketHeader>,
 }
 
 impl FragmentHeader {
@@ -36,6 +36,29 @@ impl FragmentHeader {
         } else {
             FRAGMENT_HEADER_SIZE
         }
+    }
+
+    /// Get the id of this fragment.
+    pub fn id(&self) -> u8
+    {
+        self.id
+    }
+
+    /// Get the sequence number from this packet.
+    pub fn sequence(&self) -> u16
+    {
+        self.sequence()
+    }
+
+    /// Get the total number of fragments from an packet this fragment is part of.
+    pub fn fragment_count(&self) -> u8 {
+        self.num_fragments
+    }
+
+    /// Get the packet header if attached to fragment.
+    pub fn packet_header(&self) -> Option<PacketHeader>
+    {
+        self.packet_header
     }
 }
 
@@ -122,7 +145,7 @@ mod tests{
 
         let fragment_packet_header = fragment_deserialized.packet_header.unwrap();
         assert_eq!(fragment_packet_header.seq, 1);
-        assert_eq!(fragment_packet_header.ack_seq, 1);
-        assert_eq!(fragment_packet_header.ack_field, 5421);
+        assert_eq!(fragment_packet_header.ack_seq(), 1);
+        assert_eq!(fragment_packet_header.ack_field(), 5421);
     }
 }

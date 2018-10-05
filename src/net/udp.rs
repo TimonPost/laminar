@@ -14,18 +14,16 @@ pub struct UdpSocket {
 }
 
 impl UdpSocket {
-    pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<Self> {
+    pub fn bind<A: ToSocketAddrs>(addr: A, config: NetworkConfig) -> io::Result<Self> {
         let socket = net::UdpSocket::bind(addr)?;
         let state = SocketState::new();
-        // TODO: add functionality to get config from file.
-        let config = NetworkConfig::default();
 
         Ok(UdpSocket {
             socket,
             state,
             recv_buffer: [0; constants::DEFAULT_MTU],
             packet_processor: PacketProcessor::new(config.clone()),
-            config: config,
+            config,
         })
     }
 
@@ -46,13 +44,13 @@ impl UdpSocket {
     pub fn send(&mut self, mut packet: Packet) -> Result<usize> {
         let (addr, mut packet_data) = self.state.pre_process_packet(packet, &self.config)?;
 
-        let mut bytes_send = 0;
+        let mut bytes_sent = 0;
 
         for payload in packet_data.parts() {
-            bytes_send += self.socket.send_to(&payload, addr).map_err(|_| NetworkError::SendFailed)?;
+            bytes_sent += self.socket.send_to(&payload, addr).map_err(|_| NetworkError::SendFailed)?;
         }
 
-        Ok(bytes_send)
+        Ok(bytes_sent)
     }
 
     /// Moves this UDP socket into or out of nonblocking mode.
@@ -63,7 +61,7 @@ impl UdpSocket {
 
 #[cfg(test)]
 mod test {
-    use super::UdpSocket;
+    use super::{UdpSocket, NetworkConfig};
     use bincode::{deserialize, serialize};
     use packet::Packet;
     use std::io;
@@ -74,8 +72,8 @@ mod test {
     #[test]
     #[ignore]
     fn send_receive_1_pckt() {
-        let mut send_socket = UdpSocket::bind("127.0.0.1:12347").unwrap();
-        let mut recv_socket = UdpSocket::bind("127.0.0.1:12348").unwrap();
+        let mut send_socket = UdpSocket::bind("127.0.0.1:12347",NetworkConfig::default()).unwrap();
+        let mut recv_socket = UdpSocket::bind("127.0.0.1:12348",NetworkConfig::default()).unwrap();
 
         let addr = "127.0.0.1:12348".parse().unwrap();
 
@@ -96,8 +94,8 @@ mod test {
 
     #[test]
     fn send_receive_fragment_packet() {
-        let mut send_socket = UdpSocket::bind("127.0.0.1:12347").unwrap();
-        let mut recv_socket = UdpSocket::bind("127.0.0.1:12348").unwrap();
+        let mut send_socket = UdpSocket::bind("127.0.0.1:12347",NetworkConfig::default()).unwrap();
+        let mut recv_socket = UdpSocket::bind("127.0.0.1:12348",NetworkConfig::default()).unwrap();
 
         let addr = "127.0.0.1:12348".parse().unwrap();
 
@@ -131,7 +129,7 @@ mod test {
         thread::spawn(|| {
             thread::sleep(time::Duration::from_millis(3));
 
-            let mut send_socket = UdpSocket::bind("127.0.0.1:12357").unwrap();
+            let mut send_socket = UdpSocket::bind("127.0.0.1:12357",NetworkConfig::default()).unwrap();
 
             let addr = "127.0.0.1:12358".parse().unwrap();
 
@@ -152,7 +150,7 @@ mod test {
         });
 
         thread::spawn(|| {
-            let mut recv_socket = UdpSocket::bind("127.0.0.1:12358").unwrap();
+            let mut recv_socket = UdpSocket::bind("127.0.0.1:12358", NetworkConfig::default()).unwrap();
 
             let mut received_packages_count = 0;
 
