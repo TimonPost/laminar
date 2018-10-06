@@ -16,5 +16,9 @@ pub enum NetworkError {
     #[fail(display = "TCP client connections hash was poisoned")]
     TcpClientConnectionsHashPoisoned,
     #[fail(display = "The lock for a specific TCP client was poisoned")]
-    TcpClientLockFailed
+    TcpClientLockFailed,
+    #[fail(display = "Unable to create UDP SocketState structure")]
+    UDPSocketStateCreationFailed,
+    #[fail(display = "Unable to set nonblocking option")]
+    UnableToSetNonblocking
 }
