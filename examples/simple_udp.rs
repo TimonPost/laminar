@@ -1,3 +1,8 @@
+//! This module provides an simple client, server examples with communication over udp.
+//! 1. setting up server to receive data.
+//! 2. setting up client to send data.
+//! 3. serialize data to send and deserialize when received.
+
 extern crate laminar;
 extern crate bincode;
 
@@ -8,14 +13,7 @@ use self::bincode::{ serialize, deserialize };
 use super::{client_address, server_address};
 use std::{time, thread};
 
-use std::time::Instant;
-
-/// This will run an simple example with sending and receiving data.
-///
-/// We cover:
-/// 1. setting up server to receive data.
-/// 2. setting up client to send data.
-/// 3. serialize data to send and deserialize when received.
+/// This will run an simple example with client and server communicating.
 pub fn run_simple_example()
 {
     // set up or `Server` that will receive the messages we send with the `Client`
@@ -31,17 +29,11 @@ pub fn run_simple_example()
     /*  setup or `Client` and send some test data. */
     let mut client = Client::new();
 
-    let now = Instant::now();
     client.send(DataType::Coords { latitude: 10.55454, longitude: 10.555, altitude: 1.3});
-    println!(" ==== Message took {:?} to send ====", now.elapsed());
 
-    let now = Instant::now();
     client.send(DataType::Coords { latitude: 3.344, longitude: 5.4545, altitude: 1.33});
-    println!("==== Message took {:?} to send ====", now.elapsed());
 
-    let now = Instant::now();
     client.send(DataType::Text { string: String::from("Some information") });
-    println!("==== Message took {:?} to send ====", now.elapsed());
 
     /// ==== result ====
     // Moving to lat: 10.555, long: 10.55454, alt: 1.3
