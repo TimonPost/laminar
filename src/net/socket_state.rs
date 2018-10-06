@@ -22,22 +22,18 @@ const TIMEOUT_POLL_INTERVAL: u64 = 1;
 pub struct SocketState {
     timeout: ConnectionTimeout,
     connections: ConnectionMap,
-    timeout_check_thread: Option<thread::JoinHandle<()>>
+    timeout_check_thread: thread::JoinHandle<()>
 }
 
 impl SocketState {
     pub fn new() -> Result<SocketState> {
-        let mut socket_state = SocketState {
+        let connections: ConnectionMap = Arc::new(RwLock::new(HashMap::new()));
+        let thread_handle = SocketState::check_for_timeouts(connections.clone())?;
+        Ok(SocketState {
             connections: Arc::new(RwLock::new(HashMap::new())),
             timeout: TIMEOUT_DEFAULT,
-            timeout_check_thread: None
-        };
-        if let Ok(thread_handle) = socket_state.check_for_timeouts() {
-            socket_state.timeout_check_thread = Some(thread_handle);
-            Ok(socket_state)
-        } else {
-            Err(NetworkError::UDPSocketStateCreationFailed.into())
-        }
+            timeout_check_thread: thread_handle
+        })
     }
 
     pub fn with_client_timeout(mut self, timeout: ConnectionTimeout) -> SocketState {
@@ -105,9 +101,8 @@ impl SocketState {
     // 2. Iterate through each one
     // 3. Check if the last time we have heard from them (received a packet from them) is greater than the amount of time considered to be a timeout
     // 4. If they have timed out, send a notification up the stack
-    fn check_for_timeouts(&mut self) -> Result<thread::JoinHandle<()>> {
-        let connections_lock = self.connections.clone();
-        let sleepy_time = Duration::from_secs(self.timeout);
+    fn check_for_timeouts(connections: ConnectionMap) -> Result<thread::JoinHandle<()>> {
+        let sleepy_time = Duration::from_secs(TIMEOUT_DEFAULT);
         let poll_interval = Duration::from_secs(TIMEOUT_POLL_INTERVAL);
 
         Ok(thread::Builder::new()
@@ -115,7 +110,7 @@ impl SocketState {
             .spawn(move || loop {
                 {
                     debug!("Checking for timeouts");
-                    match connections_lock.read() {
+                    match connections.read() {
                         Ok(lock) => {
                             for (key, value) in lock.iter() {
                                 if let Ok(c) = value.read() {
