@@ -108,8 +108,8 @@ impl SocketState {
         Ok(thread::Builder::new()
             .name("check_for_timeouts".into())
             .spawn(move || loop {
-                {
-                    debug!("Checking for timeouts");
+                
+                    trace!("Checking for timeouts");
                     match connections.read() {
                         Ok(lock) => {
                             for (key, value) in lock.iter() {
@@ -125,7 +125,7 @@ impl SocketState {
                             error!("Unable to acquire read lock to check for timed out connections")
                         }
                     }
-                }
+
                 thread::sleep(poll_interval);
             })?
         )
