@@ -5,12 +5,8 @@ use std::io::{self, ErrorKind};
 pub type Error = failure::Error;
 pub type Result<T> = result::Result<T, Error>;
 
-//impl From<io::Error> for Error
-//{
-//    fn from(error: io::Error) -> Self {
-//        NetworkError::IoError { kind: error.kind(), msg: error.description().to_owned() }.into()
-//    }
-//}
+
+
 
 #[derive(Fail, Debug)]
 pub enum NetworkError {
