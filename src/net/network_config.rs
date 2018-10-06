@@ -11,7 +11,7 @@ pub struct NetworkConfig
     pub max_packet_size: usize,
     /// These are the maximal fragments a packet could be divided into.
     ///
-    /// Why can't I have more than 256 (u8)?
+    /// Why can't I have more than 255 (u8)?
     /// This is because you don't want to send more then 256 fragments over UDP, with high amounts of fragments the change for an invalid packet is very high.
     /// Use TCP instead (later we will probably support larger ranges but every fragment packet then needs to be resent if it doesn't get an acknowledgement).
     ///
