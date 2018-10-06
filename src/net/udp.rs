@@ -4,10 +4,12 @@ use std::net::{self, ToSocketAddrs};
 use super::{Packet, RawPacket, SocketState};
 use bincode::deserialize;
 
-use error::Result;
+use error::{NetworkError, Result};
 
+/// Maximum amount of data that we can read from a datagram
 const BUFFER_SIZE: usize = 1024;
 
+/// Represents an <ip>:<port> combination listening for UDP traffic
 pub struct UdpSocket {
     socket: net::UdpSocket,
     state: SocketState,
@@ -15,9 +17,10 @@ pub struct UdpSocket {
 }
 
 impl UdpSocket {
-    pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<Self> {
+    /// Binds to the socket and then sets up the SocketState to manage the connections. Because UDP connections are not persistent, we can only infer the status of the remote endpoint by looking to see if they are sending packets or not
+    pub fn bind<A: ToSocketAddrs>(addr: A) -> Result<Self> {
         let socket = net::UdpSocket::bind(addr)?;
-        let state = SocketState::new();
+        let state = SocketState::new()?;
 
         Ok(UdpSocket {
             socket,
@@ -26,25 +29,36 @@ impl UdpSocket {
         })
     }
 
-    pub fn recv(&mut self) -> io::Result<Option<Packet>> {
+    /// Attempts to receive any data we have pending from the socket. If the amount of data read exceeds the buffer size, the excess is discarded.
+    pub fn recv(&mut self) -> Result<Option<Packet>> {
         let (len, _addr) = self.socket.recv_from(&mut self.recv_buffer)?;
+        // If len is 0, then there was no data in the packet
         if len > 0 {
-            // TODO: Remove unwrap and funnel result error types
-            let raw_packet: RawPacket = deserialize(&self.recv_buffer[..len]).unwrap();
-            let packet = self.state.process_received(_addr, &raw_packet).unwrap();
+            // If there was data, deserialize it and hand it off for processing
+            let raw_packet: RawPacket = deserialize(&self.recv_buffer[..len])?;
+            let packet = self.state.process_received(_addr, &raw_packet)?;
             Ok(Some(packet))
         } else {
             Ok(None)
         }
     }
 
+    /// Attempts to send a packet to a specific remote endpoint, i.e., an <ip>:<port> combination of a client
     pub fn send(&mut self, packet: Packet) -> Result<io::Result<usize>> {
         let (addr, payload) = self.state.pre_process_packet(packet)?;
         Ok(self.socket.send_to(&payload, addr))
     }
 
-    pub fn set_nonblocking(&mut self, nonblocking: bool) -> io::Result<()> {
-        self.socket.set_nonblocking(nonblocking)
+    /// Sets the blocking mode of the socket. In non-blocking mode, recv_from will not block if there is no data to be read. In blocking mode, it will. If using non-blocking mode, it is important to wait some amount of time between iterations, or it will quickly use all CPU available
+    pub fn set_nonblocking(&mut self, nonblocking: bool) -> Result<()> {
+        match self.socket.set_nonblocking(nonblocking) {
+            Ok(_) => {
+                Ok(())
+            }
+            Err(e) => {
+                Err(NetworkError::UnableToSetNonblocking.into())
+            }
+        }
     }
 }
 
@@ -59,7 +73,6 @@ mod test {
     use std::{thread, time};
 
     #[test]
-    #[ignore]
     fn send_receive_1_pckt() {
         let mut send_socket = UdpSocket::bind("127.0.0.1:12347").unwrap();
         let mut recv_socket = UdpSocket::bind("127.0.0.1:12348").unwrap();
@@ -74,7 +87,7 @@ mod test {
         let send_result = send_socket.send(dummy_packet);
         assert!(send_result.is_ok());
 
-        let packet: io::Result<Option<Packet>> = recv_socket.recv();
+        let packet = recv_socket.recv();
         assert!(packet.is_ok());
         let packet_payload: Option<Packet> = packet.unwrap();
         assert!(packet_payload.is_some());
@@ -85,7 +98,6 @@ mod test {
     }
 
     #[test]
-    #[ignore]
     pub fn send_receive_stress_test() {
         const TOTAL_PACKAGES: u16 = 1000;
 
@@ -118,7 +130,7 @@ mod test {
             let mut received_packages_count = 0;
 
             loop {
-                let packet: io::Result<Option<Packet>> = recv_socket.recv();
+                let packet = recv_socket.recv();
                 assert!(packet.is_ok());
                 let packet_payload: Option<Packet> = packet.unwrap();
                 assert!(packet_payload.is_some());
