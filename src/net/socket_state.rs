@@ -49,19 +49,23 @@ impl SocketState {
         }
 
         let raw_packet: RawPacket;
-        // initialize packet data, seq, acked_seq etc.
-        let mut l = connection
-            .write()
-            .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;
 
-        raw_packet = RawPacket::new(
-            l.seq_num,
-            &packet,
-            l.their_acks.last_seq,
-            l.their_acks.field,
-        );
-        // increase sequence number
-        l.seq_num = l.seq_num.wrapping_add(1);
+        {
+            // initialize packet data, seq, acked_seq etc.
+            let mut l = connection
+                .write()
+                .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;
+
+            raw_packet = RawPacket::new(
+                l.seq_num,
+                &packet,
+                l.their_acks.last_seq,
+                l.their_acks.field,
+            );
+            // increase sequence number
+            l.seq_num = l.seq_num.wrapping_add(1);
+        }
+
         let buffer = serialize(&raw_packet)?;
         Ok((packet.addr, buffer))
     }
@@ -80,6 +84,7 @@ impl SocketState {
     /// This will process an incoming packet and update acknowledgement information.
     pub fn process_received(&mut self, addr: SocketAddr, packet: &RawPacket) -> Result<Packet> {
         let connection = self.create_connection_if_not_exists(&addr)?;
+
         let mut lock = connection
             .write()
             .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;;
