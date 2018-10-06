@@ -43,8 +43,8 @@ impl UdpSocket {
         Ok(self.socket.send_to(&payload, addr))
     }
 
-    pub fn set_nonblocking(&mut self, nonblocking: bool) -> io::Result<()> {
-        self.socket.set_nonblocking(nonblocking)
+    pub fn set_blocking(&mut self, blocking: bool) -> io::Result<()> {
+        self.socket.set_nonblocking(!blocking)
     }
 }
 

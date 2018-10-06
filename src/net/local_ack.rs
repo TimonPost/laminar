@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use Packet;
+use packet::Packet;
 
 /// Packets waiting for an ack
 ///
