@@ -1,5 +1,5 @@
 [package]
-name = "amethyst_protocol"
+name = "laminar"
 version = "0.1.0"
 authors = ["Lucio Franco <luciofranco14@gmail.com>"]
 

@@ -11,11 +11,8 @@ extern crate log;
 #[macro_use]
 extern crate failure_derive;
 
-mod net;
-mod packet;
+pub mod net;
+pub mod packet;
 
 pub mod error;
 pub mod events;
-
-pub use net::udp::UdpSocket;
-use packet::{Packet, RawPacket};
