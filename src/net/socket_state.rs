@@ -171,7 +171,7 @@ impl SocketState {
                                 }
                             }
                         },
-                        Err(e) => {
+                        Err(_e) => {
                             error!("Unable to acquire read lock to check for timed out connections")
                         }
                     }
