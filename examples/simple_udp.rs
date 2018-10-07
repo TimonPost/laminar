@@ -6,11 +6,10 @@
 extern crate laminar;
 extern crate bincode;
 
-use self::laminar::net::{UdpSocket, SocketAddr, NetworkConfig};
-use self::laminar::packet::Packet;
+use laminar::net::{UdpSocket, SocketAddr, NetworkConfig};
+use laminar::packet::Packet;
 
 use self::bincode::{ serialize, deserialize };
-use super::{client_address, server_address};
 use std::{time, thread};
 
 /// The socket address of where the server is located.
