@@ -22,8 +22,8 @@ impl VirtualConnection {
         VirtualConnection {
             seq_num: 0,
             dropped_packets: Vec::new(),
-            waiting_packets: LocalAckRecord::new(),
-            their_acks: ExternalAcks::new(),
+            waiting_packets: Default::default(),
+            their_acks: Default::default(),
             last_heard: Instant::now(),
             quality: NetworkQuality::Good,
             remote_address: addr,

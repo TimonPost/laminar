@@ -4,7 +4,7 @@
 ///
 /// Here we store information about the other side (virtual connection).
 /// Like witch is the last sequence number from them.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ExternalAcks {
     /// the last sequence number we have received from the other side.
     pub last_seq: u16,
@@ -13,14 +13,6 @@ pub struct ExternalAcks {
 }
 
 impl ExternalAcks {
-    pub fn new() -> ExternalAcks {
-        ExternalAcks {
-            last_seq: 0,
-            field: 0,
-            initialized: false,
-        }
-    }
-
     pub fn ack(&mut self, seq_num: u16) {
         if !self.initialized {
             self.last_seq = seq_num;
@@ -43,7 +35,7 @@ impl ExternalAcks {
             }
             self.last_seq = seq_num;
         } else if neg_diff <= 32 {
-            self.field = self.field | (1 << neg_diff - 1);
+            self.field |= 1 << neg_diff - 1;
         }
     }
 }
@@ -54,7 +46,7 @@ mod test {
 
     #[test]
     fn acking_single_packet() {
-        let mut acks = ExternalAcks::new();
+        let mut acks:ExternalAcks = Default::default();
         acks.ack(0);
 
         assert_eq!(acks.last_seq, 0);
@@ -63,7 +55,7 @@ mod test {
 
     #[test]
     fn acking_several_packets() {
-        let mut acks = ExternalAcks::new();
+        let mut acks:ExternalAcks = Default::default();
         acks.ack(0);
         acks.ack(1);
         acks.ack(2);
@@ -74,7 +66,7 @@ mod test {
 
     #[test]
     fn acking_several_packets_out_of_order() {
-        let mut acks = ExternalAcks::new();
+        let mut acks:ExternalAcks = Default::default();
         acks.ack(1);
         acks.ack(0);
         acks.ack(2);
@@ -85,7 +77,7 @@ mod test {
 
     #[test]
     fn acking_a_nearly_full_set_of_packets() {
-        let mut acks = ExternalAcks::new();
+        let mut acks:ExternalAcks = Default::default();
 
         for i in 0..32 {
             acks.ack(i);
@@ -97,7 +89,7 @@ mod test {
 
     #[test]
     fn acking_a_full_set_of_packets() {
-        let mut acks = ExternalAcks::new();
+        let mut acks:ExternalAcks = Default::default();
 
         for i in 0..33 {
             acks.ack(i);
@@ -109,7 +101,7 @@ mod test {
 
     #[test]
     fn acking_to_the_edge_forward() {
-        let mut acks = ExternalAcks::new();
+        let mut acks:ExternalAcks = Default::default();
         acks.ack(0);
         acks.ack(32);
 
@@ -119,7 +111,7 @@ mod test {
 
     #[test]
     fn acking_too_far_forward() {
-        let mut acks = ExternalAcks::new();
+        let mut acks:ExternalAcks = Default::default();
         acks.ack(0);
         acks.ack(1);
         acks.ack(34);
@@ -130,7 +122,7 @@ mod test {
 
     #[test]
     fn acking_a_whole_buffer_too_far_forward() {
-        let mut acks = ExternalAcks::new();
+        let mut acks:ExternalAcks = Default::default();
         acks.ack(0);
         acks.ack(60);
 
@@ -140,7 +132,7 @@ mod test {
 
     #[test]
     fn acking_too_far_backward() {
-        let mut acks = ExternalAcks::new();
+        let mut acks:ExternalAcks = Default::default();
         acks.ack(33);
         acks.ack(0);
 
@@ -150,7 +142,7 @@ mod test {
 
     #[test]
     fn acking_around_zero() {
-        let mut acks = ExternalAcks::new();
+        let mut acks:ExternalAcks = Default::default();
 
         for i in 0..33_u16 {
             acks.ack(i.wrapping_sub(16));
@@ -161,7 +153,7 @@ mod test {
 
     #[test]
     fn ignores_old_packets() {
-        let mut acks = ExternalAcks::new();
+        let mut acks:ExternalAcks = Default::default();
         acks.ack(40);
         acks.ack(0);
         assert_eq!(acks.last_seq, 40);
@@ -170,7 +162,7 @@ mod test {
 
     #[test]
     fn ignores_really_old_packets() {
-        let mut acks = ExternalAcks::new();
+        let mut acks:ExternalAcks = Default::default();
         acks.ack(30000);
         acks.ack(0);
         assert_eq!(acks.last_seq, 30000);
@@ -179,7 +171,7 @@ mod test {
 
     #[test]
     fn skips_missing_acks_correctly() {
-        let mut acks = ExternalAcks::new();
+        let mut acks:ExternalAcks = Default::default();
         acks.ack(0);
         acks.ack(1);
         acks.ack(6);
