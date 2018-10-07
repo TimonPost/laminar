@@ -2,7 +2,7 @@ use bincode::serialize;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::{Duration};
 
 use super::{Connection, Packet, RawPacket, SocketAddr};
 use error::{NetworkError, Result};
@@ -121,7 +121,7 @@ impl SocketState {
                                 }
                             }
                         },
-                        Err(e) => {
+                        Err(_e) => {
                             error!("Unable to acquire read lock to check for timed out connections")
                         }
                     }

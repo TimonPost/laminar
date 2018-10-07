@@ -17,7 +17,7 @@ impl Packet {
     }
 
     pub fn payload(&self) -> &[u8] {
-        return &self.payload;
+        &self.payload
     }
 
     pub fn addr(&self) -> SocketAddr {
