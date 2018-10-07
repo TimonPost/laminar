@@ -221,15 +221,14 @@ mod test {
 
     #[test]
     fn test_create_connection() {
-        let addr = format!("{}:{}", TEST_HOST_IP, TEST_PORT).to_socket_addrs();
+        let addr = format!("{}:{}", TEST_HOST_IP, TEST_PORT).parse();
         assert!(addr.is_ok());
-        let mut addr = addr.unwrap();
-        let new_conn = Connection::new(addr.next().unwrap());
+        let new_conn = Connection::new(addr.unwrap());
     }
 
     #[test]
     fn test_invalid_addr_fails() {
-        let addr = format!("{}:{}", TEST_BAD_HOST_IP, TEST_PORT).to_socket_addrs();
+        let addr: Result<SocketAddr, _> = format!("{}:{}", TEST_BAD_HOST_IP, TEST_PORT).parse();
         assert!(addr.is_err());
     }
 
