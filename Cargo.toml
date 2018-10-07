@@ -1,7 +1,11 @@
 [package]
 name = "laminar"
 version = "0.0.0"
-authors = ["Lucio Franco <luciofranco14@gmail.com>"]
+authors = [
+  "Lucio Franco <luciofranco14@gmail.com>",
+  "Fletcher Haynes <fletcher@subnetzero.io>",
+  "Timon <timonp40@gmail.com>"
+]
 description = "A simple semi-reliable UDP/TCP protocol for multiplayer games"
 keywords = ["gamedev", "networking", "udp", "amethyst"]
 categories = ["game-engines", "network-programming"]
@@ -18,6 +22,7 @@ travis-ci = { repository = "amethyst/laminar", branch = "master" }
 serde = "1.0"
 serde_derive = "1.0"
 bincode = "1.0"
+byteorder = "1.2.6"
 log = "0.4"
 failure = "0.1"
 failure_derive = "0.1"
