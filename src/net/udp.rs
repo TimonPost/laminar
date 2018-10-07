@@ -160,7 +160,7 @@ mod test {
                 let dummy_packet = Packet::new(addr, data);
                 let send_result = send_socket.send(dummy_packet);
                 assert!(send_result.is_ok());
-                assert_eq!(send_result.unwrap(), constants::FRAGMENT_HEADER_SIZE + constants::PACKET_HEADER_SIZE);
+                assert_eq!(send_result.unwrap(), len + constants::PACKET_HEADER_SIZE as usize);
             }
         });
 
