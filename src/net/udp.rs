@@ -1,6 +1,5 @@
 use std::net::{self, ToSocketAddrs};
 
-
 use packet::{Packet, PacketProcessor};
 use net::{NetworkConfig, SocketState};
 use error::{NetworkError, Result};

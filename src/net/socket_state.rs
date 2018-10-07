@@ -130,6 +130,7 @@ impl SocketState {
     /// This will process an incoming packet and update acknowledgement information.
     pub fn process_received(&mut self, addr: SocketAddr, packet: &PacketHeader) -> Result<()>{
         let connection = self.create_connection_if_not_exists(&addr)?;
+
         let mut lock = connection
             .write()
             .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;
