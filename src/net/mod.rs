@@ -9,11 +9,11 @@ mod udp;
 mod tcp;
 
 pub use self::network_config::NetworkConfig;
-pub use self::connection::{Connection, Quality};
+pub use self::connection::{VirtualConnection, NetworkQuality};
 pub use self::socket_state::SocketState;
 pub use self::udp::UdpSocket;
 pub use self::tcp::{TcpSocketState,TcpClient,TcpServer};
 pub use std::net::SocketAddr;
+pub use self::external_ack::ExternalAcks;
+pub use self::local_ack::LocalAckRecord;
 
-use self::external_ack::ExternalAcks;
-use self::local_ack::LocalAckRecord;
