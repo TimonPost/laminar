@@ -6,4 +6,6 @@ pub trait HeaderReader
 
     /// Reads the specified header from the given Cursor.
     fn read(rdr:  &mut Cursor<Vec<u8>>) -> Self::Header;
+
+    fn size(&self) -> u8;
 }

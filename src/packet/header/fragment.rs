@@ -21,23 +21,6 @@ impl FragmentHeader {
         FragmentHeader { id, num_fragments, packet_header: Some(packet_header), sequence: packet_header.seq }
     }
 
-    /// Get the size of this header.
-    pub fn size(&self) -> u8
-    {
-        if self.id == 0 {
-            match self.packet_header
-            {
-                Some(header) => header.size() + FRAGMENT_HEADER_SIZE,
-                None => {
-                    error!("Attempting to retrieve size on a 0 ID packet with no packet header");
-                    0
-                }
-            }
-        } else {
-            FRAGMENT_HEADER_SIZE
-        }
-    }
-
     /// Get the id of this fragment.
     pub fn id(&self) -> u8
     {
@@ -117,6 +100,23 @@ impl HeaderReader for FragmentHeader
         }
 
         Ok(header)
+    }
+
+    /// Get the size of this header.
+    fn size(&self) -> u8
+    {
+        if self.id == 0 {
+            match self.packet_header
+                {
+                    Some(header) => header.size() + FRAGMENT_HEADER_SIZE,
+                    None => {
+                        error!("Attempting to retrieve size on a 0 ID packet with no packet header");
+                        0
+                    }
+                }
+        } else {
+            FRAGMENT_HEADER_SIZE
+        }
     }
 }
 

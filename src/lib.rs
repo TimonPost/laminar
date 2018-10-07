@@ -28,7 +28,7 @@ pub use net::udp::UdpSocket;
 /// But since we care about how how many whole times the number fits in we need the result 4.
 ///
 /// Note that when rust is rounding it is always rounding to zero (3.456 as u32 = 3)
-/// 1. calculate with modules if `number 1` fits exactly in the `number 2`.
+/// 1. calculate with modulo if `number 1` fits exactly in the `number 2`.
 /// 2. Divide `number 1` with `number 2` (this wil be rounded to zero by rust)
 /// 3. So in all cases whe need to add 1 to get the right amount of fragments.
 ///

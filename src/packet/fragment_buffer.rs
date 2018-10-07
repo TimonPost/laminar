@@ -1,7 +1,7 @@
 use std::io::Result;
 use std::clone::Clone;
 
-/// Collection for storing data fof any kind.
+/// Collection for storing data of any kind.
 pub struct FragmentBuffer<T>  where T: Default + Clone + Send + Sync  {
     entries: Vec<T>,
     entry_sequences: Vec<u16>,

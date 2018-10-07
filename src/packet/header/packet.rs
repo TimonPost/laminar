@@ -26,12 +26,6 @@ impl PacketHeader {
         }
     }
 
-    /// Get the size of this header.
-    pub fn size(&self) -> u8
-    {
-        PACKET_HEADER_SIZE
-    }
-
     /// Get the sequence number from this packet.
     pub fn sequence(&self) -> u16
     {
@@ -78,6 +72,11 @@ impl HeaderReader for PacketHeader
             ack_seq,
             ack_field,
         })
+    }
+
+    fn size(&self) -> u8
+    {
+        PACKET_HEADER_SIZE
     }
 }
 
