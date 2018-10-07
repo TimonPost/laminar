@@ -1,4 +1,5 @@
-use super::{ExternalAcks, LocalAckRecord, Packet};
+use super::{ExternalAcks, LocalAckRecord};
+use packet::Packet;
 use std::fmt;
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};
