@@ -4,6 +4,7 @@ use std::net::SocketAddr;
 use net::{SocketState, NetworkConfig};
 use super::{header, Packet, FragmentBuffer, ReassemblyData};
 use self::header::{FragmentHeader, PacketHeader, HeaderParser, HeaderReader};
+use byteorder::ReadBytesExt;
 
 use error::{NetworkError, Result};
 

@@ -1,5 +1,5 @@
 pub const FRAGMENT_HEADER_SIZE: u8 = 5;
-pub const PACKET_HEADER_SIZE: u8 = 8;
+pub const PACKET_HEADER_SIZE: u8 = 9;
 pub const MAX_FRAGMENTS_DEFAULT: u16 = 16;
 pub const FRAGMENT_SIZE_DEFAULT: u16 = 1024;
 /// Maximum transmission unit of the payload.

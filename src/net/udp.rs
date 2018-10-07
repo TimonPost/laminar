@@ -26,7 +26,7 @@ impl UdpSocket {
         Ok(UdpSocket {
             socket,
             state,
-            recv_buffer: Vec::with_capacity(config.receive_buffer_max_size),
+            recv_buffer: vec![0;config.receive_buffer_max_size],
             packet_processor: PacketProcessor::new(config.clone()),
             config,
         })
@@ -73,7 +73,7 @@ impl UdpSocket {
 
 #[cfg(test)]
 mod test {
-    use super::{UdpSocket, NetworkConfig};
+    use net::{UdpSocket, NetworkConfig, constants};
     use bincode::{deserialize, serialize};
     use packet::Packet;
     use std::io;
@@ -138,7 +138,7 @@ mod test {
     #[test]
     #[ignore]
     pub fn send_receive_stress_test() {
-        const TOTAL_PACKAGES: u16 = 1000;
+        const TOTAL_PACKAGES: u64 = 10000;
 
         thread::spawn(|| {
             thread::sleep(time::Duration::from_millis(3));
@@ -148,9 +148,10 @@ mod test {
             let addr = "127.0.0.1:12358".parse().unwrap();
 
             for packet_count in 0..TOTAL_PACKAGES {
+
                 let stub = StubData {
                     id: packet_count,
-                    b: 1,
+                    b: 400,
                 };
 
                 let data = serialize(&stub).unwrap();
@@ -159,7 +160,7 @@ mod test {
                 let dummy_packet = Packet::new(addr, data);
                 let send_result = send_socket.send(dummy_packet);
                 assert!(send_result.is_ok());
-                assert_eq!(send_result.unwrap(), 12);
+                assert_eq!(send_result.unwrap(), len + constants::PACKET_HEADER_SIZE as usize);
             }
         });
 
@@ -177,13 +178,8 @@ mod test {
                 let stub_data = deserialize::<StubData>(received_packet.payload()).unwrap();
 
                 assert_eq!(received_packet.addr().to_string(), "127.0.0.1:12357");
-                assert_eq!(stub_data.id, received_packages_count);
-                assert_eq!(stub_data.b, 1);
-
+                assert_eq!(stub_data.b, 400);
                 received_packages_count += 1;
-                if received_packages_count >= TOTAL_PACKAGES {
-                    break;
-                }
             }
         }).join()
         .unwrap();
@@ -191,7 +187,7 @@ mod test {
 
     #[derive(Serialize, Deserialize, Clone, Copy)]
     struct StubData {
-        pub id: u16,
+        pub id: u64,
         pub b: u16,
     }
 

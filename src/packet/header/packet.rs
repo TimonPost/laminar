@@ -1,4 +1,4 @@
-use std::io::{self, Cursor};
+use std::io::{self, Cursor, Error, ErrorKind};
 use super::{HeaderParser, HeaderReader};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use net::constants::PACKET_HEADER_SIZE;
@@ -28,7 +28,7 @@ impl PacketHeader {
     /// Get the sequence number from this packet.
     pub fn sequence(&self) -> u16
     {
-        self.sequence()
+        self.seq
     }
 
     /// Get bit field of all last 32 acknowledged packages
@@ -50,6 +50,7 @@ impl HeaderParser for PacketHeader
 
     fn parse(&self) -> <Self as HeaderParser>::Output {
         let mut wtr = Vec::new();
+        wtr.write_u8(0)?;
         wtr.write_u16::<BigEndian>(self.seq)?;
         wtr.write_u16::<BigEndian>(self.ack_seq)?;
         wtr.write_u32::<BigEndian>(self.ack_field)?;
@@ -62,6 +63,12 @@ impl HeaderReader for PacketHeader
     type Header = io::Result<PacketHeader>;
 
     fn read(rdr:  &mut Cursor<Vec<u8>>) -> <Self as HeaderReader>::Header {
+        let prefix_byte = rdr.read_u8()?;
+
+        if prefix_byte != 0 {
+            return  Err(Error::new(ErrorKind::Other, "Invalid packet header"));
+        }
+
         let seq = rdr.read_u16::<BigEndian>()?;
         let ack_seq = rdr.read_u16::<BigEndian>()?;
         let ack_field = rdr.read_u32::<BigEndian>()?;
