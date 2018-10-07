@@ -202,9 +202,7 @@ impl SocketState {
 
 #[cfg(test)]
 mod test {
-    use super::SocketState;
-    use net::connection::Connection;
-    use net::NetworkConfig;
+    use net::{Connection, NetworkConfig, SocketState, constants};
     use packet::{Packet, PacketData};
     use packet::header::{FragmentHeader, PacketHeader, HeaderReader};
 
@@ -252,7 +250,7 @@ mod test {
 
         // check that there is only one fragment and that the data is right.
         assert_eq!(processed_packet.1.fragment_count(), 1);
-        assert_eq!(processed_packet.1.parts()[0].len(), data.len() + 8); /* 8= default header size*/
+        assert_eq!(processed_packet.1.parts()[0].len(), data.len() + (constants::PACKET_HEADER_SIZE as usize));
     }
 
     #[test]
@@ -272,7 +270,7 @@ mod test {
         assert_eq!(processed_packet.1.fragment_count(), num_fragments as usize);
 
         // check if the first packet also contains the fragment header and packet header
-        assert_eq!(processed_packet.1.parts()[0].len(), config.fragment_size as usize + 8 + 5); /* 8 = default header size 5 is packet header */
+        assert_eq!(processed_packet.1.parts()[0].len() ,((constants::PACKET_HEADER_SIZE + constants::FRAGMENT_HEADER_SIZE) as u16 + config.fragment_size) as usize);
     }
 
     #[test]
