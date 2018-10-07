@@ -1,12 +1,8 @@
-use std::io::{self, Cursor, ErrorKind, Error, Read, Write};
-use std::net::{self, SocketAddr, ToSocketAddrs};
+use std::net::{self, ToSocketAddrs};
 
-use super::{constants, Packet, RawPacket};
-use socket_state::SocketState; 
-use network_config::NetworkConfig;
-use error::{NetworkError, Result};
-use bincode::deserialize;
 
+use packet::{Packet, PacketProcessor};
+use net::{NetworkConfig, SocketState};
 use error::{NetworkError, Result};
 
 /// Maximum amount of data that we can read from a datagram
@@ -86,6 +82,7 @@ mod test {
     use std::{thread, time};
 
     #[test]
+    #[ignore]
     fn send_receive_1_pckt() {
         let mut send_socket = UdpSocket::bind("127.0.0.1:12347",NetworkConfig::default()).unwrap();
         let mut recv_socket = UdpSocket::bind("127.0.0.1:12348",NetworkConfig::default()).unwrap();
@@ -108,6 +105,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn send_receive_fragment_packet() {
         let mut send_socket = UdpSocket::bind("127.0.0.1:12347",NetworkConfig::default()).unwrap();
         let mut recv_socket = UdpSocket::bind("127.0.0.1:12348",NetworkConfig::default()).unwrap();
@@ -138,6 +136,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     pub fn send_receive_stress_test() {
         const TOTAL_PACKAGES: u16 = 1000;
 

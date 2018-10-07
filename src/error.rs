@@ -33,7 +33,7 @@ pub enum NetworkError {
     #[fail(display = "The packet header is invalid.")]
     InvalidPacketHeader,
     #[fail(display = "Error type for wrapping an io error")]
-    IoError { kind: ErrorKind, msg: String }
+    IoError { kind: ErrorKind, msg: String },
     #[fail(display = "Unable to create UDP SocketState structure")]
     UDPSocketStateCreationFailed,
     #[fail(display = "Unable to set nonblocking option")]

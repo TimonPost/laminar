@@ -13,11 +13,8 @@ extern crate failure_derive;
 
 pub mod net;
 pub mod packet;
-
 pub mod error;
 pub mod events;
-
-pub use net::udp::UdpSocket;
 
 /// This functions checks how many times a number fits into another number and will round up.
 ///

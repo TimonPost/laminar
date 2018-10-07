@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
-use packet::{header, Packet, PacketData};
-use super::{Connection,SocketAddr, NetworkConfig};
-use self::header::{FragmentHeader, PacketHeader};
+use packet::{Packet, PacketData};
+use packet::header::{FragmentHeader, PacketHeader};
+use net::{Connection,SocketAddr, NetworkConfig};
 use error::{NetworkError, Result};
 use total_fragments_needed;
 
@@ -323,7 +323,7 @@ mod test {
         let packet = Packet::new(get_dummy_socket_addr(), data.clone());
 
         // process the packet
-        let mut socket_state = SocketState::new();
+        let mut socket_state = SocketState::new().unwrap();;
         let result = socket_state.pre_process_packet(packet, &config);
         result.unwrap()
     }

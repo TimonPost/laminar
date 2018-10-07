@@ -1,6 +1,5 @@
 use super::{HeaderParser, HeaderReader};
 use super::PacketHeader;
-use error::{Result, NetworkError};
 use net::constants::{FRAGMENT_HEADER_SIZE};
 
 use std::io::{self, Cursor, Error, ErrorKind, Write};

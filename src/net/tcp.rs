@@ -1,11 +1,7 @@
 use std::collections::HashMap;
-use std::net::TcpListener;
-use std::net::{SocketAddr};
-use std::io::{BufRead, Write};
-use std::io::{BufReader, BufWriter};
-use std::net::{Shutdown, TcpStream};
-use std::thread;
-use std::thread::JoinHandle;
+use std::net::{SocketAddr, TcpListener,Shutdown, TcpStream};
+use std::io::{BufRead, Write,BufReader, BufWriter};
+use std::thread::{self,JoinHandle};
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::*;
 

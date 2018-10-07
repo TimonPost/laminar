@@ -1,5 +1,5 @@
 use std::io::{self, Cursor, ErrorKind, Error, Write, Read};
-use std::net::{SocketAddr, IpAddr};
+use std::net::SocketAddr;
 
 use net::{SocketState, NetworkConfig};
 use super::{header, Packet, FragmentBuffer, ReassemblyData};
@@ -164,7 +164,7 @@ mod tests
         // first setup packet data
         let packet = Packet::new("127.0.0.1:12345".parse().unwrap(), test_data.clone());
 
-        let mut socket_sate = SocketState::new();
+        let mut socket_sate = SocketState::new().unwrap();
         let mut result = socket_sate.pre_process_packet(packet, &config).unwrap();
 
         let mut packet_data = result.1.parts();
@@ -193,7 +193,7 @@ mod tests
         // first setup packet data
         let packet = Packet::new("127.0.0.1:12345".parse().unwrap(), test_data.clone());
 
-        let mut socket_sate = SocketState::new();
+        let mut socket_sate = SocketState::new().unwrap();
         let mut result = socket_sate.pre_process_packet(packet, &config).unwrap();
 
         let mut packet_data = result.1.parts();

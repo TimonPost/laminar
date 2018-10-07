@@ -2,7 +2,6 @@ use std::io::{self, Cursor};
 use super::{HeaderParser, HeaderReader};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use net::constants::PACKET_HEADER_SIZE;
-use error::{NetworkError, Result};
 
 
 #[derive(Copy, Clone, Debug)]
