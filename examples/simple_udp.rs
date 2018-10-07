@@ -13,6 +13,21 @@ use self::bincode::{ serialize, deserialize };
 use super::{client_address, server_address};
 use std::{time, thread};
 
+/// The socket address of where the server is located.
+const SERVER_ADDR: &'static str = "127.0.0.1:12345";
+// The client address from where the data is sent.
+const CLIENT_ADDR: &'static str = "127.0.0.1:12346";
+
+fn client_address() -> SocketAddr
+{
+    CLIENT_ADDR.parse().unwrap()
+}
+
+fn server_address() -> SocketAddr
+{
+    SERVER_ADDR.parse().unwrap()
+}
+
 /// This will run an simple example with client and server communicating.
 pub fn run_simple_example()
 {
