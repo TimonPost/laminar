@@ -28,7 +28,7 @@ impl PacketHeader {
     /// Get the sequence number from this packet.
     pub fn sequence(&self) -> u16
     {
-        self.sequence()
+        self.sequence
     }
 
     /// Get bit field of all last 32 acknowledged packages
