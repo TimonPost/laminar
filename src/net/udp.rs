@@ -1,7 +1,7 @@
 use std::io::{self, Cursor, ErrorKind, Error, Read, Write};
 use std::net::{self, SocketAddr, ToSocketAddrs};
 
-use super::{constants, Packet, RawPacket}
+use super::{constants, Packet, RawPacket};
 use socket_state::SocketState; 
 use network_config::NetworkConfig;
 use error::{NetworkError, Result};
