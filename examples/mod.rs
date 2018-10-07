@@ -11,8 +11,8 @@ use std::net::SocketAddr;
 pub fn main()
 {
     simple_udp::run_simple_example();
-    udp::receive_data_with_blocking();
-    udp::receive_data_without_blocking();
+//    udp::receive_data_with_blocking();
+//    udp::receive_data_without_blocking();
 }
 
 /// The socket address of where the server is located.

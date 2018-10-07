@@ -5,7 +5,7 @@
 
 extern crate laminar;
 
-use self::laminar::net::{UdpSocket, SocketAddr};
+use self::laminar::net::{UdpSocket, SocketAddr, NetworkConfig};
 use self::laminar::packet::Packet;
 
 use super::{client_address, server_address};
@@ -13,8 +13,11 @@ use super::{client_address, server_address};
 /// This is an example of how to send data to an specific address.
 pub fn send_data()
 {
+    // you can change the config but if you want just go for the default.
+    let config = NetworkConfig::default();
+
     // setup an udp socket and bind it to the client address.
-    let mut udp_socket = UdpSocket::bind(client_address()).unwrap();
+    let mut udp_socket = UdpSocket::bind(client_address(), config).unwrap();
 
     let packet = construct_packet();
 
@@ -25,19 +28,22 @@ pub fn send_data()
 /// This is an example of how to receive data over udp on an specific socket address with blocking the current thread.
 pub fn receive_data_with_blocking()
 {
-    // setup an udp socket and bind it to the client address.
-    let mut udp_socket: UdpSocket = UdpSocket::bind(server_address()).unwrap();
+    // you can change the config but if you want just go for the default.
+    let config = NetworkConfig::default();
 
-    // next we could specify if or socket should block the current thread when receiving data or not (default = true)
-    udp_socket.set_blocking(true);
+    // setup an udp socket and bind it to the client address.
+    let mut udp_socket: UdpSocket = UdpSocket::bind(server_address(), config).unwrap();
+
+    // next we could specify if or socket should block the current thread when receiving data or not (default = false)
+    udp_socket.set_nonblocking(false);
 
     // Next start receiving.
     let result= udp_socket.recv();
 
     match result {
         Ok(Some(packet)) => {
-            let endpoint: SocketAddr = packet.addr;
-            let received_data: Box<[u8]> = packet.payload;
+            let endpoint: SocketAddr = packet.addr();
+            let received_data: &[u8] = packet.payload();
 
             // you can here deserialize your bytes into the data you have passed it when sending.
 
@@ -55,11 +61,14 @@ pub fn receive_data_with_blocking()
 /// This is an example of how to receive data over udp on an specific socket address without blocking the current thread.
 pub fn receive_data_without_blocking()
 {
-    // setup an udp socket and bind it to the client address.
-    let mut udp_socket: UdpSocket = UdpSocket::bind(client_address()).unwrap();
+    // you can change the config but if you want just go for the default.
+    let config = NetworkConfig::default();
 
-    // next we could specify if or socket should block the current thread when receiving data or not (default = true)
-    udp_socket.set_blocking(false);
+    // setup an udp socket and bind it to the client address.
+    let mut udp_socket: UdpSocket = UdpSocket::bind(client_address(),config).unwrap();
+
+    // next we could specify if or socket should block the current thread when receiving data or not (default = false)
+    udp_socket.set_nonblocking(false);
 
     // setup a thread to do the receiving
     // Next start receiving.
@@ -67,8 +76,8 @@ pub fn receive_data_without_blocking()
 
     match result {
         Ok(Some(packet)) => {
-            let endpoint: SocketAddr = packet.addr;
-            let received_data: Box<[u8]> = packet.payload;
+            let endpoint: SocketAddr = packet.addr();
+            let received_data: &[u8] = packet.payload();
 
             // you can here deserialize your bytes into the data you have passed it when sending.
 

@@ -6,7 +6,7 @@
 extern crate laminar;
 extern crate bincode;
 
-use self::laminar::net::{UdpSocket, SocketAddr};
+use self::laminar::net::{UdpSocket, SocketAddr, NetworkConfig};
 use self::laminar::packet::Packet;
 
 use self::bincode::{ serialize, deserialize };
@@ -59,11 +59,14 @@ impl Server
 {
     pub fn new() -> Self
     {
-        // setup an udp socket and bind it to the client address.
-        let mut udp_socket: UdpSocket = UdpSocket::bind(server_address()).unwrap();
+        // you can change the config but if you want just go for the default.
+        let config = NetworkConfig::default();
 
-        // next we could specify if or socket should block the current thread when receiving data or not (default = true)
-        udp_socket.set_blocking(true);
+        // setup an udp socket and bind it to the client address.
+        let mut udp_socket: UdpSocket = UdpSocket::bind(server_address(), config).unwrap();
+
+        // next we could specify if or socket should block the current thread when receiving data or not (default = false)
+        udp_socket.set_nonblocking(false);
 
         Server { udp_socket }
     }
@@ -76,8 +79,8 @@ impl Server
 
         match result {
             Ok(Some(packet)) => {
-                let endpoint: SocketAddr = packet.addr;
-                let received_data: Box<[u8]> = packet.payload;
+                let endpoint: SocketAddr = packet.addr();
+                let received_data: &[u8] = packet.payload();
 
                 // deserialize bytes to `DataType` we passed in with `Client.send()`.
                 let deserialized: DataType = deserialize(&received_data).unwrap();
@@ -117,11 +120,14 @@ impl Client
 {
     pub fn new() -> Self
     {
-        // setup an udp socket and bind it to the client address.
-        let mut udp_socket = UdpSocket::bind(client_address()).unwrap();
+        // you can change the config but if you want just go for the default.
+        let config = NetworkConfig::default();
 
-        // next we could specify if or socket should block the current thread when receiving data or not (default = true)
-        udp_socket.set_blocking(true);
+        // setup an udp socket and bind it to the client address.
+        let mut udp_socket = UdpSocket::bind(client_address(), config).unwrap();
+
+        // next we could specify if or socket should block the current thread when receiving data or not (default = false)
+        udp_socket.set_nonblocking(false);
 
         Client { udp_socket }
     }
