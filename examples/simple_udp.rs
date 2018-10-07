@@ -9,7 +9,7 @@ extern crate bincode;
 use laminar::net::{UdpSocket, SocketAddr, NetworkConfig};
 use laminar::packet::Packet;
 
-use self::bincode::{ serialize, deserialize };
+use bincode::{ serialize, deserialize };
 use std::{time, thread};
 
 /// The socket address of where the server is located.
