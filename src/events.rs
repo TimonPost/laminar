@@ -27,9 +27,8 @@ mod test {
 
     #[test]
     fn test_create_event() {
-        let addr = format!("{}:{}", TEST_HOST_IP, TEST_PORT).to_socket_addrs();
-        let mut addr = addr.unwrap();
-        let test_conn = Arc::new(Connection::new(addr.next().unwrap()));
+        let addr = format!("{}:{}", TEST_HOST_IP, TEST_PORT).parse().unwrap();
+        let test_conn = Arc::new(Connection::new(addr));
         let _ = ConnectionEvent::Connected{conn: test_conn};
     }
 }

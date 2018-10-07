@@ -70,8 +70,8 @@ mod test {
     #[test]
     fn test_create_connection() {
         let mut addr = format!("{}:{}", TEST_HOST_IP, TEST_PORT)
-            .to_socket_addrs()
+            .parse()
             .unwrap();
-        let _new_conn = Connection::new(addr.next().unwrap());
+        let _new_conn = Connection::new(addr);
     }
 }

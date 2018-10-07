@@ -90,11 +90,11 @@ impl TcpServer {
             if let Ok(mut locked_connections) = connections.lock() {
                 locked_connections.insert(peer_addr, tcp_client.clone());
                 // Pass it off to a function to handle setting up the client-specific background threads
-                TcpClient::run(tcp_client);
+                TcpClient::run(tcp_client)?;
                 Ok(())
             } else {
                 // If we can't get the lock, send a shutdown to the client and they will have to try again
-                tmp_stream.shutdown(Shutdown::Both);
+                tmp_stream.shutdown(Shutdown::Both)?;
                 Ok(())
             }
         } else {
@@ -240,7 +240,7 @@ mod test {
     fn test_lock_poisoning() {
         let addr: SocketAddr = ("127.0.0.1".to_string() + ":"+ "27000").parse().unwrap();
         let mut test_state = TcpSocketState::new();
-        test_state.start(addr);
+        test_state.start(addr).unwrap();
         let test_lock = test_state.connections.clone();
         let _ = thread::spawn(move || {
             let _lock = test_lock.lock().unwrap();
