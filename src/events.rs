@@ -18,7 +18,7 @@ pub enum ConnectionEvent {
 #[cfg(test)]
 mod test {
     use super::ConnectionEvent;
-    use net::connection::Connection;
+    use net::Connection;
     use std::sync::Arc;
     use std::net::ToSocketAddrs;
 
