@@ -25,7 +25,7 @@ impl PacketProcessor {
     /// Process data and return the resulting packet
     pub fn process_data(&mut self, packet: Vec<u8>, addr: SocketAddr, socket_state: &mut SocketState) -> Result<Option<Packet>>
     {
-        let prefix_byte: u8 = packet[0];
+        let prefix_byte = packet[0];
         let mut cursor = Cursor::new(packet);
 
         let mut received_bytes = Ok(None);

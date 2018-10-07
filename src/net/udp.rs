@@ -160,7 +160,7 @@ mod test {
                 let dummy_packet = Packet::new(addr, data);
                 let send_result = send_socket.send(dummy_packet);
                 assert!(send_result.is_ok());
-                assert_eq!(send_result.unwrap(), 19);
+                assert_eq!(send_result.unwrap(), constants::FRAGMENT_HEADER_SIZE + constants::PACKET_HEADER_SIZE);
             }
         });
 
@@ -179,7 +179,6 @@ mod test {
 
                 assert_eq!(received_packet.addr().to_string(), "127.0.0.1:12357");
                 assert_eq!(stub_data.b, 400);
-                println!("received: {}", stub_data.b);
                 received_packages_count += 1;
             }
         }).join()
