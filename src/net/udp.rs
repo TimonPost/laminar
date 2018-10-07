@@ -1,10 +1,18 @@
 use std::io::{self, Cursor, ErrorKind, Error, Read, Write};
 use std::net::{self, SocketAddr, ToSocketAddrs};
 
-use super::{SocketState, NetworkConfig, constants};
-use packet::{header, Packet, PacketProcessor};
+use super::{constants, Packet, RawPacket}
+use socket_state::SocketState; 
+use network_config::NetworkConfig;
+use error::{NetworkError, Result};
+use bincode::deserialize;
+
 use error::{NetworkError, Result};
 
+/// Maximum amount of data that we can read from a datagram
+const BUFFER_SIZE: usize = 1024;
+
+/// Represents an <ip>:<port> combination listening for UDP traffic
 pub struct UdpSocket {
     socket: net::UdpSocket,
     state: SocketState,
@@ -14,9 +22,10 @@ pub struct UdpSocket {
 }
 
 impl UdpSocket {
-    pub fn bind<A: ToSocketAddrs>(addr: A, config: NetworkConfig) -> io::Result<Self> {
+    /// Binds to the socket and then sets up the SocketState to manage the connections. Because UDP connections are not persistent, we can only infer the status of the remote endpoint by looking to see if they are sending packets or not
+    pub fn bind<A: ToSocketAddrs>(addr: A, config: NetworkConfig) -> Result<Self> {
         let socket = net::UdpSocket::bind(addr)?;
-        let state = SocketState::new();
+        let state = SocketState::new()?;
 
         Ok(UdpSocket {
             socket,
@@ -53,9 +62,16 @@ impl UdpSocket {
         Ok(bytes_sent)
     }
 
-    /// Moves this UDP socket into or out of nonblocking mode.
-    pub fn set_nonblocking(&mut self, nonblocking: bool) -> io::Result<()> {
-        self.socket.set_nonblocking(nonblocking)
+    /// Sets the blocking mode of the socket. In non-blocking mode, recv_from will not block if there is no data to be read. In blocking mode, it will. If using non-blocking mode, it is important to wait some amount of time between iterations, or it will quickly use all CPU available
+    pub fn set_nonblocking(&mut self, nonblocking: bool) -> Result<()> {
+        match self.socket.set_nonblocking(nonblocking) {
+            Ok(_) => {
+                Ok(())
+            }
+            Err(e) => {
+                Err(NetworkError::UnableToSetNonblocking.into())
+            }
+        }
     }
 }
 
@@ -70,7 +86,6 @@ mod test {
     use std::{thread, time};
 
     #[test]
-    #[ignore]
     fn send_receive_1_pckt() {
         let mut send_socket = UdpSocket::bind("127.0.0.1:12347",NetworkConfig::default()).unwrap();
         let mut recv_socket = UdpSocket::bind("127.0.0.1:12348",NetworkConfig::default()).unwrap();
@@ -122,7 +137,7 @@ mod test {
         handle.join();
     }
 
-    #[ignore]
+    #[test]
     pub fn send_receive_stress_test() {
         const TOTAL_PACKAGES: u16 = 1000;
 
@@ -151,12 +166,9 @@ mod test {
 
         thread::spawn(|| {
             let mut recv_socket = UdpSocket::bind("127.0.0.1:12358", NetworkConfig::default()).unwrap();
-
             let mut received_packages_count = 0;
-
             loop {
                 let packet= recv_socket.recv();
-
                 assert!(packet.is_ok());
 
                 let packet_payload: Option<Packet> = packet.unwrap();

@@ -5,9 +5,6 @@ use std::io::{self, ErrorKind};
 pub type Error = failure::Error;
 pub type Result<T> = result::Result<T, Error>;
 
-
-
-
 #[derive(Fail, Debug)]
 pub enum NetworkError {
     // TODO: write more informative error
@@ -37,4 +34,8 @@ pub enum NetworkError {
     InvalidPacketHeader,
     #[fail(display = "Error type for wrapping an io error")]
     IoError { kind: ErrorKind, msg: String }
+    #[fail(display = "Unable to create UDP SocketState structure")]
+    UDPSocketStateCreationFailed,
+    #[fail(display = "Unable to set nonblocking option")]
+    UnableToSetNonblocking
 }

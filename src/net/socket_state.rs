@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use packet::{header, Packet, PacketData};
 use super::{Connection,SocketAddr, NetworkConfig};
@@ -14,7 +14,7 @@ use total_fragments_needed;
 type ConnectionTimeout = u64;
 type ConnectionMap = Arc<RwLock<HashMap<SocketAddr, Arc<RwLock<Connection>>>>>;
 
-// Default timeout of 10 seconds
+// Default timeout of a specific client
 const TIMEOUT_DEFAULT: ConnectionTimeout = 10;
 
 // Default time between checks of all clients for timeouts in seconds
@@ -24,16 +24,18 @@ const TIMEOUT_POLL_INTERVAL: u64 = 1;
 pub struct SocketState {
     timeout: ConnectionTimeout,
     connections: ConnectionMap,
+    timeout_check_thread: thread::JoinHandle<()>
 }
 
 impl SocketState {
-    pub fn new() -> SocketState {
-        let mut socket_state = SocketState {
+    pub fn new() -> Result<SocketState> {
+        let connections: ConnectionMap = Arc::new(RwLock::new(HashMap::new()));
+        let thread_handle = SocketState::check_for_timeouts(connections.clone())?;
+        Ok(SocketState {
             connections: Arc::new(RwLock::new(HashMap::new())),
             timeout: TIMEOUT_DEFAULT,
-        };
-        socket_state.check_for_timeouts();
-        socket_state
+            timeout_check_thread: thread_handle
+        })
     }
 
     pub fn with_client_timeout(mut self, timeout: ConnectionTimeout) -> SocketState {
@@ -144,28 +146,39 @@ impl SocketState {
         Ok(())
     }
 
-    // Regularly checks the last_heard attribute of all the connections in the manager to see if any have timed out
-    fn check_for_timeouts(&mut self) {
-        let connections_lock = self.connections.clone();
-        let sleepy_time = Duration::from_secs(self.timeout);
+    // This function starts a background thread that does the following:
+    // 1. Gets a read lock on the HashMap containing all the connections
+    // 2. Iterate through each one
+    // 3. Check if the last time we have heard from them (received a packet from them) is greater than the amount of time considered to be a timeout
+    // 4. If they have timed out, send a notification up the stack
+    fn check_for_timeouts(connections: ConnectionMap) -> Result<thread::JoinHandle<()>> {
+        let sleepy_time = Duration::from_secs(TIMEOUT_DEFAULT);
         let poll_interval = Duration::from_secs(TIMEOUT_POLL_INTERVAL);
 
-        thread::Builder::new()
+        Ok(thread::Builder::new()
             .name("check_for_timeouts".into())
             .spawn(move || loop {
-                let connections = connections_lock.read().expect("Unable to aquire read lock");
-
-                for (key, value) in connections.iter() {
-                    let connection = value.read().expect("Unable to aquire read lock");
-                    let last_heard = connection.last_heard();
-                    if last_heard >= sleepy_time {
-                        // TODO: pass up client TimedOut event
-                        error!("Client has timed out: {:?}", key);
+                
+                    trace!("Checking for timeouts");
+                    match connections.read() {
+                        Ok(lock) => {
+                            for (key, value) in lock.iter() {
+                                if let Ok(c) = value.read() {
+                                    if c.last_heard() >= sleepy_time {
+                                        // TODO: pass up client TimedOut event
+                                        error!("Client has timed out: {:?}", key);
+                                    }
+                                }
+                            }
+                        },
+                        Err(e) => {
+                            error!("Unable to acquire read lock to check for timed out connections")
+                        }
                     }
-                }
 
-                thread::sleep(poll_interval)
-            }).unwrap();
+                thread::sleep(poll_interval);
+            })?
+        )
     }
 
     #[inline]
@@ -223,8 +236,7 @@ mod test {
     #[test]
     fn test_poll_for_invalid_clients() {
         let mut socket_state = SocketState::new();
-        socket_state.check_for_timeouts();
-        thread::sleep(time::Duration::from_millis(10000));
+        thread::sleep(time::Duration::from_secs(10));
     }
 
     #[test]
