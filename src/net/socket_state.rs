@@ -5,42 +5,31 @@ use std::time::Duration;
 
 use packet::{Packet, PacketData};
 use packet::header::{FragmentHeader, PacketHeader};
-use net::{Connection,SocketAddr, NetworkConfig};
+use net::{VirtualConnection, SocketAddr, NetworkConfig};
+use net::connection::{ConnectionPool,ConnectionTimeout};
+
 use error::{NetworkError, Result};
 use total_fragments_needed;
 
-// Type aliases
-// Number of seconds we will wait until we consider a Connection to have timed out
-type ConnectionTimeout = u64;
-type ConnectionMap = Arc<RwLock<HashMap<SocketAddr, Arc<RwLock<Connection>>>>>;
-
-// Default timeout of a specific client
-const TIMEOUT_DEFAULT: ConnectionTimeout = 10;
-
-// Default time between checks of all clients for timeouts in seconds
-const TIMEOUT_POLL_INTERVAL: u64 = 1;
-
 /// This holds the 'virtual connections' currently (connected) to the udp socket.
 pub struct SocketState {
-    timeout: ConnectionTimeout,
-    connections: ConnectionMap,
+    connections: ConnectionPool,
     timeout_check_thread: thread::JoinHandle<()>
 }
 
 impl SocketState {
     pub fn new() -> Result<SocketState> {
-        let connections: ConnectionMap = Arc::new(RwLock::new(HashMap::new()));
-        let thread_handle = SocketState::check_for_timeouts(connections.clone())?;
+        let connection_pool = ConnectionPool::new();
+        let join_handle = connection_pool.start_time_out_loop()?;
+
         Ok(SocketState {
-            connections: Arc::new(RwLock::new(HashMap::new())),
-            timeout: TIMEOUT_DEFAULT,
-            timeout_check_thread: thread_handle
+            connections: connection_pool,
+            timeout_check_thread: join_handle
         })
     }
 
-    pub fn with_client_timeout(mut self, timeout: ConnectionTimeout) -> SocketState {
-        self.timeout = timeout;
-        self
+    pub fn with_client_timeout(&mut self, timeout: ConnectionTimeout) {
+        self.connections.set_timeout(timeout);
     }
 
     /// This will initialize the seq number, ack number and give back the raw data of the packet with the updated information.
@@ -51,7 +40,7 @@ impl SocketState {
             return Err(NetworkError::ExceededMaxPacketSize.into());
         }
 
-        let connection = self.create_connection_if_not_exists(&packet.addr())?;
+        let connection = self.connections.insert_if_not_exists(&packet.addr())?;
 
         let mut connection_seq: u16 = 0;
         let mut their_last_seq: u16 = 0;
@@ -118,7 +107,7 @@ impl SocketState {
 
     /// This will return all dropped packets from this connection.
     pub fn dropped_packets(&mut self, addr: SocketAddr) -> Result<Vec<Packet>> {
-        let connection = self.create_connection_if_not_exists(&addr)?;
+        let connection = self.connections.insert_if_not_exists(&addr)?;
         let mut lock = connection
             .write()
             .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;
@@ -129,7 +118,7 @@ impl SocketState {
 
     /// This will process an incoming packet and update acknowledgement information.
     pub fn process_received(&mut self, addr: SocketAddr, packet: &PacketHeader) -> Result<()>{
-        let connection = self.create_connection_if_not_exists(&addr)?;
+        let connection = self.connections.insert_if_not_exists(&addr)?;
         let mut lock = connection
             .write()
             .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;
@@ -145,64 +134,11 @@ impl SocketState {
 
         Ok(())
     }
-
-    // This function starts a background thread that does the following:
-    // 1. Gets a read lock on the HashMap containing all the connections
-    // 2. Iterate through each one
-    // 3. Check if the last time we have heard from them (received a packet from them) is greater than the amount of time considered to be a timeout
-    // 4. If they have timed out, send a notification up the stack
-    fn check_for_timeouts(connections: ConnectionMap) -> Result<thread::JoinHandle<()>> {
-        let sleepy_time = Duration::from_secs(TIMEOUT_DEFAULT);
-        let poll_interval = Duration::from_secs(TIMEOUT_POLL_INTERVAL);
-
-        Ok(thread::Builder::new()
-            .name("check_for_timeouts".into())
-            .spawn(move || loop {
-                
-                    trace!("Checking for timeouts");
-                    match connections.read() {
-                        Ok(lock) => {
-                            for (key, value) in lock.iter() {
-                                if let Ok(c) = value.read() {
-                                    if c.last_heard() >= sleepy_time {
-                                        // TODO: pass up client TimedOut event
-                                        error!("Client has timed out: {:?}", key);
-                                    }
-                                }
-                            }
-                        },
-                        Err(_e) => {
-                            error!("Unable to acquire read lock to check for timed out connections")
-                        }
-                    }
-
-                thread::sleep(poll_interval);
-            })?
-        )
-    }
-
-    #[inline]
-    /// If there is no connection with the given socket address an new connection will be made.
-    fn create_connection_if_not_exists(
-        &mut self,
-        addr: &SocketAddr,
-    ) -> Result<Arc<RwLock<Connection>>> {
-        let mut lock = self
-            .connections
-            .write()
-            .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;
-
-        let connection = lock
-            .entry(*addr)
-            .or_insert_with(|| Arc::new(RwLock::new(Connection::new(*addr))));
-
-        Ok(connection.clone())
-    }
 }
 
 #[cfg(test)]
 mod test {
-    use net::{Connection, NetworkConfig, SocketState, constants};
+    use net::{VirtualConnection, NetworkConfig, SocketState, constants};
     use packet::{Packet, PacketData};
     use packet::header::{FragmentHeader, PacketHeader, HeaderReader};
 
@@ -222,7 +158,7 @@ mod test {
         let addr = format!("{}:{}", TEST_HOST_IP, TEST_PORT).to_socket_addrs();
         assert!(addr.is_ok());
         let mut addr = addr.unwrap();
-        let new_conn = Connection::new(addr.next().unwrap());
+        let new_conn = VirtualConnection::new(addr.next().unwrap());
     }
 
     #[test]
