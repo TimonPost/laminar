@@ -99,7 +99,7 @@ impl TcpServer {
             }
         } else {
             tmp_stream.shutdown(Shutdown::Both);
-            return Err(Error::from(NetworkError::TcpClientConnectionsHashPoisoned));
+            Err(Error::from(NetworkError::TcpClientConnectionsHashPoisoned))
         }
     }
 }
@@ -188,7 +188,7 @@ impl TcpClient {
     fn outgoing_loop(&mut self) -> Result<JoinHandle<()>> {
         let mut writer = match self.raw_stream.try_clone() {
             Ok(w) => { w },
-            Err(e) => {
+            Err(_e) => {
                 return Err(Error::from(NetworkError::TcpStreamCloneFailed));
             }
         };
