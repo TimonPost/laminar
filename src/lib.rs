@@ -11,10 +11,10 @@ extern crate log;
 #[macro_use]
 extern crate failure_derive;
 
+pub mod events;
+pub mod error;
 pub mod net;
 pub mod packet;
-pub mod error;
-pub mod events;
 
 /// This functions checks how many times a number fits into another number and will round up.
 ///
@@ -51,3 +51,5 @@ fn total_fragments_needed(payload_length: u16, fragment_size: u16) -> u16
      ((payload_length / fragment_size) + remainder)
 }
 
+pub use net::{NetworkConfig, UdpSocket};
+pub use packet::Packet;
