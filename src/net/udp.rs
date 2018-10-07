@@ -64,7 +64,7 @@ impl UdpSocket {
             Ok(_) => {
                 Ok(())
             }
-            Err(e) => {
+            Err(_e) => {
                 Err(NetworkError::UnableToSetNonblocking.into())
             }
         }
