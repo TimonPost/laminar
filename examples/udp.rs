@@ -38,7 +38,7 @@ pub fn receive_data_with_blocking()
     udp_socket.set_nonblocking(false);
 
     // Next start receiving.
-    let result= udp_socket.recv();
+    let result = udp_socket.recv();
 
     match result {
         Ok(Some(packet)) => {
@@ -72,7 +72,7 @@ pub fn receive_data_without_blocking()
 
     // setup a thread to do the receiving
     // Next start receiving.
-    let result= udp_socket.recv();
+    let result = udp_socket.recv();
 
     match result {
         Ok(Some(packet)) => {

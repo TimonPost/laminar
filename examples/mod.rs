@@ -2,7 +2,6 @@
 extern crate serde_derive;
 
 mod simple_udp;
-mod tcp;
 mod udp;
 
 use std::net::SocketAddr;
