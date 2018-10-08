@@ -1,24 +1,14 @@
 extern crate laminar;
 
-mod fragments;
-mod normal;
-mod multiple_clients;
-
-fn main() {
-//     multiple_clients::multiple_client_integration_test();
-//    normal::normal_packet_integration_test();
-//    fragments::fragment_packet_integration_test();
-}
-
 use laminar::{NetworkConfig, Packet, UdpSocket};
+use laminar::net::constants;
 use std::sync::mpsc::{Receiver, Sender, channel};
+use std::thread::{self, JoinHandle};
 use std::net::{SocketAddr};
 use std::time::{Duration, Instant};
-use std::thread::{self, JoinHandle};
-use laminar::net::constants;
 
 /// This is an test server we use to receive data from clients.
-struct ServerMoq {
+pub struct ServerMoq {
     config: NetworkConfig,
     client: Vec<ClientStub>,
     host: SocketAddr,
@@ -73,7 +63,7 @@ impl ServerMoq {
         })
     }
 
-    fn add_client(&self, data: Vec<u8>, client_stub: ClientStub) -> JoinHandle<()>
+    pub fn add_client(&self, data: Vec<u8>, client_stub: ClientStub) -> JoinHandle<()>
     {
         let packets_to_send = client_stub.packets_to_send;
         let host = self.host;
@@ -100,7 +90,7 @@ impl ServerMoq {
     }
 }
 
-struct ClientStub
+pub struct ClientStub
 {
     timeout_sending: Duration,
     endpoint: SocketAddr,

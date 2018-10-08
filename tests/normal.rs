@@ -1,5 +1,7 @@
 extern crate laminar;
 
+mod common;
+
 use std::time::{Duration, Instant};
 use std::net::SocketAddr;
 use std::sync::{Arc, RwLock};
@@ -7,7 +9,7 @@ use std::sync::mpsc;
 
 use laminar::NetworkConfig;
 
-use super::{ServerMoq, ClientStub};
+use common::{ServerMoq, ClientStub};
 
 const TOTAL_PACKETS_TO_SEND: u32 = 1_000_000;
 const CLIENT_ADDR: &str = "127.0.0.1:12346";
@@ -17,7 +19,7 @@ const SERVER_ADDR: &str = "127.0.0.1:12345";
 /// 1. Setup receiving server.
 /// 2. Send x packets to server with single client.
 /// 3. Check if received data is correct.
-///#[test]
+#[test]
 pub fn normal_packet_integration_test() {
     let (tx,rx) = mpsc::channel();
 

@@ -14,6 +14,7 @@ readme = "README.md"
 license = "MIT/Apache-2.0"
 
 repository = "https://github.com/amethyst/laminar"
+autobenches = false
 
 [badges]
 travis-ci = { repository = "amethyst/laminar", branch = "master" }
@@ -26,3 +27,10 @@ byteorder = "1.2.6"
 log = "0.4"
 failure = "0.1"
 failure_derive = "0.1"
+
+[dev-dependencies]
+criterion = "0.2"
+
+[[bench]]
+name = "packet_processing"
+harness = false
