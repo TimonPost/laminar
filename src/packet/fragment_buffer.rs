@@ -12,7 +12,7 @@ impl<T> FragmentBuffer<T> where T: Default + Clone + Send + Sync {
     /// Create collection with an specific capacity.
     pub fn with_capacity(size: usize) -> Self {
         let mut entries = Vec::with_capacity(size);
-        let mut entry_sequences = Vec::with_capacity(size);
+        let mut entry_sequences = Vec::with_capacity(size).to_owned();
 
         entries.resize(size, T::default());
         entry_sequences.resize(size, 0xFFFF_FFFF);
