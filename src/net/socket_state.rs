@@ -1,12 +1,14 @@
 use std::collections::HashMap;
+use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::Duration;
 
-use packet::{Packet, PacketData};
-use packet::header::{FragmentHeader, PacketHeader};
-use net::{Connection,SocketAddr, NetworkConfig};
 use error::{NetworkError, Result};
+use events::Event;
+use net::{Connection, NetworkConfig, SocketAddr};
+use packet::header::{FragmentHeader, PacketHeader};
+use packet::{Packet, PacketData};
 use total_fragments_needed;
 
 // Type aliases
@@ -24,17 +26,22 @@ const TIMEOUT_POLL_INTERVAL: u64 = 1;
 pub struct SocketState {
     timeout: ConnectionTimeout,
     connections: ConnectionMap,
-    timeout_check_thread: thread::JoinHandle<()>
+    timeout_check_thread: thread::JoinHandle<()>,
+    events: (Sender<Event>, Receiver<Event>),
 }
 
 impl SocketState {
     pub fn new() -> Result<SocketState> {
         let connections: ConnectionMap = Arc::new(RwLock::new(HashMap::new()));
-        let thread_handle = SocketState::check_for_timeouts(connections.clone())?;
+        let (tx, rx) = mpsc::channel();
+
+        let thread_handle = SocketState::check_for_timeouts(connections.clone(), tx.clone())?;
+
         Ok(SocketState {
             connections: Arc::new(RwLock::new(HashMap::new())),
             timeout: TIMEOUT_DEFAULT,
-            timeout_check_thread: thread_handle
+            timeout_check_thread: thread_handle,
+            events: (tx, rx),
         })
     }
 
@@ -44,14 +51,21 @@ impl SocketState {
     }
 
     /// This will initialize the seq number, ack number and give back the raw data of the packet with the updated information.
-    pub fn pre_process_packet(&mut self, packet: Packet, config: &NetworkConfig) ->  Result<(SocketAddr, PacketData)>  {
-
+    pub fn pre_process_packet(
+        &mut self,
+        packet: Packet,
+        config: &NetworkConfig,
+    ) -> Result<(SocketAddr, PacketData)> {
         if packet.payload().len() > config.max_packet_size {
-            error!("Packet too large: Attempting to send {}, max={}", packet.payload().len(), config.max_packet_size);
+            error!(
+                "Packet too large: Attempting to send {}, max={}",
+                packet.payload().len(),
+                config.max_packet_size
+            );
             return Err(NetworkError::ExceededMaxPacketSize.into());
         }
 
-        let connection = self.create_connection_if_not_exists(&packet.addr())?;
+        let connection = self.get_connection_or_insert(&packet.addr())?;
 
         let mut connection_seq: u16 = 0;
         let mut their_last_seq: u16 = 0;
@@ -81,7 +95,7 @@ impl SocketState {
         // spit the packet if the payload lenght is greater than the allowrd fragment size.
         if payload_length <= config.fragment_size {
             packet_data.add_fragment(&packet_header, payload.to_vec());
-        }else {
+        } else {
             let num_fragments = total_fragments_needed(payload_length, config.fragment_size) as u8; /* safe cast max fragments is u8 */
 
             if num_fragments > config.max_fragments {
@@ -89,7 +103,8 @@ impl SocketState {
             }
 
             for fragment_id in 0..num_fragments {
-                let fragment = FragmentHeader::new(fragment_id, num_fragments, packet_header.clone());
+                let fragment =
+                    FragmentHeader::new(fragment_id, num_fragments, packet_header.clone());
 
                 // get start end pos in buffer
                 let start_fragment_pos = fragment_id as u16 * config.fragment_size; /* upcast is safe */
@@ -101,7 +116,8 @@ impl SocketState {
                 }
 
                 // get specific slice of data for fragment
-                let fragment_data = &payload[start_fragment_pos as usize..end_fragment_pos as usize]; /* upcast is safe */
+                let fragment_data =
+                    &payload[start_fragment_pos as usize..end_fragment_pos as usize]; /* upcast is safe */
 
                 packet_data.add_fragment(&fragment, fragment_data.to_vec());
             }
@@ -118,7 +134,7 @@ impl SocketState {
 
     /// This will return all dropped packets from this connection.
     pub fn dropped_packets(&mut self, addr: SocketAddr) -> Result<Vec<Packet>> {
-        let connection = self.create_connection_if_not_exists(&addr)?;
+        let connection = self.get_connection_or_insert(&addr)?;
         let mut lock = connection
             .write()
             .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;
@@ -128,8 +144,8 @@ impl SocketState {
     }
 
     /// This will process an incoming packet and update acknowledgement information.
-    pub fn process_received(&mut self, addr: SocketAddr, packet: &PacketHeader) -> Result<()>{
-        let connection = self.create_connection_if_not_exists(&addr)?;
+    pub fn process_received(&mut self, addr: SocketAddr, packet: &PacketHeader) -> Result<()> {
+        let connection = self.get_connection_or_insert(&addr)?;
         let mut lock = connection
             .write()
             .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;
@@ -146,68 +162,99 @@ impl SocketState {
         Ok(())
     }
 
+    /// This will return a `Vec` of events for processing.
+    pub fn events(&self) -> Vec<Event> {
+        let (_, ref rx) = self.events;
+
+        rx.try_iter().collect()
+    }
+
+    // Wrapper around getting the events sender
+    // This will cause a clone to be done, but this is low cost
+    fn get_events_sender(&self) -> Sender<Event> {
+        self.events.0.clone()
+    }
+
     // This function starts a background thread that does the following:
     // 1. Gets a read lock on the HashMap containing all the connections
     // 2. Iterate through each one
     // 3. Check if the last time we have heard from them (received a packet from them) is greater than the amount of time considered to be a timeout
     // 4. If they have timed out, send a notification up the stack
-    fn check_for_timeouts(connections: ConnectionMap) -> Result<thread::JoinHandle<()>> {
+    fn check_for_timeouts(
+        connections: ConnectionMap,
+        events_sender: Sender<Event>,
+    ) -> Result<thread::JoinHandle<()>> {
         let sleepy_time = Duration::from_secs(TIMEOUT_DEFAULT);
         let poll_interval = Duration::from_secs(TIMEOUT_POLL_INTERVAL);
 
         Ok(thread::Builder::new()
             .name("check_for_timeouts".into())
             .spawn(move || loop {
-                
-                    trace!("Checking for timeouts");
-                    match connections.read() {
-                        Ok(lock) => {
-                            for (key, value) in lock.iter() {
-                                if let Ok(c) = value.read() {
-                                    if c.last_heard() >= sleepy_time {
-                                        // TODO: pass up client TimedOut event
-                                        error!("Client has timed out: {:?}", key);
-                                    }
+                trace!("Checking for timeouts");
+                match connections.read() {
+                    Ok(lock) => {
+                        for (key, value) in lock.iter() {
+                            if let Ok(c) = value.read() {
+                                if c.last_heard() >= sleepy_time {
+                                    let event = Event::TimedOut(value.clone());
+
+                                    events_sender
+                                        .send(event)
+                                        .expect("Unable to send disconnect event");
+
+                                    debug!("Client has timed out: {:?}", key);
                                 }
                             }
-                        },
-                        Err(_e) => {
-                            error!("Unable to acquire read lock to check for timed out connections")
                         }
                     }
+                    Err(_e) => {
+                        error!("Unable to acquire read lock to check for timed out connections")
+                    }
+                }
 
                 thread::sleep(poll_interval);
-            })?
-        )
+            })?)
     }
 
-    #[inline]
     /// If there is no connection with the given socket address an new connection will be made.
-    fn create_connection_if_not_exists(
-        &mut self,
-        addr: &SocketAddr,
-    ) -> Result<Arc<RwLock<Connection>>> {
-        let mut lock = self
-            .connections
-            .write()
-            .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;
+    fn get_connection_or_insert(&mut self, addr: &SocketAddr) -> Result<Arc<RwLock<Connection>>> {
+        let connection = {
+            let lock = self
+                .connections
+                .read()
+                .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;
 
-        let connection = lock
-            .entry(*addr)
-            .or_insert_with(|| Arc::new(RwLock::new(Connection::new(*addr))));
+            lock.get(addr).map(|conn| conn.clone())
+        };
 
-        Ok(connection.clone())
+        match connection {
+            Some(connection) => Ok(connection),
+            None => {
+                let mut lock = self
+                    .connections
+                    .write()
+                    .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;
+
+                let connection = Arc::new(RwLock::new(Connection::new(*addr)));
+                let event = Event::Connected(connection.clone());
+
+                self.get_events_sender().send(event)?;
+                lock.insert(*addr, connection.clone());
+
+                Ok(connection)
+            }
+        }
     }
 }
 
 #[cfg(test)]
 mod test {
-    use net::{Connection, NetworkConfig, SocketState, constants};
+    use net::{constants, Connection, NetworkConfig, SocketState};
+    use packet::header::{FragmentHeader, HeaderReader, PacketHeader};
     use packet::{Packet, PacketData};
-    use packet::header::{FragmentHeader, PacketHeader, HeaderReader};
 
     use std::io::Cursor;
-    use std::net::{ToSocketAddrs, SocketAddr, IpAddr};
+    use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
     use std::str::FromStr;
     use std::{thread, time};
 
@@ -222,7 +269,7 @@ mod test {
         let addr = format!("{}:{}", TEST_HOST_IP, TEST_PORT).to_socket_addrs();
         assert!(addr.is_ok());
         let mut addr = addr.unwrap();
-        let new_conn = Connection::new(addr.next().unwrap());
+        let _ = Connection::new(addr.next().unwrap());
     }
 
     #[test]
@@ -238,31 +285,34 @@ mod test {
     }
 
     #[test]
-    pub fn construct_packet_less_than_mtu()
-    {
+    pub fn construct_packet_less_than_mtu() {
         let config = NetworkConfig::default();
 
         // - 1 so that packet can fit inside one fragment.
         let mut data = vec![0; config.fragment_size as usize - 1];
 
         // do some test processing of the data.
-        let mut processed_packet: (SocketAddr, PacketData) = simulate_packet_processing(data.clone(), &config);
+        let mut processed_packet: (SocketAddr, PacketData) =
+            simulate_packet_processing(data.clone(), &config);
 
         // check that there is only one fragment and that the data is right.
         assert_eq!(processed_packet.1.fragment_count(), 1);
-        assert_eq!(processed_packet.1.parts()[0].len(), data.len() + (constants::PACKET_HEADER_SIZE as usize));
+        assert_eq!(
+            processed_packet.1.parts()[0].len(),
+            data.len() + (constants::PACKET_HEADER_SIZE as usize)
+        );
     }
 
     #[test]
-    pub fn construct_packet_greater_than_mtu()
-    {
+    pub fn construct_packet_greater_than_mtu() {
         let config = NetworkConfig::default();
 
-        /// test data
+        // test data
         let data = vec![0; config.fragment_size as usize * 4];
 
         // do some test processing of the data.
-        let mut processed_packet: (SocketAddr, PacketData) = simulate_packet_processing(data.clone(), &config);
+        let mut processed_packet: (SocketAddr, PacketData) =
+            simulate_packet_processing(data.clone(), &config);
 
         let num_fragments = total_fragments_needed(data.len() as u16, config.fragment_size);
 
@@ -270,16 +320,19 @@ mod test {
         assert_eq!(processed_packet.1.fragment_count(), num_fragments as usize);
 
         // check if the first packet also contains the fragment header and packet header
-        assert_eq!(processed_packet.1.parts()[0].len() ,((constants::PACKET_HEADER_SIZE + constants::FRAGMENT_HEADER_SIZE) as u16 + config.fragment_size) as usize);
+        assert_eq!(
+            processed_packet.1.parts()[0].len(),
+            ((constants::PACKET_HEADER_SIZE + constants::FRAGMENT_HEADER_SIZE) as u16
+                + config.fragment_size) as usize
+        );
     }
 
     #[test]
-    pub fn construct_packet_and_reassemble_less_than_mtu()
-    {
+    pub fn construct_packet_and_reassemble_less_than_mtu() {
         let config = NetworkConfig::default();
 
         // - 1 so that packet can fit inside one fragment.
-        let data = vec![0; config.fragment_size as usize  - 1];
+        let data = vec![0; config.fragment_size as usize - 1];
 
         // do some test processing of the data.
         let mut processed_packet = simulate_packet_processing(data.clone(), &config);
@@ -292,11 +345,10 @@ mod test {
     }
 
     #[test]
-    pub fn construct_packet_and_reassemble_greater_than_mtu()
-    {
+    pub fn construct_packet_and_reassemble_greater_than_mtu() {
         let config = NetworkConfig::default();
 
-        /// test data
+        // test data
         let data = vec![0; config.fragment_size as usize * 4];
 
         // do some test processing of the data.
@@ -309,14 +361,16 @@ mod test {
 
             if prefix & 1 == 0 {
                 assert!(FragmentHeader::read(&mut cursor).is_ok())
-            }else {
+            } else {
                 assert!(FragmentHeader::read(&mut cursor).is_ok())
             }
         }
     }
 
-    fn simulate_packet_processing(data: Vec<u8>, config: &NetworkConfig) -> (SocketAddr, PacketData)
-    {
+    fn simulate_packet_processing(
+        data: Vec<u8>,
+        config: &NetworkConfig,
+    ) -> (SocketAddr, PacketData) {
         // create packet with test data
         let packet = Packet::new(get_dummy_socket_addr(), data.clone());
 
@@ -326,8 +380,7 @@ mod test {
         result.unwrap()
     }
 
-    fn get_dummy_socket_addr() -> SocketAddr
-    {
+    fn get_dummy_socket_addr() -> SocketAddr {
         SocketAddr::new(
             IpAddr::from_str("127.0.0.1").expect("Unreadable input IP."),
             12348,
