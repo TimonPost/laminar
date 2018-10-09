@@ -1,10 +1,9 @@
 extern crate laminar;
 
-use laminar::{NetworkConfig, Packet, UdpSocket};
-use laminar::net::constants;
+use laminar::net::{NetworkConfig, SocketAddr, UdpSocket, constants};
+use laminar::packet::Packet;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::{self, JoinHandle};
-use std::net::{SocketAddr};
 use std::time::{Duration, Instant};
 
 /// This is an test server we use to receive data from clients.
@@ -56,7 +55,7 @@ impl ServerMoq {
                     // reset counter
                     second_counter = Instant::now();
 
-                    println!("Packet throughput: {} p/s", packet_throughput);
+//                    println!("Packet throughput: {} p/s", packet_throughput);
                     packet_throughput = 0;
                 }
             }

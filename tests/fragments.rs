@@ -3,15 +3,14 @@ extern crate laminar;
 mod common;
 
 use std::time::{Duration, Instant};
-use std::net::SocketAddr;
 use std::sync::{Arc, RwLock};
 use std::sync::mpsc;
 
-use laminar::NetworkConfig;
+use laminar::net::{NetworkConfig, SocketAddr};
 
 use common::{ServerMoq, ClientStub};
 
-const TOTAL_PACKETS_TO_SEND: u32 = 10_000_000;
+const TOTAL_PACKETS_TO_SEND: u32 = 10_000;
 const CLIENT_ADDR: &str = "127.0.0.1:12346";
 const SERVER_ADDR: &str = "127.0.0.1:12345";
 
@@ -40,7 +39,7 @@ pub fn fragment_packet_integration_test() {
     let total_received = server_thread.join().unwrap();
     let elapsed_time = stopwatch.elapsed();
 
-    println!("Total Duration: {:?}", elapsed_time);
-    println!("Total packets send: {:?}", TOTAL_PACKETS_TO_SEND);
-    println!("Total packets received: {}", total_received);
+//    println!("Total Duration: {:?}", elapsed_time);
+//    println!("Total packets send: {:?}", TOTAL_PACKETS_TO_SEND);
+//    println!("Total packets received: {}", total_received);
 }
