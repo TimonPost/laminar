@@ -1,13 +1,11 @@
-use std::collections::HashMap;
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use packet::{Packet, PacketData};
+use packet::{Packet, PacketData, CongestionData};
 use packet::header::{FragmentHeader, PacketHeader};
-use net::{VirtualConnection, SocketAddr, NetworkConfig};
-use net::connection::ConnectionPool;
+use net::{SocketAddr, NetworkConfig};
+use net::connection::{ConnectionPool,NetworkQualityMeasurer};
 use error::{NetworkError, Result};
 use events::Event;
 use total_fragments_needed;
@@ -17,10 +15,12 @@ pub struct SocketState {
     timeout_check_thread: thread::JoinHandle<()>,
     events: (Sender<Event>, Receiver<Event>),
     connections: ConnectionPool,
+    config: NetworkConfig,
+    network_quality_measurer: NetworkQualityMeasurer,
 }
 
 impl SocketState {
-    pub fn new() -> Result<SocketState> {
+    pub fn new(config: &NetworkConfig) -> Result<SocketState> {
         let (tx, rx) = mpsc::channel();
 
         let connection_pool = ConnectionPool::new();
@@ -30,6 +30,8 @@ impl SocketState {
             connections: connection_pool,
             timeout_check_thread: join_handle,
             events: (tx, rx),
+            config: config.clone(),
+            network_quality_measurer: NetworkQualityMeasurer::new(config.clone())
         })
     }
 
@@ -67,13 +69,14 @@ impl SocketState {
             their_last_seq = lock.their_acks.last_seq;
             their_ack_field = lock.their_acks.field;
 
+            lock.congestion_avoidance_buffer.insert(CongestionData::new(connection_seq, Instant::now()), connection_seq);
+
             // queue new packet
             lock.waiting_packets.enqueue(connection_seq, packet.clone());
         }
 
         let mut packet_data = PacketData::new();
 
-        // create packet header
         let packet_header = PacketHeader::new(connection_seq, their_last_seq, their_ack_field);
 
         let payload = packet.payload();
@@ -114,6 +117,7 @@ impl SocketState {
             .write()
             .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;
 
+        // each time we send a packet we increase the local sequence number
         lock.seq_num = lock.seq_num.wrapping_add(1);
 
         Ok((packet.addr(), packet_data))
@@ -140,6 +144,8 @@ impl SocketState {
 
         lock.their_acks.ack(packet.seq);
         lock.last_heard = Instant::now();
+
+        self.network_quality_measurer.update_connection_rtt(&mut lock, packet.ack_seq());
 
         // Update dropped packets if there are any.
         let dropped_packets = lock
@@ -272,7 +278,7 @@ mod test {
         let packet = Packet::new(get_dummy_socket_addr(), data.clone());
 
         // process the packet
-        let mut socket_state = SocketState::new().unwrap();;
+        let mut socket_state = SocketState::new(&NetworkConfig::default()).unwrap();
         let result = socket_state.pre_process_packet(packet, &config);
         result.unwrap()
     }

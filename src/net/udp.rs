@@ -21,13 +21,13 @@ impl UdpSocket {
     /// Binds to the socket and then sets up the SocketState to manage the connections. Because UDP connections are not persistent, we can only infer the status of the remote endpoint by looking to see if they are sending packets or not
     pub fn bind<A: ToSocketAddrs>(addr: A, config: NetworkConfig) -> Result<Self> {
         let socket = net::UdpSocket::bind(addr)?;
-        let state = SocketState::new()?;
+        let state = SocketState::new(&config)?;
 
         Ok(UdpSocket {
             socket,
             state,
             recv_buffer: vec![0; config.receive_buffer_max_size],
-            packet_processor: PacketProcessor::new(config.clone()),
+            packet_processor: PacketProcessor::new(&config),
             config,
         })
     }

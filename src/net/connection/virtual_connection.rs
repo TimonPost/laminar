@@ -1,5 +1,5 @@
 use net::{ExternalAcks, LocalAckRecord, NetworkQuality};
-use packet::Packet;
+use packet::{Packet, FragmentBuffer, CongestionData};
 use std::fmt;
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};
@@ -14,6 +14,8 @@ pub struct VirtualConnection {
     pub last_heard: Instant,
     pub remote_address: SocketAddr,
     pub quality: NetworkQuality,
+    pub congestion_avoidance_buffer: FragmentBuffer<CongestionData>,
+    pub rtt: f32,
 }
 
 impl VirtualConnection {
@@ -27,6 +29,8 @@ impl VirtualConnection {
             last_heard: Instant::now(),
             quality: NetworkQuality::Good,
             remote_address: addr,
+            congestion_avoidance_buffer: FragmentBuffer::with_capacity(<u16>::max_value() as usize),
+            rtt: 0.0,
         }
     }
 

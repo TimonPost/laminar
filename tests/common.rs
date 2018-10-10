@@ -40,6 +40,8 @@ impl ServerMoq {
 
                         packets_total_received += 1;
                         packet_throughput += 1;
+
+                        udp_socket.send(packet);
                     }
                     Ok(None) => {}
                     Err(_) => {
@@ -55,7 +57,6 @@ impl ServerMoq {
                     // reset counter
                     second_counter = Instant::now();
 
-//                    println!("Packet throughput: {} p/s", packet_throughput);
                     packet_throughput = 0;
                 }
             }
@@ -70,10 +71,23 @@ impl ServerMoq {
         let config = self.config.clone();
         thread::spawn(move || {
             let mut client = UdpSocket::bind(client_stub.endpoint, config.clone()).unwrap();
+            client.set_nonblocking(true);
 
             let len = data_to_send.len();
 
             for i in 0..packets_to_send {
+
+                let result = client.recv();
+
+                match result {
+                    Ok(Some(packet)) => {
+                        assert_eq!(packet.payload(), data_to_send.as_slice());
+                        assert_eq!(packet.addr(), host);
+                    }
+                    Ok(None) => { }
+                    Err(_) => { }
+                }
+
                 let send_result = client.send(Packet::new(host, data_to_send.clone()));
 
                 if len <= config.fragment_size as usize {

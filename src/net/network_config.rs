@@ -26,6 +26,16 @@ pub struct NetworkConfig
     pub fragment_reassembly_buffer_size: usize,
     /// This is the size of the buffer the UDP socket reads it data into.
     pub receive_buffer_max_size: usize,
+    /// This is the factor which will smooth out network jitter. So that if one packet is not arrived fast we don't wan't to directly transform to an bad network.
+    ///
+    /// Recommended value: 10% of the rtt time.
+    /// Value is in percentage where 0 = 0 % and 1 = 100 %
+    pub rtt_smoothing_factor: f32,
+    /// This is the maximal a round trip time (rtt) for packet.
+    ///
+    /// Recommend value: 250 ms
+    /// Value is represented in milliseconds.
+    pub rtt_max_value: u16,
 }
 
 impl Default for NetworkConfig {
@@ -36,6 +46,8 @@ impl Default for NetworkConfig {
             fragment_size: FRAGMENT_SIZE_DEFAULT,
             fragment_reassembly_buffer_size: 64,
             receive_buffer_max_size: 1500,
+            rtt_smoothing_factor: 0.10,
+            rtt_max_value: 250,
         }
     }
 }

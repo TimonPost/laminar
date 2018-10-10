@@ -59,8 +59,4 @@ pub fn multiple_client_integration_test() {
 
     let total_received = server_thread.join().unwrap();
     let elapsed_time = stopwatch.elapsed();
-
-//    println!("Total Duration: {:?}", elapsed_time);
-//    println!("Total packets send: {:?}", TOTAL_PACKETS_TO_SEND);
-//    println!("Total packets received: {}", total_received);
 }
