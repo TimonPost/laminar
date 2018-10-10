@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, RwLock};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use packet::{Packet, PacketData};
 use packet::header::{FragmentHeader, PacketHeader};
@@ -139,6 +139,7 @@ impl SocketState {
             .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;
 
         lock.their_acks.ack(packet.seq);
+        lock.last_heard = Instant::now();
 
         // Update dropped packets if there are any.
         let dropped_packets = lock

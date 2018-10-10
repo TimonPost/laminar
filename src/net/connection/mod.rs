@@ -9,4 +9,3 @@ mod quality;
 pub use self::virtual_connection::VirtualConnection;
 pub use self::connection_pool::ConnectionPool;
 pub use self::quality::NetworkQuality;
-
