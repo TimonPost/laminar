@@ -1,13 +1,13 @@
 # Laminar
 
-[![Latest Version][s1]][l1] [![Build Status][s2]][l2] [![MIT/Apache][s3]][l3] [![docs.rs][s4]][l4] [![Join us on Discord][s5]][l5] ![Lines of Code][s6]
+[![Build Status][s2]][l2] [![Latest Version][s1]][l1] [![docs.rs][s4]][l4] [![Join us on Discord][s5]][l5] [![MIT/Apache][s3]][l3] ![Lines of Code][s6]
 
 [s1]: https://img.shields.io/crates/v/laminar.svg
 [l1]: https://crates.io/crates/laminar
 [s2]: https://travis-ci.org/amethyst/laminar.svg?branch=master
 [l2]: https://travis-ci.org/amethyst/laminar
 [s3]: https://img.shields.io/badge/license-MIT%2FApache-blue.svg
-[l3]: ./LICENSE
+[l3]: ./LICENSE-MIT
 [s4]: https://docs.rs/laminar/badge.svg
 [l4]: https://docs.rs/laminar/
 [s5]: https://img.shields.io/discord/425678876929163284.svg?logo=discord
@@ -16,6 +16,10 @@
 
 
 A UDP-based protocol that provides partial reliability. Coming soon!
+
+## Note
+
+This library is not yet stable. It is experimental and things may change frequently.
 
 ## Table of contents:
 - [Useful links](https://github.com/amethyst/laminar#useful-links)
@@ -108,15 +112,8 @@ match result {
         println!("Something went wrong when receiving, error: {:?}", e);
     }
 }
+
 ```
-## Notice
-"This library is not yet stable. It is experimental and things may change frequently."
-
-### Contribution
-
-Unless you explicitly state otherwise, any contribution intentionally submitted
-for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any
-additional terms or conditions.
 
 ## Authors
 
@@ -124,8 +121,13 @@ additional terms or conditions.
 - [Fletcher Haynes](https://github.com/fhaynes)
 - [Timon Post](https://github.com/TimonPost)
 
-We want to especially give credits to [gaffer on games](https://gafferongames.com/). 
-This library is based on his vision about how an gamenetwork protocol should work.
+We want to give credit to [gaffer on games](https://gafferongames.com/) as we have used his guide to building a game networking protocol to build this library. 
+
+## Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any
+additional terms or conditions.
 
 ## License
 
