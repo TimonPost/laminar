@@ -70,26 +70,26 @@ This is an example of how to use the UDP API.
 _Send packets_
 
 ```rust
-// create the necessarily config, you can edit it or just use the default.
+// Create the necessarily config, you can edit it or just use the default.
 let config = NetworkConfig::default();
 
-// setup an udp socket and bind it to the client address.
+// Setup an udp socket and bind it to the client address.
 let mut udp_socket = UdpSocket::bind("127.0.0.1:12346", config).unwrap();
 
-// create a packet that can be send with the given destination and raw data.
+// Create a packet that can be send with the given destination and raw data.
 let packet = Packet::new(destination, vec![1,2,3]);
 
-// send the packet to the endpoint we earlier placed into the packet.
+// Send the packet to the endpoint we earlier placed into the packet.
 udp_socket.send(packet);
 ```
 
 _Receive Packets_
 
 ```rust
-// create the necessarily config, you can edit it or just use the default.
+// Create the necessarily config, you can edit it or just use the default.
 let config = NetworkConfig::default();
 
-// setup an udp socket and bind it to the client address.
+// Setup an udp socket and bind it to the client address.
 let mut udp_socket = UdpSocket::bind("127.0.0.1:12345", config).unwrap();
 
 // Start receiving (blocks the current thread)
@@ -100,15 +100,15 @@ match result {
         let endpoint: SocketAddr = packet.addr();
         let received_data: &[u8] = packet.payload();
 
-        // you can here deserialize your bytes into the data you have passed it when sending.
+        // You can deserialize your bytes here into the data you have passed it when sending.
 
         println!("Received packet from: {:?} with length {}", endpoint, received_data.len());
     }
     Ok(None) => {
-        println!("This could happen when we have'n received all data from this packet yet");
+        println!("This could happen when we have not received all the data from this packet yet");
     }
     Err(e) => {
-        // We get an error if something when wrong like the address is already in use.
+        // We get an error if something went wrong, like the address is already in use.
         println!("Something went wrong when receiving, error: {:?}", e);
     }
 }
