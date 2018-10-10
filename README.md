@@ -29,10 +29,9 @@ A UDP-based protocol that provides partial reliability. Coming soon!
 
 Add the laminar package to your `Cargo.toml` file.
 
-```
+```toml
 [dependencies]
 laminar = "0.0.0"
-
 ```
 And import the laminar modules you want to use.
 
