@@ -24,7 +24,7 @@ impl SocketState {
         let (tx, rx) = mpsc::channel();
 
         let connection_pool = ConnectionPool::new();
-        let join_handle = connection_pool.start_time_out_loop( tx.clone())?;
+        let join_handle = connection_pool.start_time_out_loop(tx.clone())?;
 
         Ok(SocketState {
             connections: connection_pool,
@@ -179,28 +179,7 @@ mod test {
     use total_fragments_needed;
 
     static TEST_HOST_IP: &'static str = "127.0.0.1";
-    static TEST_BAD_HOST_IP: &'static str = "800.0.0.1";
     static TEST_PORT: &'static str = "20000";
-
-    #[test]
-    fn test_create_connection() {
-        let addr = format!("{}:{}", TEST_HOST_IP, TEST_PORT).to_socket_addrs();
-        assert!(addr.is_ok());
-        let mut addr = addr.unwrap();
-        let new_conn = VirtualConnection::new(addr.next().unwrap());
-    }
-
-    #[test]
-    fn test_invalid_addr_fails() {
-        let addr = format!("{}:{}", TEST_BAD_HOST_IP, TEST_PORT).to_socket_addrs();
-        assert!(addr.is_err());
-    }
-
-    #[test]
-    fn test_poll_for_invalid_clients() {
-        let mut socket_state = SocketState::new();
-        thread::sleep(time::Duration::from_secs(10));
-    }
 
     #[test]
     pub fn construct_packet_less_than_mtu() {
