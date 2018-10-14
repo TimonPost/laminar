@@ -7,7 +7,7 @@
 [s2]: https://travis-ci.org/amethyst/laminar.svg?branch=master
 [l2]: https://travis-ci.org/amethyst/laminar
 [s3]: https://img.shields.io/badge/license-MIT%2FApache-blue.svg
-[l3]: ./LICENSE-MIT
+[l3]: docs/LICENSE-MIT
 [s4]: https://docs.rs/laminar/badge.svg
 [l4]: https://docs.rs/laminar/
 [s5]: https://img.shields.io/discord/425678876929163284.svg?logo=discord
@@ -132,6 +132,6 @@ additional terms or conditions.
 ## License
 
 Licensed under either of
- * Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
- * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+ * Apache License, Version 2.0 ([LICENSE-APACHE](docs/LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+ * MIT license ([LICENSE-MIT](docs/LICENSE-MIT) or http://opensource.org/licenses/MIT)
 at your option.
