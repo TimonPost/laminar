@@ -1,17 +1,17 @@
 use super::VirtualConnection;
-use error::{NetworkError, Error,Result};
+use error::{NetworkError, Result};
 use events::Event;
 
 use std::thread;
 use std::sync::mpsc::Sender;
 use std::time::Duration;
-use std::sync::{Arc, Mutex, RwLock, RwLockWriteGuard};
+use std::sync::{Arc, RwLock};
 use std::net::{SocketAddr};
 use std::collections::HashMap;
 
-type Connection = Arc<RwLock<VirtualConnection>>;
-type Connections = HashMap<SocketAddr, Connection>;
-type ConnectionsCollection = Arc<RwLock<Connections>>;
+pub type Connection = Arc<RwLock<VirtualConnection>>;
+pub type Connections = HashMap<SocketAddr, Connection>;
+pub type ConnectionsCollection = Arc<RwLock<Connections>>;
 
 // Default time between checks of all clients for timeouts in seconds
 const TIMEOUT_POLL_INTERVAL: u64 = 1;

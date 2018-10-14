@@ -2,7 +2,7 @@ use std::io::{self, Cursor, ErrorKind, Error, Write, Read};
 use std::net::SocketAddr;
 
 use net::{SocketState, NetworkConfig};
-use super::{header, Packet, FragmentBuffer, ReassemblyData};
+use super::{header, Packet, FragmentBuffer, ReassemblyData, CongestionData};
 use self::header::{FragmentHeader, PacketHeader, HeaderParser, HeaderReader};
 use byteorder::ReadBytesExt;
 
@@ -17,9 +17,9 @@ pub struct PacketProcessor
 }
 
 impl PacketProcessor {
-    pub fn new(config: NetworkConfig) -> Self
+    pub fn new(config: &NetworkConfig) -> Self
     {
-        PacketProcessor { reassembly_buffer: FragmentBuffer::with_capacity(config.fragment_reassembly_buffer_size), config }
+        PacketProcessor { reassembly_buffer: FragmentBuffer::with_capacity(config.fragment_reassembly_buffer_size), config: config.clone() }
     }
 
     /// Process data and return the resulting packet
@@ -158,14 +158,14 @@ mod tests
     fn process_normal_packet_test()
     {
         let config = NetworkConfig::default();
-        let mut packet_processor = PacketProcessor::new(config.clone());
+        let mut packet_processor = PacketProcessor::new(&config);
 
         let mut test_data: Vec<u8> = vec![1,2,3,4,5];
 
         // first setup packet data
         let packet = Packet::new("127.0.0.1:12345".parse().unwrap(), test_data.clone());
 
-        let mut socket_sate = SocketState::new().unwrap();
+        let mut socket_sate = SocketState::new(&config).unwrap();
         let mut result = socket_sate.pre_process_packet(packet, &config).unwrap();
 
         let mut packet_data = result.1.parts();
@@ -187,14 +187,14 @@ mod tests
     fn process_fragment_packet_test()
     {
         let config = NetworkConfig::default();
-        let mut packet_processor = PacketProcessor::new(config.clone());
+        let mut packet_processor = PacketProcessor::new(&config);
 
         let mut test_data: Vec<u8> = vec![1;4000];
 
         // first setup packet data
         let packet = Packet::new("127.0.0.1:12345".parse().unwrap(), test_data.clone());
 
-        let mut socket_sate = SocketState::new().unwrap();
+        let mut socket_sate = SocketState::new(&config).unwrap();
         let mut result = socket_sate.pre_process_packet(packet, &config).unwrap();
 
         let mut packet_data = result.1.parts();
