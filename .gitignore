@@ -1,4 +1,5 @@
 target/
+book/
 .idea/
 **/*.rs.bk
 Cargo.lock

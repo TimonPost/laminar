@@ -1,0 +1,5 @@
+[book]
+authors = ["TimonPost"]
+multilingual = false
+src = "src"
+title = "Laminar"
