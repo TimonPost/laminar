@@ -27,7 +27,7 @@ pub fn normal_packet_integration_test() {
     let mut server = ServerMoq::new(NetworkConfig::default(), true, SERVER_ADDR.parse().unwrap());
     let server_thread = server.start_receiving(rx, test_data.to_vec());
 
-    let client = ClientStub::new(Duration::from_millis(200), CLIENT_ADDR.parse().unwrap(), TOTAL_PACKETS_TO_SEND);
+    let client = ClientStub::new(Duration::from_millis(0), CLIENT_ADDR.parse().unwrap(), TOTAL_PACKETS_TO_SEND);
 
     let stopwatch = Instant::now();
 
