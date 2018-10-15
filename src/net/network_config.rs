@@ -1,10 +1,8 @@
+use net::constants::{FRAGMENT_SIZE_DEFAULT, MAX_FRAGMENTS_DEFAULT};
 use std::default::Default;
-use net::constants::{FRAGMENT_SIZE_DEFAULT, MAX_FRAGMENTS_DEFAULT,};
-
 
 #[derive(Clone)]
-pub struct NetworkConfig
-{
+pub struct NetworkConfig {
     /// This is the maximal size an packet can get with all its fragments.
     ///
     /// Recommended value: 16384

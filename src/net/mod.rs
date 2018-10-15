@@ -1,19 +1,18 @@
 mod external_ack;
 mod local_ack;
-mod socket_state;
 mod network_config;
+mod socket_state;
 
-pub mod constants;
 mod connection;
-mod udp;
+pub mod constants;
 mod tcp;
+mod udp;
 
-pub use self::network_config::NetworkConfig;
-pub use self::connection::{VirtualConnection, NetworkQuality};
-pub use self::socket_state::SocketState;
-pub use self::udp::UdpSocket;
-pub use self::tcp::{TcpSocketState,TcpClient,TcpServer};
-pub use std::net::SocketAddr;
+pub use self::connection::{NetworkQuality, VirtualConnection};
 pub use self::external_ack::ExternalAcks;
 pub use self::local_ack::LocalAckRecord;
-
+pub use self::network_config::NetworkConfig;
+pub use self::socket_state::SocketState;
+pub use self::tcp::{TcpClient, TcpServer, TcpSocketState};
+pub use self::udp::UdpSocket;
+pub use std::net::SocketAddr;

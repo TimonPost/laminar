@@ -1,8 +1,8 @@
 extern crate laminar;
 
-use laminar::net::{NetworkConfig, SocketAddr, UdpSocket, constants};
+use laminar::net::{constants, NetworkConfig, SocketAddr, UdpSocket};
 use laminar::packet::Packet;
-use std::sync::mpsc::{Receiver, Sender, channel};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
@@ -16,12 +16,19 @@ pub struct ServerMoq {
 
 impl ServerMoq {
     pub fn new(config: NetworkConfig, non_blocking: bool, host: SocketAddr) -> Self {
-
-        ServerMoq { config, client: Vec::new(), host, non_blocking }
+        ServerMoq {
+            config,
+            client: Vec::new(),
+            host,
+            non_blocking,
+        }
     }
 
-    pub fn start_receiving(&mut self, cancellation_channel: Receiver<bool>, expected_payload: Vec<u8>) -> JoinHandle<u32>
-    {
+    pub fn start_receiving(
+        &mut self,
+        cancellation_channel: Receiver<bool>,
+        expected_payload: Vec<u8>,
+    ) -> JoinHandle<u32> {
         let mut udp_socket: UdpSocket = UdpSocket::bind(self.host, self.config.clone()).unwrap();
         udp_socket.set_nonblocking(self.non_blocking);
 
@@ -47,7 +54,11 @@ impl ServerMoq {
                     Err(_) => {
                         // if no packets are send we try to detect if the client has send us an notifier to stop the receive loop.
                         match cancellation_channel.try_recv() {
-                            Ok(val) => if val == true { return packets_total_received },
+                            Ok(val) => {
+                                if val == true {
+                                    return packets_total_received;
+                                }
+                            }
                             Err(_) => {}
                         }
                     }
@@ -63,8 +74,7 @@ impl ServerMoq {
         })
     }
 
-    pub fn add_client(&self, data: Vec<u8>, client_stub: ClientStub) -> JoinHandle<()>
-    {
+    pub fn add_client(&self, data: Vec<u8>, client_stub: ClientStub) -> JoinHandle<()> {
         let packets_to_send = client_stub.packets_to_send;
         let host = self.host;
         let data_to_send = data;
@@ -76,7 +86,6 @@ impl ServerMoq {
             let len = data_to_send.len();
 
             for i in 0..packets_to_send {
-
                 let result = client.recv();
 
                 match result {
@@ -84,15 +93,18 @@ impl ServerMoq {
                         assert_eq!(packet.payload(), data_to_send.as_slice());
                         assert_eq!(packet.addr(), host);
                     }
-                    Ok(None) => { }
-                    Err(_) => { }
+                    Ok(None) => {}
+                    Err(_) => {}
                 }
 
                 let send_result = client.send(Packet::new(host, data_to_send.clone()));
 
                 if len <= config.fragment_size as usize {
-                    assert_eq!(send_result.unwrap(), len + constants::PACKET_HEADER_SIZE as usize);
-                }else {
+                    assert_eq!(
+                        send_result.unwrap(),
+                        len + constants::PACKET_HEADER_SIZE as usize
+                    );
+                } else {
                     // if fragment, todo: add size assert.
                     send_result.is_ok();
                 }
@@ -103,17 +115,22 @@ impl ServerMoq {
     }
 }
 
-pub struct ClientStub
-{
+pub struct ClientStub {
     timeout_sending: Duration,
     endpoint: SocketAddr,
-    packets_to_send: u32
+    packets_to_send: u32,
 }
 
-impl ClientStub
-{
-    pub fn new(timeout_sending: Duration, endpoint: SocketAddr, packets_to_send: u32) -> ClientStub
-    {
-        ClientStub { timeout_sending, endpoint, packets_to_send }
+impl ClientStub {
+    pub fn new(
+        timeout_sending: Duration,
+        endpoint: SocketAddr,
+        packets_to_send: u32,
+    ) -> ClientStub {
+        ClientStub {
+            timeout_sending,
+            endpoint,
+            packets_to_send,
+        }
     }
 }

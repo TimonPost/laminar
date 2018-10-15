@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use packet::Packet;
+use std::collections::HashMap;
 
 /// Packets waiting for an ack
 ///
@@ -70,7 +70,7 @@ mod test {
 
     #[test]
     fn acking_single_packet() {
-        let mut record:LocalAckRecord = Default::default();
+        let mut record: LocalAckRecord = Default::default();
         record.enqueue(0, dummy_packet());
         let dropped = record.ack(0, 0);
         assert_eq!(dropped.len(), 0);
@@ -79,7 +79,7 @@ mod test {
 
     #[test]
     fn acking_several_packets() {
-        let mut record:LocalAckRecord = Default::default();
+        let mut record: LocalAckRecord = Default::default();
         record.enqueue(0, dummy_packet());
         record.enqueue(1, dummy_packet());
         record.enqueue(2, dummy_packet());
@@ -90,7 +90,7 @@ mod test {
 
     #[test]
     fn acking_a_full_set_of_packets() {
-        let mut record:LocalAckRecord = Default::default();
+        let mut record: LocalAckRecord = Default::default();
 
         for i in 0..33 {
             record.enqueue(i, dummy_packet())
@@ -104,7 +104,7 @@ mod test {
 
     #[test]
     fn dropping_one_packet() {
-        let mut record:LocalAckRecord = Default::default();
+        let mut record: LocalAckRecord = Default::default();
 
         for i in 0..33 {
             record.enqueue(i, dummy_packet());
@@ -118,7 +118,7 @@ mod test {
 
     #[test]
     fn acking_around_zero() {
-        let mut record:LocalAckRecord = Default::default();
+        let mut record: LocalAckRecord = Default::default();
 
         for i in 0..33_u16 {
             record.enqueue(i.wrapping_sub(16), dummy_packet());
@@ -132,7 +132,7 @@ mod test {
 
     #[test]
     fn not_dropping_new_packets() {
-        let mut record:LocalAckRecord = Default::default();
+        let mut record: LocalAckRecord = Default::default();
         record.enqueue(0, dummy_packet());
         record.enqueue(1, dummy_packet());
         record.enqueue(2, dummy_packet());
@@ -145,7 +145,7 @@ mod test {
 
     #[test]
     fn drops_old_packets() {
-        let mut record:LocalAckRecord = Default::default();
+        let mut record: LocalAckRecord = Default::default();
         record.enqueue(0, dummy_packet());
         record.enqueue(40, dummy_packet());
         let dropped = record.ack(40, 0);
@@ -155,7 +155,7 @@ mod test {
 
     #[test]
     fn drops_really_old_packets() {
-        let mut record:LocalAckRecord = Default::default();
+        let mut record: LocalAckRecord = Default::default();
         record.enqueue(50000, dummy_packet());
         record.enqueue(0, dummy_packet());
         record.enqueue(1, dummy_packet());

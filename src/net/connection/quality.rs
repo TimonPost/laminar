@@ -1,5 +1,5 @@
-use std::time::Duration;
 use std::sync::RwLockWriteGuard;
+use std::time::Duration;
 
 use net::connection::VirtualConnection;
 
@@ -18,17 +18,18 @@ pub struct NetworkQualityMeasurer {
     config: NetworkConfig,
 }
 
-impl NetworkQualityMeasurer
-{
-    pub fn new(config: NetworkConfig) -> NetworkQualityMeasurer
-    {
+impl NetworkQualityMeasurer {
+    pub fn new(config: NetworkConfig) -> NetworkQualityMeasurer {
         NetworkQualityMeasurer { config }
     }
 
     /// This will calculate the round trip time (rtt) from the given acknowledgement.
     /// Where after it updates the rtt from the given connection.
-    pub fn update_connection_rtt(&self, connection: &mut RwLockWriteGuard<VirtualConnection>, ack_seq: u16)
-    {
+    pub fn update_connection_rtt(
+        &self,
+        connection: &mut RwLockWriteGuard<VirtualConnection>,
+        ack_seq: u16,
+    ) {
         let mut smoothed_rrt = 0.0;
         {
             let mut congestion_data = connection.congestion_avoidance_buffer.get_mut(ack_seq);
@@ -47,8 +48,8 @@ impl NetworkQualityMeasurer
                 let rtt_time = self.as_milliseconds(elapsed_time);
 
                 self.smooth_out_rtt(rtt_time)
-            },
-            None => { 0.0 }
+            }
+            None => 0.0,
         }
     }
 
@@ -56,8 +57,7 @@ impl NetworkQualityMeasurer
     ///
     /// `as_milliseconds` is not supported yet supported in rust stable.
     /// See this stackoverflow post for more info: https://stackoverflow.com/questions/36816072/how-do-i-get-a-duration-as-a-number-of-milliseconds-in-rust
-    fn as_milliseconds(&self, duration: Duration) -> u64
-    {
+    fn as_milliseconds(&self, duration: Duration) -> u64 {
         let nanos = duration.subsec_nanos() as u64;
         (1000 * 1000 * 1000 * duration.as_secs() + nanos) / (1000 * 1000)
     }
@@ -70,8 +70,7 @@ impl NetworkQualityMeasurer
     ///
     /// We do this so that if one packet has an bad rtt it will not directly bring down the or network quality estimation.
     /// The default is 10% smoothing so if in total or packet is 50 milliseconds later than max allowed rtt we will increase or rtt estimation with 5.
-    fn smooth_out_rtt(&self, rtt: u64) -> f32
-    {
+    fn smooth_out_rtt(&self, rtt: u64) -> f32 {
         let exceeded_rrt_time = rtt as i64 - self.config.rtt_max_value as i64;
         exceeded_rrt_time as f32 * self.config.rtt_smoothing_factor
     }
@@ -79,13 +78,13 @@ impl NetworkQualityMeasurer
 
 #[cfg(test)]
 mod test {
-    use net::NetworkConfig;
     use net::connection::VirtualConnection;
+    use net::NetworkConfig;
     use packet::CongestionData;
 
-    use std::net::ToSocketAddrs;
-    use std::time::{Instant, Duration};
     use super::{NetworkQualityMeasurer, RwLockWriteGuard};
+    use std::net::ToSocketAddrs;
+    use std::time::{Duration, Instant};
 
     use std::sync::RwLock;
 
@@ -114,8 +113,7 @@ mod test {
     }
 
     #[test]
-    fn smooth_out_rtt()
-    {
+    fn smooth_out_rtt() {
         let mut config = NetworkConfig::default();
         // for test purpose make sure we set smoothing factor to 10%.
         config.rtt_smoothing_factor = 0.10;

@@ -1,5 +1,4 @@
-pub trait HeaderParser
-{
+pub trait HeaderParser {
     type Output;
 
     /// Parse the given instance to the specified Header type

@@ -1,6 +1,6 @@
 use failure;
-use std::result;
 use std::io::{self, ErrorKind};
+use std::result;
 
 pub type Error = failure::Error;
 pub type Result<T> = result::Result<T, Error>;
@@ -37,5 +37,5 @@ pub enum NetworkError {
     #[fail(display = "Unable to create UDP SocketState structure")]
     UDPSocketStateCreationFailed,
     #[fail(display = "Unable to set nonblocking option")]
-    UnableToSetNonblocking
+    UnableToSetNonblocking,
 }

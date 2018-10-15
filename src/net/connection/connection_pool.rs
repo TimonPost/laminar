@@ -2,12 +2,12 @@ use super::VirtualConnection;
 use error::{NetworkError, Result};
 use events::Event;
 
-use std::thread;
-use std::sync::mpsc::Sender;
-use std::time::Duration;
-use std::sync::{Arc, RwLock};
-use std::net::{SocketAddr};
 use std::collections::HashMap;
+use std::net::SocketAddr;
+use std::sync::mpsc::Sender;
+use std::sync::{Arc, RwLock};
+use std::thread;
+use std::time::Duration;
 
 pub type Connection = Arc<RwLock<VirtualConnection>>;
 pub type Connections = HashMap<SocketAddr, Connection>;
@@ -17,8 +17,7 @@ pub type ConnectionsCollection = Arc<RwLock<Connections>>;
 const TIMEOUT_POLL_INTERVAL: u64 = 1;
 
 /// This is an pool of virtual connections (connected) over UDP.
-pub struct ConnectionPool
-{
+pub struct ConnectionPool {
     timeout: Duration,
     connections: ConnectionsCollection,
     sleepy_time: Duration,
@@ -26,17 +25,20 @@ pub struct ConnectionPool
 }
 
 impl ConnectionPool {
-    pub fn new() -> ConnectionPool
-    {
+    pub fn new() -> ConnectionPool {
         let sleepy_time = Duration::from_secs(1);
         let poll_interval = Duration::from_secs(TIMEOUT_POLL_INTERVAL);
 
-        ConnectionPool { timeout: Duration::from_secs(1), connections: Arc::new(RwLock::new(HashMap::new())), sleepy_time, poll_interval }
+        ConnectionPool {
+            timeout: Duration::from_secs(1),
+            connections: Arc::new(RwLock::new(HashMap::new())),
+            sleepy_time,
+            poll_interval,
+        }
     }
 
     /// Set the timeout before an client will be seen as disconnected.
-    pub fn set_timeout(&mut self, timeout: Duration)
-    {
+    pub fn set_timeout(&mut self, timeout: Duration) {
         self.timeout = timeout;
     }
 
@@ -61,32 +63,35 @@ impl ConnectionPool {
     /// 2. Iterate through each one
     /// 3. Check if the last time we have heard from them (received a packet from them) is greater than the amount of time considered to be a timeout
     /// 4. If they have timed out, send a notification up the stack
-    pub fn start_time_out_loop(&self, events_sender: Sender<Event>) -> Result<thread::JoinHandle<()>>
-    {
+    pub fn start_time_out_loop(
+        &self,
+        events_sender: Sender<Event>,
+    ) -> Result<thread::JoinHandle<()>> {
         let connections = self.connections.clone();
         let poll_interval = self.poll_interval;
 
         let sender = events_sender.clone();
         Ok(thread::Builder::new()
             .name("check_for_timeouts".into())
-            .spawn(move || {
-                loop {
-                    match connections.read() {
-                        Ok(lock) => {
-                            ConnectionPool::check_for_timeouts(&*lock, poll_interval, &sender);
-                        },
-                        Err(e) => {
-                            error!("Unable to acquire read lock to check for timed out connections")
-                        }
+            .spawn(move || loop {
+                match connections.read() {
+                    Ok(lock) => {
+                        ConnectionPool::check_for_timeouts(&*lock, poll_interval, &sender);
                     }
-                    thread::sleep(poll_interval);
+                    Err(e) => {
+                        error!("Unable to acquire read lock to check for timed out connections")
+                    }
                 }
-            })?
-        )
+                thread::sleep(poll_interval);
+            })?)
     }
 
     /// Check if there are any connections that have not been active for the given Duration.
-    fn check_for_timeouts(connections: &Connections, sleepy_time: Duration, events_sender: &Sender<Event>) {
+    fn check_for_timeouts(
+        connections: &Connections,
+        sleepy_time: Duration,
+        events_sender: &Sender<Event>,
+    ) {
         for (key, value) in connections.iter() {
             if let Ok(c) = value.read() {
                 if c.last_heard() >= sleepy_time {
@@ -109,13 +114,12 @@ mod test {
     use std::thread;
     use std::time::Duration;
 
-    use super::{ConnectionPool, TIMEOUT_POLL_INTERVAL, Arc, Mutex};
-    use net::connection::{VirtualConnection};
+    use super::{Arc, ConnectionPool, Mutex, TIMEOUT_POLL_INTERVAL};
     use events::Event;
+    use net::connection::VirtualConnection;
 
     #[test]
-    fn connection_timed_out()
-    {
+    fn connection_timed_out() {
         let (tx, rx) = channel();
 
         let mut connections = ConnectionPool::new();
@@ -131,18 +135,20 @@ mod test {
             Ok(event) => {
                 match event {
                     Event::TimedOut(client) => {
-                        assert_eq!(client.read().unwrap().remote_address, "127.0.0.1:12345".parse().unwrap());
-                    },
-                    _ => { panic!("Didn't expect any other events than TimedOut.") }
+                        assert_eq!(
+                            client.read().unwrap().remote_address,
+                            "127.0.0.1:12345".parse().unwrap()
+                        );
+                    }
+                    _ => panic!("Didn't expect any other events than TimedOut."),
                 };
-            },
-            Err(e) => { panic!("No events found!") }
+            }
+            Err(e) => panic!("No events found!"),
         };
     }
 
     #[test]
-    fn insert_connection()
-    {
+    fn insert_connection() {
         let mut connections = ConnectionPool::new();
 
         let addr = &("127.0.0.1:12345".parse().unwrap());

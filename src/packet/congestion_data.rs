@@ -11,14 +11,16 @@ impl CongestionData {
     pub fn new(sequence: u16, sending_time: Instant) -> Self {
         CongestionData {
             sequence,
-            sending_time
+            sending_time,
         }
     }
 }
 
-impl Default for CongestionData
-{
+impl Default for CongestionData {
     fn default() -> Self {
-        CongestionData { sequence: 0, sending_time: Instant::now() }
+        CongestionData {
+            sequence: 0,
+            sending_time: Instant::now(),
+        }
     }
 }

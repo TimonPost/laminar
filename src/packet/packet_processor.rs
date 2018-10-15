@@ -1,30 +1,37 @@
-use std::io::{self, Cursor, ErrorKind, Error, Write, Read};
+use std::io::{self, Cursor, Error, ErrorKind, Read, Write};
 use std::net::SocketAddr;
 
-use net::{SocketState, NetworkConfig};
-use super::{header, Packet, FragmentBuffer, ReassemblyData, CongestionData};
-use self::header::{FragmentHeader, PacketHeader, HeaderParser, HeaderReader};
+use self::header::{FragmentHeader, HeaderParser, HeaderReader, PacketHeader};
+use super::{header, CongestionData, FragmentBuffer, Packet, ReassemblyData};
 use byteorder::ReadBytesExt;
+use net::{NetworkConfig, SocketState};
 
 use error::{NetworkError, Result};
 
 /// An wrapper for processing data.
-pub struct PacketProcessor
-{
+pub struct PacketProcessor {
     /// buffer for temporarily fragment storage
     reassembly_buffer: FragmentBuffer<ReassemblyData>,
     config: NetworkConfig,
 }
 
 impl PacketProcessor {
-    pub fn new(config: &NetworkConfig) -> Self
-    {
-        PacketProcessor { reassembly_buffer: FragmentBuffer::with_capacity(config.fragment_reassembly_buffer_size), config: config.clone() }
+    pub fn new(config: &NetworkConfig) -> Self {
+        PacketProcessor {
+            reassembly_buffer: FragmentBuffer::with_capacity(
+                config.fragment_reassembly_buffer_size,
+            ),
+            config: config.clone(),
+        }
     }
 
     /// Process data and return the resulting packet
-    pub fn process_data(&mut self, packet: Vec<u8>, addr: SocketAddr, socket_state: &mut SocketState) -> Result<Option<Packet>>
-    {
+    pub fn process_data(
+        &mut self,
+        packet: Vec<u8>,
+        addr: SocketAddr,
+        socket_state: &mut SocketState,
+    ) -> Result<Option<Packet>> {
         let prefix_byte = packet[0];
         let mut cursor = Cursor::new(packet);
 
@@ -39,13 +46,12 @@ impl PacketProcessor {
         return match received_bytes {
             Ok(Some(payload)) => Ok(Some(Packet::new(addr, payload))),
             Ok(None) => Ok(None),
-            Err(e) => Err (NetworkError::ReceiveFailed.into())
-        }
+            Err(e) => Err(NetworkError::ReceiveFailed.into()),
+        };
     }
 
     /// Extract fragments from data.
-    fn handle_fragment(&mut self, cursor: &mut Cursor<Vec<u8>>) -> Result<Option<Vec<u8>>>
-    {
+    fn handle_fragment(&mut self, cursor: &mut Cursor<Vec<u8>>) -> Result<Option<Vec<u8>>> {
         // read fragment packet
         let fragment_header = FragmentHeader::read(cursor)?;
 
@@ -60,7 +66,7 @@ impl PacketProcessor {
             // get entry of previous received fragments
             let reassembly_data = match self.reassembly_buffer.get_mut(fragment_header.sequence()) {
                 Some(val) => val,
-                None => return Err(NetworkError::InvalidFragmentHeader.into())
+                None => return Err(NetworkError::InvalidFragmentHeader.into()),
             };
 
             // Got the data
@@ -94,15 +100,19 @@ impl PacketProcessor {
             let sequence = sequence as u16;
             self.reassembly_buffer.remove(sequence);
 
-            return Ok(Some(total_buffer))
+            return Ok(Some(total_buffer));
         }
 
         return Ok(None);
     }
 
     /// Extract normal header and dat from data.
-    fn handle_normal_packet(&mut self, cursor: &mut Cursor<Vec<u8>>, addr: &SocketAddr, socket_state: &mut SocketState) -> Result<Option<Vec<u8>>>
-    {
+    fn handle_normal_packet(
+        &mut self,
+        cursor: &mut Cursor<Vec<u8>>,
+        addr: &SocketAddr,
+        socket_state: &mut SocketState,
+    ) -> Result<Option<Vec<u8>>> {
         let packet_header = PacketHeader::read(cursor);
 
         match packet_header {
@@ -113,27 +123,33 @@ impl PacketProcessor {
                 cursor.read_to_end(&mut payload)?;
 
                 Ok(Some(payload))
-            },
-            Err(e) => Err(NetworkError::HeaderParsingFailed.into())
+            }
+            Err(e) => Err(NetworkError::HeaderParsingFailed.into()),
         }
     }
 
     /// if fragment does not exists we need to insert a new entry
-    fn create_fragment_if_not_exists(&mut self, fragment_header: &FragmentHeader) -> Result<()>
-    {
+    fn create_fragment_if_not_exists(&mut self, fragment_header: &FragmentHeader) -> Result<()> {
         if !self.reassembly_buffer.exists(fragment_header.sequence()) {
             if fragment_header.id() == 0 {
-                match fragment_header.packet_header()
-                {
+                match fragment_header.packet_header() {
                     Some(header) => {
-                        let reassembly_data = ReassemblyData::new(fragment_header.sequence(), header.ack_seq(), header.ack_field(), fragment_header.fragment_count(), fragment_header.size() as usize, (9 + self.config.fragment_size) as usize);
+                        let reassembly_data = ReassemblyData::new(
+                            fragment_header.sequence(),
+                            header.ack_seq(),
+                            header.ack_field(),
+                            fragment_header.fragment_count(),
+                            fragment_header.size() as usize,
+                            (9 + self.config.fragment_size) as usize,
+                        );
 
-                        self.reassembly_buffer.insert(reassembly_data.clone(), fragment_header.sequence());
-                    },
-                    None => return Err(NetworkError::InvalidFragmentHeader.into())
+                        self.reassembly_buffer
+                            .insert(reassembly_data.clone(), fragment_header.sequence());
+                    }
+                    None => return Err(NetworkError::InvalidFragmentHeader.into()),
                 }
             } else {
-                return Err( NetworkError::InvalidFragmentHeader.into());
+                return Err(NetworkError::InvalidFragmentHeader.into());
             }
         }
 
@@ -141,11 +157,10 @@ impl PacketProcessor {
     }
 }
 
-mod tests
-{
+mod tests {
     use super::PacketProcessor;
     use net::{NetworkConfig, SocketState};
-    use packet::{Packet, header};
+    use packet::{header, Packet};
     use std::io::Cursor;
     use total_fragments_needed;
 
@@ -155,12 +170,11 @@ mod tests
     /// 2. process it with `pre_process_packet` so we have valid raw data
     /// 3. then assert that the Packet we've gotten from contains the right data.
     #[test]
-    fn process_normal_packet_test()
-    {
+    fn process_normal_packet_test() {
         let config = NetworkConfig::default();
         let mut packet_processor = PacketProcessor::new(&config);
 
-        let mut test_data: Vec<u8> = vec![1,2,3,4,5];
+        let mut test_data: Vec<u8> = vec![1, 2, 3, 4, 5];
 
         // first setup packet data
         let packet = Packet::new("127.0.0.1:12345".parse().unwrap(), test_data.clone());
@@ -173,7 +187,10 @@ mod tests
         assert_eq!(packet_data.len(), 1);
 
         for part in packet_data {
-            let packet: Packet = packet_processor.process_data(part, result.0, &mut socket_sate).unwrap().unwrap(); /* unwrap should not fail and if it would test failed :) */
+            let packet: Packet = packet_processor
+                .process_data(part, result.0, &mut socket_sate)
+                .unwrap()
+                .unwrap(); /* unwrap should not fail and if it would test failed :) */
             assert_eq!(packet.payload(), test_data.as_slice());
             assert_eq!(packet.addr(), "127.0.0.1:12345".parse().unwrap());
         }
@@ -184,12 +201,11 @@ mod tests
     /// 2. process it with `pre_process_packet` so we have valid raw data
     /// 3. then assert that the Packet we've gotten from contains the right data.
     #[test]
-    fn process_fragment_packet_test()
-    {
+    fn process_fragment_packet_test() {
         let config = NetworkConfig::default();
         let mut packet_processor = PacketProcessor::new(&config);
 
-        let mut test_data: Vec<u8> = vec![1;4000];
+        let mut test_data: Vec<u8> = vec![1; 4000];
 
         // first setup packet data
         let packet = Packet::new("127.0.0.1:12345".parse().unwrap(), test_data.clone());
@@ -199,16 +215,18 @@ mod tests
 
         let mut packet_data = result.1.parts();
 
-        let expected_fragments = total_fragments_needed(test_data.len() as u16, config.fragment_size) as usize;
+        let expected_fragments =
+            total_fragments_needed(test_data.len() as u16, config.fragment_size) as usize;
         assert_eq!(packet_data.len(), expected_fragments);
 
         let mut is_packet_reassembled = false;
 
         for part in packet_data {
-            let result: Option<Packet> = packet_processor.process_data(part, result.0, &mut socket_sate).unwrap(); /* unwrap should not fail and if it would test failed :) */
+            let result: Option<Packet> = packet_processor
+                .process_data(part, result.0, &mut socket_sate)
+                .unwrap(); /* unwrap should not fail and if it would test failed :) */
 
-            if let Some(packet) = result
-            {
+            if let Some(packet) = result {
                 assert_eq!(packet.payload(), test_data.as_slice());
                 assert_eq!(packet.addr(), "127.0.0.1:12345".parse().unwrap());
                 is_packet_reassembled = true;
