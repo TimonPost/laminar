@@ -1,13 +1,11 @@
-use std::io::{self, Cursor, Error, ErrorKind};
 use super::{HeaderParser, HeaderReader};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use net::constants::PACKET_HEADER_SIZE;
-
+use std::io::{self, Cursor, Error, ErrorKind};
 
 #[derive(Copy, Clone, Debug)]
 /// This is the default header.
-pub struct PacketHeader
-{
+pub struct PacketHeader {
     // this is the sequence number so that we can know where in the sequence of packages this packet belongs.
     pub seq: u16,
     // this is the last acknowledged sequence number.
@@ -29,27 +27,23 @@ impl PacketHeader {
     }
 
     /// Get the sequence number from this packet.
-    pub fn sequence(&self) -> u16
-    {
+    pub fn sequence(&self) -> u16 {
         self.seq
     }
 
     /// Get bit field of all last 32 acknowledged packages
-    pub fn ack_field(&self) -> u32
-    {
+    pub fn ack_field(&self) -> u32 {
         self.ack_field
     }
 
     /// Get last acknowledged sequence number.
-    pub fn ack_seq(&self) -> u16
-    {
+    pub fn ack_seq(&self) -> u16 {
         self.ack_seq
     }
 }
 
-impl HeaderParser for PacketHeader
-{
-    type Output =  io::Result<Vec<u8>>;
+impl HeaderParser for PacketHeader {
+    type Output = io::Result<Vec<u8>>;
 
     fn parse(&self) -> <Self as HeaderParser>::Output {
         let mut wtr = Vec::new();
@@ -61,15 +55,14 @@ impl HeaderParser for PacketHeader
     }
 }
 
-impl HeaderReader for PacketHeader
-{
+impl HeaderReader for PacketHeader {
     type Header = io::Result<PacketHeader>;
 
-    fn read(rdr:  &mut Cursor<Vec<u8>>) -> <Self as HeaderReader>::Header {
+    fn read(rdr: &mut Cursor<Vec<u8>>) -> <Self as HeaderReader>::Header {
         let prefix_byte = rdr.read_u8()?;
 
         if prefix_byte != 0 {
-            return  Err(Error::new(ErrorKind::Other, "Invalid packet header"));
+            return Err(Error::new(ErrorKind::Other, "Invalid packet header"));
         }
 
         let seq = rdr.read_u16::<BigEndian>()?;
@@ -83,22 +76,19 @@ impl HeaderReader for PacketHeader
         })
     }
 
-    fn size(&self) -> u8
-    {
+    fn size(&self) -> u8 {
         PACKET_HEADER_SIZE
     }
 }
 
-mod tests
-{
-    use packet::header::{PacketHeader, FragmentHeader, HeaderParser, HeaderReader};
+mod tests {
     use byteorder::ReadBytesExt;
+    use packet::header::{FragmentHeader, HeaderParser, HeaderReader, PacketHeader};
     use std::io::Cursor;
 
     #[test]
-    pub fn serializes_deserialize_packet_header_test()
-    {
-        let packet_header = PacketHeader::new(1,1,5421);
+    pub fn serializes_deserialize_packet_header_test() {
+        let packet_header = PacketHeader::new(1, 1, 5421);
         let packet_serialized: Vec<u8> = packet_header.parse().unwrap();
 
         let mut cursor = Cursor::new(packet_serialized);

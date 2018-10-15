@@ -2,13 +2,13 @@ extern crate laminar;
 
 mod common;
 
-use std::time::{Duration, Instant};
-use std::sync::{Arc, RwLock};
 use std::sync::mpsc;
+use std::sync::{Arc, RwLock};
+use std::time::{Duration, Instant};
 
-use laminar::net::{ NetworkConfig, SocketAddr };
+use laminar::net::{NetworkConfig, SocketAddr};
 
-use common::{ServerMoq, ClientStub};
+use common::{ClientStub, ServerMoq};
 
 const TOTAL_PACKETS_TO_SEND: u32 = 500;
 const SERVER_ADDR: &str = "127.0.0.1:12345";
@@ -20,7 +20,7 @@ const SERVER_ADDR: &str = "127.0.0.1:12345";
 /// 3. Validate received data.
 #[test]
 pub fn multiple_client_integration_test() {
-    let (tx,rx) = mpsc::channel();
+    let (tx, rx) = mpsc::channel();
 
     let test_data = "Test Data!".as_bytes();
 

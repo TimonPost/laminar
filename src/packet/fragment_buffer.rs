@@ -1,14 +1,20 @@
-use std::io::Result;
 use std::clone::Clone;
+use std::io::Result;
 
 /// Collection for storing data of any kind.
-pub struct FragmentBuffer<T>  where T: Default + Clone + Send + Sync  {
+pub struct FragmentBuffer<T>
+where
+    T: Default + Clone + Send + Sync,
+{
     entries: Vec<T>,
     entry_sequences: Vec<u16>,
     size: usize,
 }
 
-impl<T> FragmentBuffer<T> where T: Default + Clone + Send + Sync {
+impl<T> FragmentBuffer<T>
+where
+    T: Default + Clone + Send + Sync,
+{
     /// Create collection with an specific capacity.
     pub fn with_capacity(size: usize) -> Self {
         let mut entries = Vec::with_capacity(size);
@@ -54,8 +60,7 @@ impl<T> FragmentBuffer<T> where T: Default + Clone + Send + Sync {
     }
 
     /// checks if an certain entry exists.
-    pub fn exists(&self, sequence: u16) -> bool
-    {
+    pub fn exists(&self, sequence: u16) -> bool {
         let index = self.index(sequence);
         if self.entry_sequences[index] != sequence {
             return false;
@@ -82,16 +87,14 @@ mod tests {
     struct DataStub;
 
     #[test]
-    fn insert_into_fragment_buffer_test()
-    {
+    fn insert_into_fragment_buffer_test() {
         let mut fragment_buffer = FragmentBuffer::with_capacity(2);
         fragment_buffer.insert(DataStub, 1);
         assert!(fragment_buffer.exists(1));
     }
 
     #[test]
-    fn remove_from_fragment_buffer_test()
-    {
+    fn remove_from_fragment_buffer_test() {
         let mut fragment_buffer = FragmentBuffer::with_capacity(2);
         fragment_buffer.insert(DataStub, 1);
         fragment_buffer.remove(1);
@@ -99,8 +102,7 @@ mod tests {
     }
 
     #[test]
-    fn fragment_buffer_len_test()
-    {
+    fn fragment_buffer_len_test() {
         let mut fragment_buffer = FragmentBuffer::with_capacity(2);
         fragment_buffer.insert(DataStub, 1);
         fragment_buffer.insert(DataStub, 2);

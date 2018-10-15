@@ -1,9 +1,9 @@
 //! Amethysts networking protocol
 
 extern crate bincode;
+extern crate byteorder;
 extern crate failure;
 extern crate serde;
-extern crate byteorder;
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
@@ -11,8 +11,8 @@ extern crate log;
 #[macro_use]
 extern crate failure_derive;
 
-pub mod events;
 pub mod error;
+pub mod events;
 pub mod net;
 pub mod packet;
 
@@ -27,7 +27,7 @@ pub mod packet;
 /// Note that when rust is rounding it is always rounding to zero (3.456 as u32 = 3)
 /// 1. calculate with modulo if `number 1` fits exactly in the `number 2`.
 /// 2. Divide `number 1` with `number 2` (this wil be rounded to zero by rust)
-/// 3. So in all cases whe need to add 1 to get the right amount of fragments.
+/// 3. So in all cases we need to add 1 to get the right amount of fragments.
 ///
 /// lets take an example
 ///
@@ -43,10 +43,9 @@ pub mod packet;
 ///
 /// So an example of dividing an packet of bytes we get these fragments:
 ///
-/// So for 4000 bytes whe need 4 fragments
+/// So for 4000 bytes we need 4 fragments
 /// [fragment: 1024] [fragment: 1024] [fragment: 1024] [fragment: 928]
-fn total_fragments_needed(payload_length: u16, fragment_size: u16) -> u16
-{
+fn total_fragments_needed(payload_length: u16, fragment_size: u16) -> u16 {
     let remainder = if payload_length % fragment_size > 0 { 1 } else { 0 };
-     ((payload_length / fragment_size) + remainder)
+    ((payload_length / fragment_size) + remainder)
 }

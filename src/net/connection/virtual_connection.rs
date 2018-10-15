@@ -1,5 +1,5 @@
 use net::{ExternalAcks, LocalAckRecord, NetworkQuality};
-use packet::{Packet, FragmentBuffer, CongestionData};
+use packet::{CongestionData, FragmentBuffer, Packet};
 use std::fmt;
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};

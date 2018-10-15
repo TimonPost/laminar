@@ -2,12 +2,12 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use packet::{Packet, PacketData, CongestionData};
-use packet::header::{FragmentHeader, PacketHeader};
-use net::{SocketAddr, NetworkConfig};
-use net::connection::{ConnectionPool,NetworkQualityMeasurer};
 use error::{NetworkError, Result};
 use events::Event;
+use net::connection::{ConnectionPool, NetworkQualityMeasurer};
+use net::{NetworkConfig, SocketAddr};
+use packet::header::{FragmentHeader, PacketHeader};
+use packet::{CongestionData, Packet, PacketData};
 use total_fragments_needed;
 
 /// This holds the 'virtual connections' currently (connected) to the udp socket.
@@ -31,7 +31,7 @@ impl SocketState {
             timeout_check_thread: join_handle,
             events: (tx, rx),
             config: config.clone(),
-            network_quality_measurer: NetworkQualityMeasurer::new(config.clone())
+            network_quality_measurer: NetworkQualityMeasurer::new(config.clone()),
         })
     }
 
@@ -69,7 +69,10 @@ impl SocketState {
             their_last_seq = lock.their_acks.last_seq;
             their_ack_field = lock.their_acks.field;
 
-            lock.congestion_avoidance_buffer.insert(CongestionData::new(connection_seq, Instant::now()), connection_seq);
+            lock.congestion_avoidance_buffer.insert(
+                CongestionData::new(connection_seq, Instant::now()),
+                connection_seq,
+            );
 
             // queue new packet
             lock.waiting_packets.enqueue(connection_seq, packet.clone());
@@ -145,7 +148,8 @@ impl SocketState {
         lock.their_acks.ack(packet.seq);
         lock.last_heard = Instant::now();
 
-        self.network_quality_measurer.update_connection_rtt(&mut lock, packet.ack_seq());
+        self.network_quality_measurer
+            .update_connection_rtt(&mut lock, packet.ack_seq());
 
         // Update dropped packets if there are any.
         let dropped_packets = lock
@@ -173,8 +177,8 @@ impl SocketState {
 
 #[cfg(test)]
 mod test {
+    use net::{constants, NetworkConfig, SocketState, VirtualConnection};
     use packet::header::{FragmentHeader, HeaderReader, PacketHeader};
-    use net::{VirtualConnection, NetworkConfig, SocketState, constants};
     use packet::{Packet, PacketData};
 
     use std::io::Cursor;

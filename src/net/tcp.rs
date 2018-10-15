@@ -1,11 +1,11 @@
 use std::collections::HashMap;
-use std::net::{SocketAddr, TcpListener,Shutdown, TcpStream};
-use std::io::{BufRead, Write,BufReader, BufWriter};
-use std::thread::{self,JoinHandle};
-use std::sync::{Arc, Mutex};
+use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream};
 use std::sync::mpsc::*;
+use std::sync::{Arc, Mutex};
+use std::thread::{self, JoinHandle};
 
-use error::{Error, Result, NetworkError};
+use error::{Error, NetworkError, Result};
 
 /* Summary of How This Works
 This module has three main components:
@@ -33,8 +33,8 @@ pub struct TcpSocketState {
 impl TcpSocketState {
     /// Creates and returns a new TcpSocketState
     pub fn new() -> TcpSocketState {
-        TcpSocketState{
-            connections: Arc::new(Mutex::new(HashMap::new()))
+        TcpSocketState {
+            connections: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -49,12 +49,11 @@ pub struct TcpServer;
 
 /// Using `self` to do deal with the threading proved to be very complicated. That is why these functions do use `self`.
 impl TcpServer {
-
     /// Starts the TcpServer listening socket. When a new connection is accepted, it spawns a new thread dedicated to that client and goes back to listening for more connections.
     pub fn listen(addr: SocketAddr, connections: Connections) -> Result<JoinHandle<()>> {
         Ok(thread::spawn(move || {
             let listener = match TcpListener::bind(addr) {
-                Ok(l) => { l }
+                Ok(l) => l,
                 Err(e) => {
                     error!("Error binding to listening socket: {}", e);
                     return;
@@ -68,13 +67,15 @@ impl TcpServer {
                         match TcpServer::handle_connection(stream, connections.clone()) {
                             Ok(c) => {
                                 debug!("New TCP connection: {:?}", c);
-                            },
+                            }
                             Err(e) => {
                                 error!("Error accepting new TCP connection: {}", e);
                             }
                         };
-                    },
-                    Err(e) => { debug!("Error accepting new TCP stream: {}", e); }
+                    }
+                    Err(e) => {
+                        debug!("Error accepting new TCP stream: {}", e);
+                    }
                 };
             }
         }))
@@ -120,7 +121,7 @@ impl TcpClient {
         let reader = BufReader::new(stream.try_clone()?);
         let writer = BufWriter::new(stream.try_clone()?);
         let (tx, rx) = channel();
-        Ok(TcpClient{
+        Ok(TcpClient {
             reader,
             writer,
             raw_stream: stream,
@@ -130,7 +131,7 @@ impl TcpClient {
     }
 
     /// Sets up the background loop that waits for data to be received on the rx channel that is meant to be sent to the remote client, then enters a loop to watch for input *from* the remote endpoint.
-    pub fn run(client: Arc<Mutex<TcpClient>>) -> Result<()>{
+    pub fn run(client: Arc<Mutex<TcpClient>>) -> Result<()> {
         TcpClient::start_recv(client.clone())?;
         let mut buf = String::new();
         loop {
@@ -152,9 +153,7 @@ impl TcpClient {
     fn start_recv(client: Arc<Mutex<TcpClient>>) -> Result<()> {
         if let Ok(mut l) = client.lock() {
             match l.outgoing_loop() {
-                Ok(_) => {
-                    Ok(())
-                }
+                Ok(_) => Ok(()),
                 Err(e) => {
                     return Err(e);
                 }
@@ -166,17 +165,13 @@ impl TcpClient {
 
     pub fn write(&mut self, msg: &str) -> bool {
         match self.writer.write_all(msg.as_bytes()) {
-            Ok(_) => {
-                match self.writer.flush() {
-                    Ok(_) => {
-                        true
-                    }
-                    Err(e) => {
-                        error!("Error flushing to client: {}", e);
-                        false
-                    }
+            Ok(_) => match self.writer.flush() {
+                Ok(_) => true,
+                Err(e) => {
+                    error!("Error flushing to client: {}", e);
+                    false
                 }
-            }
+            },
             Err(e) => {
                 error!("Error writing to client: {}", e);
                 false
@@ -187,7 +182,7 @@ impl TcpClient {
     // Starts a thread that watches for incoming messages from the application and writes it to the client
     fn outgoing_loop(&mut self) -> Result<JoinHandle<()>> {
         let mut writer = match self.raw_stream.try_clone() {
-            Ok(w) => { w },
+            Ok(w) => w,
             Err(_e) => {
                 return Err(Error::from(NetworkError::TcpStreamCloneFailed));
             }
@@ -196,7 +191,7 @@ impl TcpClient {
         // We use take here because we can only have one copy of a receiver and we want to the thread to own it
         // The match is used becaused `std::option::NoneError` is still on nightly
         let rx = match self.rx.take() {
-            Some(rx) => { rx },
+            Some(rx) => rx,
             None => {
                 return Err(Error::from(NetworkError::TcpSteamFailedTakeRx));
             }
@@ -208,16 +203,14 @@ impl TcpClient {
                 match rx.recv() {
                     Ok(msg) => {
                         match writer.write_all(msg.as_bytes()) {
-                            Ok(_) => {},
-                            Err(_e) => {
-
-                            }
+                            Ok(_) => {}
+                            Err(_e) => {}
                         };
                         match writer.flush() {
-                            Ok(_) => {},
+                            Ok(_) => {}
                             Err(_e) => {}
                         }
-                    },
+                    }
                     Err(_e) => {}
                 }
             }
@@ -238,14 +231,15 @@ mod test {
 
     #[test]
     fn test_lock_poisoning() {
-        let addr: SocketAddr = ("127.0.0.1".to_string() + ":"+ "27000").parse().unwrap();
+        let addr: SocketAddr = ("127.0.0.1".to_string() + ":" + "27000").parse().unwrap();
         let mut test_state = TcpSocketState::new();
         test_state.start(addr);
         let test_lock = test_state.connections.clone();
         let _ = thread::spawn(move || {
             let _lock = test_lock.lock().unwrap();
             panic!();
-        }).join();
+        })
+        .join();
         assert_eq!(test_state.connections.is_poisoned(), true);
     }
 }

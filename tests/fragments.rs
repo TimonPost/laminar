@@ -2,13 +2,13 @@ extern crate laminar;
 
 mod common;
 
-use std::time::{Duration, Instant};
-use std::sync::{Arc, RwLock};
 use std::sync::mpsc;
+use std::sync::{Arc, RwLock};
+use std::time::{Duration, Instant};
 
 use laminar::net::{NetworkConfig, SocketAddr};
 
-use common::{ServerMoq, ClientStub};
+use common::{ClientStub, ServerMoq};
 
 const TOTAL_PACKETS_TO_SEND: u32 = 10_000;
 const CLIENT_ADDR: &str = "127.0.0.1:12346";
@@ -20,7 +20,7 @@ const SERVER_ADDR: &str = "127.0.0.1:12345";
 /// 3. Check if received data is correct.
 #[test]
 pub fn fragment_packet_integration_test() {
-    let (tx,rx) = mpsc::channel();
+    let (tx, rx) = mpsc::channel();
 
     let test_data = vec![1; 4000];
 

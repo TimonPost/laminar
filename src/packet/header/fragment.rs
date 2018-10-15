@@ -1,9 +1,9 @@
-use super::{HeaderParser, HeaderReader};
 use super::PacketHeader;
-use net::constants::{FRAGMENT_HEADER_SIZE};
+use super::{HeaderParser, HeaderReader};
+use net::constants::FRAGMENT_HEADER_SIZE;
 
-use std::io::{self, Cursor, Error, ErrorKind, Write};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use std::io::{self, Cursor, Error, ErrorKind, Write};
 
 #[derive(Copy, Clone, Debug)]
 /// This header represents an fragmented packet header.
@@ -17,18 +17,21 @@ pub struct FragmentHeader {
 impl FragmentHeader {
     /// Create new fragment with the given packet header
     pub fn new(id: u8, num_fragments: u8, packet_header: PacketHeader) -> Self {
-        FragmentHeader { id, num_fragments, packet_header: Some(packet_header), sequence: packet_header.seq }
+        FragmentHeader {
+            id,
+            num_fragments,
+            packet_header: Some(packet_header),
+            sequence: packet_header.seq,
+        }
     }
 
     /// Get the id of this fragment.
-    pub fn id(&self) -> u8
-    {
+    pub fn id(&self) -> u8 {
         self.id
     }
 
     /// Get the sequence number from this packet.
-    pub fn sequence(&self) -> u16
-    {
+    pub fn sequence(&self) -> u16 {
         self.sequence
     }
 
@@ -38,18 +41,15 @@ impl FragmentHeader {
     }
 
     /// Get the packet header if attached to fragment.
-    pub fn packet_header(&self) -> Option<PacketHeader>
-    {
+    pub fn packet_header(&self) -> Option<PacketHeader> {
         self.packet_header
     }
 }
 
-impl HeaderParser for FragmentHeader
-{
+impl HeaderParser for FragmentHeader {
     type Output = io::Result<Vec<u8>>;
 
     fn parse(&self) -> <Self as HeaderParser>::Output {
-
         let mut wtr = Vec::new();
         wtr.write_u8(1)?;
         wtr.write_u16::<BigEndian>(self.sequence)?;
@@ -57,14 +57,11 @@ impl HeaderParser for FragmentHeader
         wtr.write_u8(self.num_fragments)?;
 
         if self.id == 0 {
-            match self.packet_header
-            {
+            match self.packet_header {
                 Some(header) => {
                     wtr.write(&header.parse()?)?;
-                },
-                None => {
-                    return Err(Error::new(ErrorKind::Other, "Invalid fragment header"))
                 }
+                None => return Err(Error::new(ErrorKind::Other, "Invalid fragment header")),
             }
         }
 
@@ -72,15 +69,14 @@ impl HeaderParser for FragmentHeader
     }
 }
 
-impl HeaderReader for FragmentHeader
-{
-    type Header =  io::Result<FragmentHeader>;
+impl HeaderReader for FragmentHeader {
+    type Header = io::Result<FragmentHeader>;
 
     fn read(rdr: &mut Cursor<Vec<u8>>) -> <Self as HeaderReader>::Header {
         let prefix_byte = rdr.read_u8()?;
 
         if prefix_byte != 1 {
-            return  Err(Error::new(ErrorKind::Other, "Invalid fragment header"));
+            return Err(Error::new(ErrorKind::Other, "Invalid fragment header"));
         }
 
         let sequence = rdr.read_u16::<BigEndian>()?;
@@ -91,7 +87,7 @@ impl HeaderReader for FragmentHeader
             sequence,
             id,
             num_fragments,
-            packet_header: None
+            packet_header: None,
         };
 
         if id == 0 {
@@ -102,32 +98,29 @@ impl HeaderReader for FragmentHeader
     }
 
     /// Get the size of this header.
-    fn size(&self) -> u8
-    {
+    fn size(&self) -> u8 {
         if self.id == 0 {
-            match self.packet_header
-                {
-                    Some(header) => header.size() + FRAGMENT_HEADER_SIZE,
-                    None => {
-                        error!("Attempting to retrieve size on a 0 ID packet with no packet header");
-                        0
-                    }
+            match self.packet_header {
+                Some(header) => header.size() + FRAGMENT_HEADER_SIZE,
+                None => {
+                    error!("Attempting to retrieve size on a 0 ID packet with no packet header");
+                    0
                 }
+            }
         } else {
             FRAGMENT_HEADER_SIZE
         }
     }
 }
 
-mod tests{
-    use packet::header::{PacketHeader, FragmentHeader, HeaderParser, HeaderReader};
+mod tests {
     use byteorder::ReadBytesExt;
+    use packet::header::{FragmentHeader, HeaderParser, HeaderReader, PacketHeader};
     use std::io::Cursor;
 
     #[test]
-    pub fn serializes_deserialize_fragment_header_test()
-    {
-        let packet_header = PacketHeader::new(1,1,5421);
+    pub fn serializes_deserialize_fragment_header_test() {
+        let packet_header = PacketHeader::new(1, 1, 5421);
         let packet_serialized: Vec<u8> = packet_header.parse().unwrap();
 
         let fragment = FragmentHeader::new(0, 1, packet_header.clone());
