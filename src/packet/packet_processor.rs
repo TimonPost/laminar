@@ -1,28 +1,25 @@
 use std::io::{self, Cursor, Error, ErrorKind, Read, Write};
 use std::net::SocketAddr;
 
-use self::header::{FragmentHeader, HeaderParser, HeaderReader, PacketHeader};
-use super::{header, CongestionData, FragmentBuffer, Packet, ReassemblyData};
+use net::{SocketState, NetworkConfig};
+use packet::{header, Packet};
+use sequence_buffer::{SequenceBuffer, ReassemblyData, CongestionData};
+use self::header::{FragmentHeader, PacketHeader, HeaderParser, HeaderReader};
 use byteorder::ReadBytesExt;
-use net::{NetworkConfig, SocketState};
 
 use error::{NetworkError, Result};
 
 /// An wrapper for processing data.
 pub struct PacketProcessor {
     /// buffer for temporarily fragment storage
-    reassembly_buffer: FragmentBuffer<ReassemblyData>,
+    reassembly_buffer: SequenceBuffer<ReassemblyData>,
     config: NetworkConfig,
 }
 
 impl PacketProcessor {
-    pub fn new(config: &NetworkConfig) -> Self {
-        PacketProcessor {
-            reassembly_buffer: FragmentBuffer::with_capacity(
-                config.fragment_reassembly_buffer_size,
-            ),
-            config: config.clone(),
-        }
+    pub fn new(config: &NetworkConfig) -> Self
+    {
+        PacketProcessor { reassembly_buffer: SequenceBuffer::with_capacity(config.fragment_reassembly_buffer_size), config: config.clone() }
     }
 
     /// Process data and return the resulting packet

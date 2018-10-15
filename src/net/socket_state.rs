@@ -2,12 +2,13 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use packet::{Packet, PacketData};
+use sequence_buffer::CongestionData;
+use packet::header::{FragmentHeader, PacketHeader};
+use net::{SocketAddr, NetworkConfig};
+use net::connection::{ConnectionPool,NetworkQualityMeasurer};
 use error::{NetworkError, Result};
 use events::Event;
-use net::connection::{ConnectionPool, NetworkQualityMeasurer};
-use net::{NetworkConfig, SocketAddr};
-use packet::header::{FragmentHeader, PacketHeader};
-use packet::{CongestionData, Packet, PacketData};
 use total_fragments_needed;
 
 /// This holds the 'virtual connections' currently (connected) to the udp socket.

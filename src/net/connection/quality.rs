@@ -4,7 +4,7 @@ use std::time::Duration;
 use net::connection::VirtualConnection;
 
 use net::NetworkConfig;
-use packet::CongestionData;
+use sequence_buffer::CongestionData;
 
 /// Represents the quality of an network.
 pub enum NetworkQuality {
@@ -78,14 +78,12 @@ impl NetworkQualityMeasurer {
 
 #[cfg(test)]
 mod test {
-    use net::connection::VirtualConnection;
+    use net::connection::{VirtualConnection};
     use net::NetworkConfig;
-    use packet::CongestionData;
-
+    use sequence_buffer::CongestionData;
     use super::{NetworkQualityMeasurer, RwLockWriteGuard};
     use std::net::ToSocketAddrs;
     use std::time::{Duration, Instant};
-
     use std::sync::RwLock;
 
     static TEST_HOST_IP: &'static str = "127.0.0.1";

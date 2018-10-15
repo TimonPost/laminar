@@ -15,6 +15,7 @@ pub mod error;
 pub mod events;
 pub mod net;
 pub mod packet;
+mod sequence_buffer;
 
 /// This functions checks how many times a number fits into another number and will round up.
 ///
