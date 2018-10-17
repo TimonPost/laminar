@@ -27,6 +27,7 @@ byteorder = "1.2.6"
 log = "0.4"
 failure = "0.1"
 failure_derive = "0.1"
+clap = { version = "2.32", features = ["yaml"] }
 
 [dev-dependencies]
 criterion = "0.2"
@@ -34,3 +35,6 @@ criterion = "0.2"
 [[bench]]
 name = "packet_processing"
 harness = false
+
+[[bin]]
+name = "tester"

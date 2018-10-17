@@ -1,0 +1,2 @@
+tester:
+	cargo build --release
