@@ -97,7 +97,7 @@ impl ServerMoq {
                     Err(_) => {}
                 }
 
-                let send_result = client.send(Packet::new(host, data_to_send.clone()));
+                let send_result = client.send(Packet::sequenced_unordered(host, data_to_send.clone()));
 
                 if len <= config.fragment_size as usize {
                     assert_eq!(

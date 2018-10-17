@@ -49,10 +49,11 @@ impl PacketData {
 mod tests {
     use super::PacketData;
     use packet::header::PacketHeader;
+    use infrastructure::DeliveryMethod;
 
     #[test]
     fn add_ang_get_parts() {
-        let header = PacketHeader::new(1, 1, 1);
+        let header = PacketHeader::new(1, 1, 1, DeliveryMethod::Unreliable);
 
         let mut packet_data = PacketData::new();
         packet_data.add_fragment(&header, vec![1, 2, 3, 4, 5]);

@@ -29,10 +29,11 @@ mod tests {
     use super::RawPacketData;
     use net::constants::PACKET_HEADER_SIZE;
     use packet::header::PacketHeader;
+    use infrastructure::DeliveryMethod;
 
     #[test]
     fn serialize_raw_data_test() {
-        let header = PacketHeader::new(1, 1, 1);
+        let header = PacketHeader::new(1, 1, 1, DeliveryMethod::SequencedUnordered);
 
         let data = vec![1, 2, 3, 4, 5];
         let mut raw_packet_data = RawPacketData::new(&header, data.clone());

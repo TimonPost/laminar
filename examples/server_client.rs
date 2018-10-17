@@ -29,7 +29,7 @@ fn server() -> Result<()> {
 
                 println!("Received {:?} from {:?}", msg, ip);
 
-                socket.send(Packet::new(packet.addr(), "Copy that!".as_bytes().to_vec()))?;
+                socket.send(Packet::sequenced_unordered(packet.addr(), "Copy that!".as_bytes().to_vec()))?;
             }
             None => {}
         }
@@ -53,7 +53,7 @@ fn client() -> Result<()> {
         stdin.read_line(&mut s_buffer)?;
         let line = s_buffer.replace(|x| x == '\n' || x == '\r', "");
 
-        socket.send(Packet::new(server, line.clone().into_bytes()))?;
+        socket.send(Packet::sequenced_unordered(server, line.clone().into_bytes()))?;
 
         if line == "Bye!" {
             break;
