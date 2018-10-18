@@ -31,7 +31,7 @@ impl PacketData {
 
     /// Return the total fragments this packet is divided into.
     pub fn fragment_count(&self) -> usize {
-        return self.parts.len();
+        self.parts.len()
     }
 
     /// Return the parts this packet exists of.

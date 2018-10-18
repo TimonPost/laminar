@@ -13,8 +13,8 @@ pub struct LocalAckRecord {
 }
 
 impl LocalAckRecord {
-    pub fn is_empty(&mut self) -> bool {
     /// Checks if there are packets in the queue to be acknowledged.
+    pub fn is_empty(&self) -> bool {
         self.packets.is_empty()
     }
 
