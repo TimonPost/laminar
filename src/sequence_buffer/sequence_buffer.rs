@@ -1,8 +1,7 @@
 use std::clone::Clone;
 use std::io::Result;
 
-/// Collection for storing data of any kind.
-
+/// Collection to store data of any kind.
 pub struct SequenceBuffer<T>  where T: Default + Clone + Send + Sync  {
     entries: Vec<T>,
     entry_sequences: Vec<u16>,
@@ -10,7 +9,7 @@ pub struct SequenceBuffer<T>  where T: Default + Clone + Send + Sync  {
 }
 
 impl<T> SequenceBuffer<T> where T: Default + Clone + Send + Sync {
-    /// Create collection with an specific capacity.
+    /// Create collection with a specific capacity.
     pub fn with_capacity(size: usize) -> Self {
         let mut entries = Vec::with_capacity(size);
         let mut entry_sequences = Vec::with_capacity(size);
@@ -64,7 +63,7 @@ impl<T> SequenceBuffer<T> where T: Default + Clone + Send + Sync {
         return true;
     }
 
-    /// Get the lenght of the collection.
+    /// Get the length of the collection.
     pub fn len(&self) -> usize {
         self.entries.len()
     }

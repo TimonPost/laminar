@@ -6,7 +6,7 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::io::{self, Cursor, Error, ErrorKind, Write};
 
 #[derive(Copy, Clone, Debug)]
-/// This header represents an fragmented packet header.
+/// This header represents a fragmented packet header.
 pub struct FragmentHeader {
     sequence: u16,
     id: u8,
@@ -35,7 +35,7 @@ impl FragmentHeader {
         self.sequence
     }
 
-    /// Get the total number of fragments from an packet this fragment is part of.
+    /// Get the total number of fragments in the packet this fragment is part of.
     pub fn fragment_count(&self) -> u8 {
         self.num_fragments
     }

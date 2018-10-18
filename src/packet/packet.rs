@@ -1,9 +1,9 @@
 use std::net::SocketAddr;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-/// This is a user friendly packet containing the payload from the packet and the enpoint from where it came.
+/// This is a user friendly packet containing the payload from the packet and the endpoint from where it came.
 pub struct Packet {
-    // the address to witch the packet will be send
+    // the endpoint from where it came
     addr: SocketAddr,
     // the raw payload of the packet
     payload: Box<[u8]>,

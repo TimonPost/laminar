@@ -13,17 +13,17 @@ pub struct LocalAckRecord {
 }
 
 impl LocalAckRecord {
-    /// Checks if there are packets in the queue to be aknowleged.
     pub fn is_empty(&mut self) -> bool {
+    /// Checks if there are packets in the queue to be acknowledged.
         self.packets.is_empty()
     }
 
-    /// Gets the total packages in the queue that could be aknowleged.
+    /// Gets the total packages in the queue that could be acknowledged.
     pub fn len(&mut self) -> usize {
         self.packets.len()
     }
 
-    /// Adds a packet to the queue awaiting for an aknowlegement.
+    /// Adds a packet to the queue awaiting for an acknowledgement.
     pub fn enqueue(&mut self, seq: u16, packet: Packet) {
         // TODO: Handle overwriting other packet?
         //   That really shouldn't happen, but it should be encoded here

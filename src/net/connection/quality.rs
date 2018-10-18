@@ -6,7 +6,7 @@ use net::connection::VirtualConnection;
 use net::NetworkConfig;
 use sequence_buffer::CongestionData;
 
-/// Represents the quality of an network.
+/// Represents the quality of a network.
 pub enum NetworkQuality {
     Good,
     Bad,
@@ -53,7 +53,7 @@ impl NetworkQualityMeasurer {
         }
     }
 
-    /// Converts an duration to milliseconds.
+    /// Converts a duration to milliseconds.
     ///
     /// `as_milliseconds` is not supported yet supported in rust stable.
     /// See this stackoverflow post for more info: https://stackoverflow.com/questions/36816072/how-do-i-get-a-duration-as-a-number-of-milliseconds-in-rust
