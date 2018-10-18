@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 #[derive(Clone)]
-/// This contains the information needed to know for reassembling fragments.
+/// This contains the information required to reassemble fragments.
 pub struct CongestionData {
     pub sequence: u16,
     pub sending_time: Instant,

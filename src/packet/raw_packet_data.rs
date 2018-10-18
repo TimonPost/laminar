@@ -16,7 +16,7 @@ impl RawPacketData {
         RawPacketData { header, body }
     }
 
-    /// Serialize the packet header and body into on byte buffer
+    /// Serialize the packet header and body into one byte buffer
     pub fn serialize(&mut self) -> Vec<u8> {
         let mut vec = Vec::with_capacity(self.header.len() + self.body.len());
         vec.append(&mut self.header);

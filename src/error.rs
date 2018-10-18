@@ -8,7 +8,7 @@ pub type Result<T> = result::Result<T, Error>;
 #[derive(Fail, Debug)]
 pub enum NetworkError {
     // TODO: write more informative error
-    #[fail(display = "Lock posioned")]
+    #[fail(display = "Lock poisoned")]
     AddConnectionToManagerFailed,
     #[fail(display = "TcpStream clone failed")]
     TcpStreamCloneFailed,

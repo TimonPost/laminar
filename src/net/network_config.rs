@@ -3,20 +3,20 @@ use std::default::Default;
 
 #[derive(Clone)]
 pub struct NetworkConfig {
-    /// This is the maximal size an packet can get with all its fragments.
+    /// This is the maximal size a packet can get with all its fragments.
     ///
     /// Recommended value: 16384
     pub max_packet_size: usize,
     /// These are the maximal fragments a packet could be divided into.
     ///
     /// Why can't I have more than 255 (u8)?
-    /// This is because you don't want to send more then 256 fragments over UDP, with high amounts of fragments the change for an invalid packet is very high.
+    /// This is because you don't want to send more then 256 fragments over UDP, with high amounts of fragments the chance for an invalid packet is very high.
     /// Use TCP instead (later we will probably support larger ranges but every fragment packet then needs to be resent if it doesn't get an acknowledgement).
     ///
-    /// Recommended value: 16 but keep in mind to keep this as low as possible.
+    /// Recommended value: 16 but keep in mind that lower is better.
     pub max_fragments: u8,
-    /// This is the size of an fragment.
-    /// If an packet is to large in needs to be spit in fragments.
+    /// This is the size of a fragment.
+    /// If a packet is too large it needs to be split in fragments.
     ///
     /// Recommended value: +- 1450 (1500 is the default MTU)
     pub fragment_size: u16,
@@ -27,9 +27,9 @@ pub struct NetworkConfig {
     /// This is the factor which will smooth out network jitter. So that if one packet is not arrived fast we don't wan't to directly transform to an bad network.
     ///
     /// Recommended value: 10% of the rtt time.
-    /// Value is in percentage where 0 = 0 % and 1 = 100 %
+    /// Value is a ratio (0 = 0% and 1 = 100%)
     pub rtt_smoothing_factor: f32,
-    /// This is the maximal a round trip time (rtt) for packet.
+    /// This is the maximal round trip time (rtt) for packet.
     ///
     /// Recommend value: 250 ms
     /// Value is represented in milliseconds.

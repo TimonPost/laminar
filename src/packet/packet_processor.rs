@@ -9,7 +9,7 @@ use byteorder::ReadBytesExt;
 
 use error::{NetworkError, Result};
 
-/// An wrapper for processing data.
+/// A wrapper for processing data.
 pub struct PacketProcessor {
     /// buffer for temporarily fragment storage
     reassembly_buffer: SequenceBuffer<ReassemblyData>,
@@ -34,6 +34,7 @@ impl PacketProcessor {
 
         let mut received_bytes = Ok(None);
 
+        // a normal packet starts by a header whose first bit is always 0.
         if prefix_byte & 1 == 0 {
             received_bytes = self.handle_normal_packet(&mut cursor, &addr, socket_state);
         } else {
@@ -103,7 +104,7 @@ impl PacketProcessor {
         return Ok(None);
     }
 
-    /// Extract normal header and dat from data.
+    /// Extract header and data from normal packet.
     fn handle_normal_packet(
         &mut self,
         cursor: &mut Cursor<Vec<u8>>,
@@ -125,7 +126,7 @@ impl PacketProcessor {
         }
     }
 
-    /// if fragment does not exists we need to insert a new entry
+    /// if fragment does not exist we need to insert a new entry
     fn create_fragment_if_not_exists(&mut self, fragment_header: &FragmentHeader) -> Result<()> {
         if !self.reassembly_buffer.exists(fragment_header.sequence()) {
             if fragment_header.id() == 0 {
@@ -161,11 +162,11 @@ mod tests {
     use std::io::Cursor;
     use total_fragments_needed;
 
-    /// Tests if an packet will be processed right.
+    /// Tests if a packet will be processed right.
     ///
     /// 1. first create test Packet
     /// 2. process it with `pre_process_packet` so we have valid raw data
-    /// 3. then assert that the Packet we've gotten from contains the right data.
+    /// 3. then assert that the Packet we've gotten contains the right data.
     #[test]
     fn process_normal_packet_test() {
         let config = NetworkConfig::default();

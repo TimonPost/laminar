@@ -189,7 +189,7 @@ impl TcpClient {
         };
 
         // We use take here because we can only have one copy of a receiver and we want to the thread to own it
-        // The match is used becaused `std::option::NoneError` is still on nightly
+        // The match is used because `std::option::NoneError` is still on nightly
         let rx = match self.rx.take() {
             Some(rx) => rx,
             None => {

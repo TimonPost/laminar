@@ -16,7 +16,7 @@ pub type ConnectionsCollection = Arc<RwLock<Connections>>;
 // Default time between checks of all clients for timeouts in seconds
 const TIMEOUT_POLL_INTERVAL: u64 = 1;
 
-/// This is an pool of virtual connections (connected) over UDP.
+/// This is a pool of virtual connections (connected) over UDP.
 pub struct ConnectionPool {
     timeout: Duration,
     connections: ConnectionsCollection,
@@ -37,7 +37,7 @@ impl ConnectionPool {
         }
     }
 
-    /// Set the timeout before an client will be seen as disconnected.
+    /// Set disconnect timeout (duration after which a client is seen as disconnected).
     pub fn set_timeout(&mut self, timeout: Duration) {
         self.timeout = timeout;
     }

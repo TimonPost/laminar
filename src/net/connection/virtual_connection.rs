@@ -36,7 +36,7 @@ impl VirtualConnection {
         }
     }
 
-    /// Returns a Duration representing since we last heard from the client
+    /// Returns a Duration representing the interval since we last heard from the client
     pub fn last_heard(&self) -> Duration {
         let now = Instant::now();
         now.duration_since(self.last_heard)

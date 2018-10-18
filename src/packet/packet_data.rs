@@ -3,7 +3,7 @@ use super::RawPacketData;
 
 use std::io::Result;
 
-/// Contains the raw data this packet exists of. Note that an packet can be divided into seperate fragments
+/// Contains the raw data this packet exists of. Note that a packet can be divided into separate fragments
 #[derive(Debug)]
 pub struct PacketData {
     parts: Vec<RawPacketData>,
@@ -31,7 +31,7 @@ impl PacketData {
 
     /// Return the total fragments this packet is divided into.
     pub fn fragment_count(&self) -> usize {
-        return self.parts.len();
+        self.parts.len()
     }
 
     /// Return the parts this packet exists of.

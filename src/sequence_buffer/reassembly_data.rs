@@ -1,8 +1,7 @@
 use net::constants::{MAX_FRAGMENTS_DEFAULT};
 
-
 #[derive(Clone)]
-/// This contains the information needed to know for reassembling fragments.
+/// This contains the information required to reassemble fragments.
 pub struct ReassemblyData {
     pub sequence: u16,
     pub num_fragments_received: u8,
@@ -29,6 +28,7 @@ impl ReassemblyData {
         }
     }
 }
+
 impl Default for ReassemblyData {
     fn default() -> Self {
         Self {
