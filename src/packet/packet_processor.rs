@@ -42,7 +42,7 @@ impl PacketProcessor {
         }
 
         return match received_bytes {
-            Ok(Some(payload)) => Ok(Some(Packet::new(addr, payload))),
+            Ok(Some(payload)) => Ok(Some(Packet::sequenced_unordered(addr, payload, ))),
             Ok(None) => Ok(None),
             Err(e) => Err(NetworkError::ReceiveFailed.into()),
         };
@@ -157,6 +157,7 @@ impl PacketProcessor {
 
 mod tests {
     use super::PacketProcessor;
+    use infrastructure::DeliveryMethod;
     use net::{NetworkConfig, SocketState};
     use packet::{header, Packet};
     use std::io::Cursor;
@@ -175,7 +176,7 @@ mod tests {
         let mut test_data: Vec<u8> = vec![1, 2, 3, 4, 5];
 
         // first setup packet data
-        let packet = Packet::new("127.0.0.1:12345".parse().unwrap(), test_data.clone());
+        let packet = Packet::sequenced_unordered("127.0.0.1:12345".parse().unwrap(), test_data.clone());
 
         let mut socket_sate = SocketState::new(&config).unwrap();
         let mut result = socket_sate.pre_process_packet(packet, &config).unwrap();
@@ -206,7 +207,7 @@ mod tests {
         let mut test_data: Vec<u8> = vec![1; 4000];
 
         // first setup packet data
-        let packet = Packet::new("127.0.0.1:12345".parse().unwrap(), test_data.clone());
+        let packet = Packet::sequenced_unordered("127.0.0.1:12345".parse().unwrap(), test_data.clone());
 
         let mut socket_sate = SocketState::new(&config).unwrap();
         let mut result = socket_sate.pre_process_packet(packet, &config).unwrap();

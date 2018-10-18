@@ -1,13 +1,14 @@
 use super::PacketHeader;
 use super::{HeaderParser, HeaderReader};
 use net::constants::FRAGMENT_HEADER_SIZE;
-
+use packet::PacketTypeId;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::io::{self, Cursor, Error, ErrorKind, Write};
 
 #[derive(Copy, Clone, Debug)]
 /// This header represents a fragmented packet header.
 pub struct FragmentHeader {
+    packet_type_id: PacketTypeId,
     sequence: u16,
     id: u8,
     num_fragments: u8,
@@ -18,6 +19,7 @@ impl FragmentHeader {
     /// Create new fragment with the given packet header
     pub fn new(id: u8, num_fragments: u8, packet_header: PacketHeader) -> Self {
         FragmentHeader {
+            packet_type_id: PacketTypeId::Fragment,
             id,
             num_fragments,
             packet_header: Some(packet_header),
@@ -51,7 +53,7 @@ impl HeaderParser for FragmentHeader {
 
     fn parse(&self) -> <Self as HeaderParser>::Output {
         let mut wtr = Vec::new();
-        wtr.write_u8(1)?;
+        wtr.write_u8(PacketTypeId::get_id(self.packet_type_id))?;
         wtr.write_u16::<BigEndian>(self.sequence)?;
         wtr.write_u8(self.id)?;
         wtr.write_u8(self.num_fragments)?;
@@ -73,9 +75,9 @@ impl HeaderReader for FragmentHeader {
     type Header = io::Result<FragmentHeader>;
 
     fn read(rdr: &mut Cursor<Vec<u8>>) -> <Self as HeaderReader>::Header {
-        let prefix_byte = rdr.read_u8()?;
+        let packet_type_id = PacketTypeId::get_packet_type(rdr.read_u8()?);
 
-        if prefix_byte != 1 {
+        if packet_type_id != PacketTypeId::Fragment {
             return Err(Error::new(ErrorKind::Other, "Invalid fragment header"));
         }
 
@@ -84,6 +86,7 @@ impl HeaderReader for FragmentHeader {
         let num_fragments = rdr.read_u8()?;
 
         let mut header = FragmentHeader {
+            packet_type_id,
             sequence,
             id,
             num_fragments,
@@ -116,11 +119,12 @@ impl HeaderReader for FragmentHeader {
 mod tests {
     use byteorder::ReadBytesExt;
     use packet::header::{FragmentHeader, HeaderParser, HeaderReader, PacketHeader};
+    use infrastructure::DeliveryMethod;
     use std::io::Cursor;
 
     #[test]
     pub fn serializes_deserialize_fragment_header_test() {
-        let packet_header = PacketHeader::new(1, 1, 5421);
+        let packet_header = PacketHeader::new(1, 1, 5421, DeliveryMethod::Unreliable);
         let packet_serialized: Vec<u8> = packet_header.parse().unwrap();
 
         let fragment = FragmentHeader::new(0, 1, packet_header.clone());

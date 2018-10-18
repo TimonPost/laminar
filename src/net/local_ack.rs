@@ -170,6 +170,6 @@ mod test {
             12345,
         );
 
-        Packet::new(addr, Vec::new())
+        Packet::sequenced_unordered(addr, Vec::new())
     }
 }

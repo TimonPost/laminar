@@ -81,7 +81,7 @@ impl SocketState {
 
         let mut packet_data = PacketData::new();
 
-        let packet_header = PacketHeader::new(connection_seq, their_last_seq, their_ack_field);
+        let packet_header = PacketHeader::new(connection_seq, their_last_seq, their_ack_field, packet.delivery_method());
 
         let payload = packet.payload();
         let payload_length = payload.len() as u16; /* safe cast because max packet size is u16 */
@@ -280,7 +280,7 @@ mod test {
         config: &NetworkConfig,
     ) -> (SocketAddr, PacketData) {
         // create packet with test data
-        let packet = Packet::new(get_dummy_socket_addr(), data.clone());
+        let packet = Packet::sequenced_unordered(get_dummy_socket_addr(), data.clone());
 
         // process the packet
         let mut socket_state = SocketState::new(&NetworkConfig::default()).unwrap();
