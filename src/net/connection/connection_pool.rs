@@ -1,5 +1,5 @@
 use super::VirtualConnection;
-use error::{NetworkError, Result};
+use error::{NetworkResult, NetworkError};
 use events::Event;
 
 use std::collections::HashMap;
@@ -8,6 +8,7 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::Duration;
+use std::error::Error;
 
 pub type Connection = Arc<RwLock<VirtualConnection>>;
 pub type Connections = HashMap<SocketAddr, Connection>;
@@ -43,11 +44,11 @@ impl ConnectionPool {
     }
 
     /// Insert connection if it does not exists.
-    pub fn get_connection_or_insert(&mut self, addr: &SocketAddr) -> Result<Connection> {
+    pub fn get_connection_or_insert(&mut self, addr: &SocketAddr) -> NetworkResult<Connection> {
         let mut lock = self
             .connections
             .write()
-            .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;
+            .map_err(|error| NetworkError::poisoned_connection_error(error.description()))?;
 
         let connection = lock
             .entry(*addr)
@@ -66,7 +67,7 @@ impl ConnectionPool {
     pub fn start_time_out_loop(
         &self,
         events_sender: Sender<Event>,
-    ) -> Result<thread::JoinHandle<()>> {
+    ) -> NetworkResult<thread::JoinHandle<()>> {
         let connections = self.connections.clone();
         let poll_interval = self.poll_interval;
 

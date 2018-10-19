@@ -2,7 +2,8 @@ use super::{HeaderParser, HeaderReader};
 use net::constants::{HEART_BEAT_HEADER_SIZE};
 use packet::PacketTypeId;
 use byteorder::{ReadBytesExt, WriteBytesExt};
-use std::io::{self, Cursor, Error, ErrorKind};
+use std::io::Cursor;
+use error::{NetworkResult, PacketErrorKind};
 
 #[derive(Copy, Clone, Debug)]
 /// This header represents an heartbeat packet header.
@@ -21,7 +22,7 @@ impl HeartBeatHeader {
 }
 
 impl HeaderParser for HeartBeatHeader {
-    type Output = io::Result<Vec<u8>>;
+    type Output = NetworkResult<Vec<u8>>;
 
     fn parse(&self) -> <Self as HeaderParser>::Output {
         let mut wtr = Vec::new();
@@ -32,13 +33,13 @@ impl HeaderParser for HeartBeatHeader {
 }
 
 impl HeaderReader for HeartBeatHeader {
-    type Header = io::Result<HeartBeatHeader>;
+    type Header = NetworkResult<HeartBeatHeader>;
 
     fn read(rdr: &mut Cursor<Vec<u8>>) -> <Self as HeaderReader>::Header {
         let packet_type_id = PacketTypeId::get_packet_type(rdr.read_u8()?);
 
         if packet_type_id != PacketTypeId::HeartBeat {
-            return Err(Error::new(ErrorKind::Other, "Invalid fragment header"));
+            return Err(PacketErrorKind::PacketHasWrongId)?
         }
 
         let header = HeartBeatHeader {

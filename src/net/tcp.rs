@@ -5,7 +5,7 @@ use std::sync::mpsc::*;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 
-use error::{Error, NetworkError, Result};
+use error::{NetworkResult, TcpErrorKind};
 
 /* Summary of How This Works
 This module has three main components:
@@ -39,7 +39,7 @@ impl TcpSocketState {
     }
 
     /// This starts a TCP server on the provided SocketAddr. It is important to note that it also passes an Arc reference down to the server.
-    pub fn start(&mut self, addr: SocketAddr) -> Result<JoinHandle<()>> {
+    pub fn start(&mut self, addr: SocketAddr) -> NetworkResult<JoinHandle<()>> {
         TcpServer::listen(addr, self.connections.clone())
     }
 }
@@ -50,7 +50,7 @@ pub struct TcpServer;
 /// Using `self` to do deal with the threading proved to be very complicated. That is why these functions do use `self`.
 impl TcpServer {
     /// Starts the TcpServer listening socket. When a new connection is accepted, it spawns a new thread dedicated to that client and goes back to listening for more connections.
-    pub fn listen(addr: SocketAddr, connections: Connections) -> Result<JoinHandle<()>> {
+    pub fn listen(addr: SocketAddr, connections: Connections) -> NetworkResult<JoinHandle<()>> {
         Ok(thread::spawn(move || {
             let listener = match TcpListener::bind(addr) {
                 Ok(l) => l,
@@ -82,7 +82,7 @@ impl TcpServer {
     }
 
     /// This function inserts a reference to the connection into the connections hash
-    pub fn handle_connection(stream: TcpStream, connections: Connections) -> Result<()> {
+    pub fn handle_connection(stream: TcpStream, connections: Connections) -> NetworkResult<()> {
         let peer_addr = stream.peer_addr()?;
         let tmp_stream = stream.try_clone()?;
         let tcp_client = Arc::new(Mutex::new(TcpClient::new(stream)?));
@@ -91,16 +91,16 @@ impl TcpServer {
             if let Ok(mut locked_connections) = connections.lock() {
                 locked_connections.insert(peer_addr, tcp_client.clone());
                 // Pass it off to a function to handle setting up the client-specific background threads
-                TcpClient::run(tcp_client);
+                TcpClient::run(tcp_client)?;
                 Ok(())
             } else {
                 // If we can't get the lock, send a shutdown to the client and they will have to try again
-                tmp_stream.shutdown(Shutdown::Both);
+                tmp_stream.shutdown(Shutdown::Both)?;
                 Ok(())
             }
         } else {
-            tmp_stream.shutdown(Shutdown::Both);
-            Err(Error::from(NetworkError::TcpClientConnectionsHashPoisoned))
+            tmp_stream.shutdown(Shutdown::Both)?;
+            Err(TcpErrorKind::TcpClientConnectionsHashPoisoned)?
         }
     }
 }
@@ -117,7 +117,7 @@ pub struct TcpClient {
 
 impl TcpClient {
     /// Creates and returns a new TcpClient. It makes a few references to the raw stream and wraps them in BufReader and BufWriter for convenience.
-    pub fn new(stream: TcpStream) -> Result<TcpClient> {
+    pub fn new(stream: TcpStream) -> NetworkResult<TcpClient> {
         let reader = BufReader::new(stream.try_clone()?);
         let writer = BufWriter::new(stream.try_clone()?);
         let (tx, rx) = channel();
@@ -131,7 +131,7 @@ impl TcpClient {
     }
 
     /// Sets up the background loop that waits for data to be received on the rx channel that is meant to be sent to the remote client, then enters a loop to watch for input *from* the remote endpoint.
-    pub fn run(client: Arc<Mutex<TcpClient>>) -> Result<()> {
+    pub fn run(client: Arc<Mutex<TcpClient>>) -> NetworkResult<()> {
         TcpClient::start_recv(client.clone())?;
         let mut buf = String::new();
         loop {
@@ -145,12 +145,12 @@ impl TcpClient {
                     }
                 }
             } else {
-                return Err(Error::from(NetworkError::TcpClientLockFailed));
+                Err(TcpErrorKind::TcpClientLockFailed)?
             }
         }
     }
 
-    fn start_recv(client: Arc<Mutex<TcpClient>>) -> Result<()> {
+    fn start_recv(client: Arc<Mutex<TcpClient>>) -> NetworkResult<()> {
         if let Ok(mut l) = client.lock() {
             match l.outgoing_loop() {
                 Ok(_) => Ok(()),
@@ -159,7 +159,7 @@ impl TcpClient {
                 }
             }
         } else {
-            return Err(Error::from(NetworkError::TcpClientLockFailed));
+            Err(TcpErrorKind::TcpClientLockFailed)?
         }
     }
 
@@ -180,11 +180,11 @@ impl TcpClient {
     }
 
     // Starts a thread that watches for incoming messages from the application and writes it to the client
-    fn outgoing_loop(&mut self) -> Result<JoinHandle<()>> {
+    fn outgoing_loop(&mut self) -> NetworkResult<JoinHandle<()>> {
         let mut writer = match self.raw_stream.try_clone() {
             Ok(w) => w,
             Err(_e) => {
-                return Err(Error::from(NetworkError::TcpStreamCloneFailed));
+                Err(TcpErrorKind::TcpStreamCloneFailed)?
             }
         };
 
@@ -193,7 +193,7 @@ impl TcpClient {
         let rx = match self.rx.take() {
             Some(rx) => rx,
             None => {
-                return Err(Error::from(NetworkError::TcpSteamFailedTakeRx));
+                Err(TcpErrorKind::TcpSteamFailedTakeRx)?
             }
         };
 

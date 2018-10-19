@@ -6,7 +6,7 @@ use packet::{header, Packet};
 use sequence_buffer::{SequenceBuffer, ReassemblyData};
 use self::header::{FragmentHeader, PacketHeader, HeaderReader};
 
-use error::{NetworkError, Result};
+use error::{self, PacketErrorKind, FragmentErrorKind, NetworkResult};
 
 /// A wrapper for processing data.
 pub struct PacketProcessor {
@@ -27,7 +27,7 @@ impl PacketProcessor {
         packet: Vec<u8>,
         addr: SocketAddr,
         socket_state: &mut SocketState,
-    ) -> Result<Option<Packet>> {
+    ) -> NetworkResult<Option<Packet>> {
         let prefix_byte = packet[0];
         let mut cursor = Cursor::new(packet);
 
@@ -41,16 +41,16 @@ impl PacketProcessor {
         return match received_bytes {
             Ok(Some(payload)) => Ok(Some(Packet::sequenced_unordered(addr, payload, ))),
             Ok(None) => Ok(None),
-            Err(_) => Err(NetworkError::ReceiveFailed.into()),
+            Err(e) => Err(e)?,
         };
     }
 
     /// Extract fragments from data.
-    fn handle_fragment(&mut self, cursor: &mut Cursor<Vec<u8>>) -> Result<Option<Vec<u8>>> {
+    fn handle_fragment(&mut self, cursor: &mut Cursor<Vec<u8>>) -> NetworkResult<Option<Vec<u8>>> {
         // read fragment packet
         let fragment_header = FragmentHeader::read(cursor)?;
 
-        self.create_fragment_if_not_exists(&fragment_header);
+        self.create_fragment_if_not_exists(&fragment_header)?;
 
         let num_fragments_received;
         let num_fragments_total;
@@ -61,16 +61,16 @@ impl PacketProcessor {
             // get entry of previous received fragments
             let reassembly_data = match self.reassembly_buffer.get_mut(fragment_header.sequence()) {
                 Some(val) => val,
-                None => return Err(NetworkError::InvalidFragmentHeader.into()),
+                None => Err(FragmentErrorKind::CouldNotFindFragmentById)?,
             };
 
             // Got the data
             if reassembly_data.num_fragments_total != fragment_header.fragment_count() {
-                return Err(NetworkError::InvalidFragmentHeader.into());
+                Err(FragmentErrorKind::FragmentWithUnevenNumberOfFragemts)?
             }
 
             if reassembly_data.fragments_received[usize::from(fragment_header.id())] {
-                return Err(NetworkError::InvalidFragmentHeader.into());
+                Err(FragmentErrorKind::AlreadyProcessedFragment)?
             }
 
             // increase number of received fragments and set the specific fragment to received.
@@ -82,7 +82,7 @@ impl PacketProcessor {
             cursor.read_to_end(&mut payload)?;
 
             // add the payload from the fragment to the buffer whe have in cache
-            reassembly_data.buffer.write(payload.as_slice());
+            reassembly_data.buffer.write(payload.as_slice())?;
 
             num_fragments_received = reassembly_data.num_fragments_received;
             num_fragments_total = reassembly_data.num_fragments_total;
@@ -107,24 +107,19 @@ impl PacketProcessor {
         cursor: &mut Cursor<Vec<u8>>,
         addr: &SocketAddr,
         socket_state: &mut SocketState,
-    ) -> Result<Option<Vec<u8>>> {
-        let packet_header = PacketHeader::read(cursor);
+    ) -> NetworkResult<Option<Vec<u8>>> {
+        let packet_header = PacketHeader::read(cursor)?;
 
-        match packet_header {
-            Ok(header) => {
-                socket_state.process_received(*addr, &header)?;
+        socket_state.process_received(*addr, &packet_header)?;
 
-                let mut payload = Vec::new();
-                cursor.read_to_end(&mut payload)?;
+        let mut payload = Vec::new();
+        cursor.read_to_end(&mut payload)?;
 
-                Ok(Some(payload))
-            }
-            Err(_) => Err(NetworkError::HeaderParsingFailed.into()),
-        }
+        Ok(Some(payload))
     }
 
     /// if fragment does not exist we need to insert a new entry
-    fn create_fragment_if_not_exists(&mut self, fragment_header: &FragmentHeader) -> Result<()> {
+    fn create_fragment_if_not_exists(&mut self, fragment_header: &FragmentHeader) -> NetworkResult<()> {
         if !self.reassembly_buffer.exists(fragment_header.sequence()) {
             if fragment_header.id() == 0 {
                 match fragment_header.packet_header() {
@@ -141,10 +136,10 @@ impl PacketProcessor {
                         self.reassembly_buffer
                             .insert(reassembly_data.clone(), fragment_header.sequence());
                     }
-                    None => return Err(NetworkError::InvalidFragmentHeader.into()),
+                    None => Err(FragmentErrorKind::PacketHeaderNotFound)?,
                 }
             } else {
-                return Err(NetworkError::InvalidFragmentHeader.into());
+                Err(FragmentErrorKind::AlreadyProcessedFragment)?
             }
         }
 

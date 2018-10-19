@@ -1,17 +1,24 @@
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 use std::time::{Duration, Instant};
+use std::error::Error;
 
 use packet::{Packet, PacketData};
 use sequence_buffer::CongestionData;
 use packet::header::{FragmentHeader, PacketHeader};
 use net::{SocketAddr, NetworkConfig};
 use net::connection::{ConnectionPool,NetworkQualityMeasurer};
-use error::{NetworkError, Result};
+use error::{NetworkError, NetworkResult, PacketErrorKind, FragmentErrorKind};
 use events::Event;
 use total_fragments_needed;
 
-/// This holds the 'virtual connections' currently (connected) to the udp socket.
+/// This type handles the UDP-socket state.
+///
+/// It stores the:
+/// - 'virtual connections' currently (connected) to the udp socket.
+/// - Manages the network quality
+/// - Processes packets before sending
+/// - Processes packets when received.
 pub struct SocketState {
     timeout_check_thread: thread::JoinHandle<()>,
     events: (Sender<Event>, Receiver<Event>),
@@ -21,7 +28,8 @@ pub struct SocketState {
 }
 
 impl SocketState {
-    pub fn new(config: &NetworkConfig) -> Result<SocketState> {
+    /// Create a new `SocketState` by passing in an instance of `NetworkConfig`
+    pub fn new(config: &NetworkConfig) -> NetworkResult<SocketState> {
         let (tx, rx) = mpsc::channel();
 
         let connection_pool = ConnectionPool::new();
@@ -36,23 +44,19 @@ impl SocketState {
         })
     }
 
-    pub fn with_client_timeout(&mut self, timeout: Duration) {
-        self.connections.set_timeout(timeout);
-    }
-
     /// This will initialize the seq number, ack number and give back the raw data of the packet with the updated information.
     pub fn pre_process_packet(
         &mut self,
         packet: Packet,
         config: &NetworkConfig,
-    ) -> Result<(SocketAddr, PacketData)> {
+    ) -> NetworkResult<(SocketAddr, PacketData)> {
         if packet.payload().len() > config.max_packet_size {
             error!(
                 "Packet too large: Attempting to send {}, max={}",
                 packet.payload().len(),
                 config.max_packet_size
             );
-            return Err(NetworkError::ExceededMaxPacketSize.into());
+            Err(PacketErrorKind::ExceededMaxPacketSize)?;
         }
 
         let connection = self.connections.get_connection_or_insert(&packet.addr())?;
@@ -64,7 +68,7 @@ impl SocketState {
         {
             let mut lock = connection
                 .write()
-                .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;
+                .map_err(|error| NetworkError::poisoned_connection_error(error.description()))?;
 
             connection_seq = lock.seq_num;
             their_last_seq = lock.their_acks.last_seq;
@@ -93,7 +97,7 @@ impl SocketState {
             let num_fragments = total_fragments_needed(payload_length, config.fragment_size) as u8; /* safe cast max fragments is u8 */
 
             if num_fragments > config.max_fragments {
-                return Err(NetworkError::ExceededMaxFragments.into());
+                Err(FragmentErrorKind::ExceededMaxFragments)?;
             }
 
             for fragment_id in 0..num_fragments {
@@ -119,7 +123,7 @@ impl SocketState {
 
         let mut lock = connection
             .write()
-            .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;
+            .map_err(|error|  NetworkError::poisoned_connection_error(error.description()))?;
 
         // each time we send a packet we increase the local sequence number
         lock.seq_num = lock.seq_num.wrapping_add(1);
@@ -128,23 +132,23 @@ impl SocketState {
     }
 
     /// This will return all dropped packets from this connection.
-    pub fn dropped_packets(&mut self, addr: SocketAddr) -> Result<Vec<Packet>> {
+    pub fn dropped_packets(&mut self, addr: SocketAddr) -> NetworkResult<Vec<Packet>> {
         let connection = self.connections.get_connection_or_insert(&addr)?;
 
         let mut lock = connection
             .write()
-            .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;
+            .map_err(|error|  NetworkError::poisoned_connection_error(error.description()))?;
 
         let packets = lock.dropped_packets.drain(..).collect();
         Ok(packets)
     }
 
     /// This will process an incoming packet and update acknowledgement information.
-    pub fn process_received(&mut self, addr: SocketAddr, packet: &PacketHeader) -> Result<()> {
+    pub fn process_received(&mut self, addr: SocketAddr, packet: &PacketHeader) -> NetworkResult<()> {
         let connection = self.connections.get_connection_or_insert(&addr)?;
         let mut lock = connection
             .write()
-            .map_err(|_| NetworkError::AddConnectionToManagerFailed)?;
+            .map_err(|error|  NetworkError::poisoned_connection_error(error.description()))?;
 
         lock.their_acks.ack(packet.seq);
         lock.last_heard = Instant::now();
