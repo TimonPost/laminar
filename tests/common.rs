@@ -2,7 +2,7 @@ extern crate laminar;
 
 use laminar::net::{constants, NetworkConfig, SocketAddr, UdpSocket};
 use laminar::packet::Packet;
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::Receiver;
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
@@ -32,7 +32,6 @@ impl ServerMoq {
         let mut udp_socket: UdpSocket = UdpSocket::bind(self.host, self.config.clone()).unwrap();
         udp_socket.set_nonblocking(self.non_blocking);
 
-        let mut packets_total_received = 0;
         let mut packet_throughput = 0;
         let mut packets_total_received = 0;
         let mut second_counter = Instant::now();
@@ -85,7 +84,7 @@ impl ServerMoq {
 
             let len = data_to_send.len();
 
-            for i in 0..packets_to_send {
+            for _ in 0..packets_to_send {
                 let result = client.recv();
 
                 match result {

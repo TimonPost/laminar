@@ -46,6 +46,7 @@ impl PacketData {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::PacketData;
     use packet::header::PacketHeader;
@@ -62,7 +63,7 @@ mod tests {
 
         assert_eq!(packet_data.fragment_count(), 3);
 
-        packet_data.parts().into_iter().map(|x| {
+        let _ = packet_data.parts().into_iter().map(|x| {
             assert_eq!(x, vec![1, 2, 3, 4, 5]);
         });
     }

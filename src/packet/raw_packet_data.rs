@@ -25,6 +25,7 @@ impl RawPacketData {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::RawPacketData;
     use net::constants::PACKET_HEADER_SIZE;

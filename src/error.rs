@@ -1,5 +1,5 @@
 use failure;
-use std::io::{self, ErrorKind};
+use std::io::{ErrorKind};
 use std::result;
 
 pub type Error = failure::Error;

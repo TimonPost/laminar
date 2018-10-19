@@ -63,7 +63,7 @@ impl LocalAckRecord {
 
 #[cfg(test)]
 mod test {
-    use super::super::{ExternalAcks, LocalAckRecord};
+    use super::super::LocalAckRecord;
     use super::Packet;
     use std::net::{IpAddr, SocketAddr};
     use std::str::FromStr;

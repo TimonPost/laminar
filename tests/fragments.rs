@@ -3,10 +3,9 @@ extern crate laminar;
 mod common;
 
 use std::sync::mpsc;
-use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
-use laminar::net::{NetworkConfig, SocketAddr};
+use laminar::net::NetworkConfig;
 
 use common::{ClientStub, ServerMoq};
 

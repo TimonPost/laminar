@@ -221,12 +221,11 @@ impl TcpClient {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::sync::{Arc, Mutex};
     use std::thread;
 
     #[test]
     fn test_create_tcp_socket_state() {
-        let test_state = TcpSocketState::new();
+        let _test_state = TcpSocketState::new();
     }
 
     #[test]

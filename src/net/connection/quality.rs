@@ -30,11 +30,10 @@ impl NetworkQualityMeasurer {
         connection: &mut RwLockWriteGuard<VirtualConnection>,
         ack_seq: u16,
     ) {
-        let mut smoothed_rrt = 0.0;
-        {
-            let mut congestion_data = connection.congestion_avoidance_buffer.get_mut(ack_seq);
-            smoothed_rrt = self.get_smoothed_rtt(congestion_data);
-        }
+        let smoothed_rrt = {
+            let congestion_data = connection.congestion_avoidance_buffer.get_mut(ack_seq);
+            self.get_smoothed_rtt(congestion_data)
+        };
 
         connection.rtt = smoothed_rrt;
     }
@@ -80,11 +79,9 @@ impl NetworkQualityMeasurer {
 mod test {
     use net::connection::{VirtualConnection};
     use net::NetworkConfig;
-    use sequence_buffer::CongestionData;
-    use super::{NetworkQualityMeasurer, RwLockWriteGuard};
+    use super::NetworkQualityMeasurer;
     use std::net::ToSocketAddrs;
-    use std::time::{Duration, Instant};
-    use std::sync::RwLock;
+    use std::time::Duration;
 
     static TEST_HOST_IP: &'static str = "127.0.0.1";
     static TEST_BAD_HOST_IP: &'static str = "800.0.0.1";

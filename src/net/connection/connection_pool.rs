@@ -78,7 +78,7 @@ impl ConnectionPool {
                     Ok(lock) => {
                         ConnectionPool::check_for_timeouts(&*lock, poll_interval, &sender);
                     }
-                    Err(e) => {
+                    Err(_) => {
                         error!("Unable to acquire read lock to check for timed out connections")
                     }
                 }

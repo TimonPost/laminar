@@ -50,7 +50,7 @@ impl UdpSocket {
     }
 
     /// Sends data on the socket to the given address. On success, returns the number of bytes written.
-    pub fn send(&mut self, mut packet: Packet) -> Result<usize> {
+    pub fn send(&mut self, packet: Packet) -> Result<usize> {
         let (addr, mut packet_data) = self.state.pre_process_packet(packet, &self.config)?;
 
         let mut bytes_sent = 0;
