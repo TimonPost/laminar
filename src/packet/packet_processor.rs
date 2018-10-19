@@ -156,7 +156,7 @@ impl PacketProcessor {
 mod tests {
     use super::PacketProcessor;
     use net::{NetworkConfig, SocketState};
-    use packet::{Packet};
+    use packet::Packet;
     use total_fragments_needed;
 
     /// Tests if a packet will be processed right.
