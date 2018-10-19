@@ -1,9 +1,8 @@
-use super::PacketHeader;
 use super::{HeaderParser, HeaderReader};
-use net::constants::{FRAGMENT_HEADER_SIZE, HEART_BEAT_HEADER_SIZE};
+use net::constants::{HEART_BEAT_HEADER_SIZE};
 use packet::PacketTypeId;
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use std::io::{self, Cursor, Error, ErrorKind, Write};
+use byteorder::{ReadBytesExt, WriteBytesExt};
+use std::io::{self, Cursor, Error, ErrorKind};
 
 #[derive(Copy, Clone, Debug)]
 /// This header represents an heartbeat packet header.
@@ -42,7 +41,7 @@ impl HeaderReader for HeartBeatHeader {
             return Err(Error::new(ErrorKind::Other, "Invalid fragment header"));
         }
 
-        let mut header = HeartBeatHeader {
+        let header = HeartBeatHeader {
            packet_type_id
         };
 

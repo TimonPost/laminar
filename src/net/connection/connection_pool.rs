@@ -56,7 +56,7 @@ impl ConnectionPool {
         Ok(connection.clone())
     }
 
-    /// Start loop that will detect if connections will are disconnected.
+    /// Start loop that detects when a connection has timed out.
     ///
     /// This function starts a background thread that does the following:
     /// 1. Gets a read lock on the HashMap containing all the connections
@@ -79,7 +79,7 @@ impl ConnectionPool {
                         ConnectionPool::check_for_timeouts(&*lock, poll_interval, &sender);
                     }
                     Err(e) => {
-                        error!("Unable to acquire read lock to check for timed out connections")
+                        panic!("Error when checking for timed out connections: {}", e)
                     }
                 }
                 thread::sleep(poll_interval);

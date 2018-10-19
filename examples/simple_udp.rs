@@ -58,7 +58,7 @@ pub fn main() {
         string: String::from("Some information"),
     });
 
-    /// ==== result ====
+    // ==== results ====
     // Moving to lat: 10.555, long: 10.55454, alt: 1.3
     // Moving to lat: 5.4545, long: 3.344, alt: 1.33
     // Received text: "Some information"
@@ -103,7 +103,6 @@ impl Server {
 
         match result {
             Ok(Some(packet)) => {
-                let endpoint: SocketAddr = packet.addr();
                 let received_data: &[u8] = packet.payload();
 
                 // deserialize bytes to `DataType` we passed in with `Client.send()`.

@@ -1,11 +1,9 @@
 use std::clone::Clone;
-use std::io::Result;
 
 /// Collection to store data of any kind.
 pub struct SequenceBuffer<T>  where T: Default + Clone + Send + Sync  {
     entries: Vec<T>,
     entry_sequences: Vec<u16>,
-    size: usize,
 }
 
 impl<T> SequenceBuffer<T> where T: Default + Clone + Send + Sync {
@@ -15,10 +13,9 @@ impl<T> SequenceBuffer<T> where T: Default + Clone + Send + Sync {
         let mut entry_sequences = Vec::with_capacity(size);
 
         entries.resize(size, T::default());
-        entry_sequences.resize(size, 0xFFFF_FFFF);
+        entry_sequences.resize(size, 0xFFFF);
 
         SequenceBuffer {
-            size,
             entries,
             entry_sequences,
         }
@@ -36,13 +33,13 @@ impl<T> SequenceBuffer<T> where T: Default + Clone + Send + Sync {
     }
 
     /// Insert new entry into the collection.
-    pub fn insert(&mut self, data: T, sequence: u16) -> Result<&mut T> {
+    pub fn insert(&mut self, data: T, sequence: u16) -> &mut T {
         let index = self.index(sequence);
 
         self.entries[index] = data;
         self.entry_sequences[index] = sequence;
 
-        Ok(&mut self.entries[index])
+        &mut self.entries[index]
     }
 
     /// Remove entry from collection.
@@ -50,7 +47,7 @@ impl<T> SequenceBuffer<T> where T: Default + Clone + Send + Sync {
         // TODO: validity check
         let index = self.index(sequence);
         self.entries[index] = T::default();
-        self.entry_sequences[index] = 0xFFFF_FFFF;
+        self.entry_sequences[index] = 0xFFFF;
     }
 
     /// checks if an certain entry exists.
@@ -74,6 +71,7 @@ impl<T> SequenceBuffer<T> where T: Default + Clone + Send + Sync {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::SequenceBuffer;
 

@@ -94,9 +94,9 @@ impl HeaderReader for PacketHeader {
     }
 }
 
+#[cfg(test)]
 mod tests {
-    use byteorder::ReadBytesExt;
-    use packet::header::{FragmentHeader, HeaderParser, HeaderReader, PacketHeader};
+    use packet::header::{HeaderParser, HeaderReader, PacketHeader};
     use infrastructure::DeliveryMethod;
     use std::io::Cursor;
 
@@ -106,7 +106,7 @@ mod tests {
         let packet_serialized: Vec<u8> = packet_header.parse().unwrap();
 
         let mut cursor = Cursor::new(packet_serialized);
-        let packet_deserialized: PacketHeader = PacketHeader::read(&mut cursor).unwrap();
+        let _packet_deserialized: PacketHeader = PacketHeader::read(&mut cursor).unwrap();
 
         assert_eq!(packet_header.seq, 1);
         assert_eq!(packet_header.ack_seq, 1);

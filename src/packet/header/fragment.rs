@@ -116,8 +116,8 @@ impl HeaderReader for FragmentHeader {
     }
 }
 
+#[cfg(test)]
 mod tests {
-    use byteorder::ReadBytesExt;
     use packet::header::{FragmentHeader, HeaderParser, HeaderReader, PacketHeader};
     use infrastructure::DeliveryMethod;
     use std::io::Cursor;
@@ -125,7 +125,7 @@ mod tests {
     #[test]
     pub fn serializes_deserialize_fragment_header_test() {
         let packet_header = PacketHeader::new(1, 1, 5421, DeliveryMethod::Unreliable);
-        let packet_serialized: Vec<u8> = packet_header.parse().unwrap();
+        let _packet_serialized: Vec<u8> = packet_header.parse().unwrap();
 
         let fragment = FragmentHeader::new(0, 1, packet_header.clone());
         let fragment_serialized = fragment.parse().unwrap();

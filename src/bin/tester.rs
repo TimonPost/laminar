@@ -10,12 +10,12 @@ fn main() {
     let yaml = load_yaml!("cli.yml");
     let matches = App::from_yaml(yaml).get_matches();
 
-    if let Some(m) = matches.subcommand_matches("server") {
+    if let Some(_) = matches.subcommand_matches("server") {
         run_server();
         exit(0);
     }
 
-    if let Some(m) = matches.subcommand_matches("client") {
+    if let Some(_) = matches.subcommand_matches("client") {
         run_client();
         exit(0);
     }

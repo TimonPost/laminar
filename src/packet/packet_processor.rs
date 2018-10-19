@@ -1,11 +1,10 @@
-use std::io::{self, Cursor, Error, ErrorKind, Read, Write};
+use std::io::{Cursor, Read, Write};
 use std::net::SocketAddr;
 
 use net::{SocketState, NetworkConfig};
 use packet::{header, Packet};
-use sequence_buffer::{SequenceBuffer, ReassemblyData, CongestionData};
-use self::header::{FragmentHeader, PacketHeader, HeaderParser, HeaderReader};
-use byteorder::ReadBytesExt;
+use sequence_buffer::{SequenceBuffer, ReassemblyData};
+use self::header::{FragmentHeader, PacketHeader, HeaderReader};
 
 use error::{NetworkError, Result};
 
@@ -32,19 +31,17 @@ impl PacketProcessor {
         let prefix_byte = packet[0];
         let mut cursor = Cursor::new(packet);
 
-        let mut received_bytes = Ok(None);
-
-        // a normal packet starts by a header whose first bit is always 0.
-        if prefix_byte & 1 == 0 {
-            received_bytes = self.handle_normal_packet(&mut cursor, &addr, socket_state);
+        let received_bytes = if prefix_byte & 1 == 0 {
+            // a normal packet starts by a header whose first bit is always 0.
+            self.handle_normal_packet(&mut cursor, &addr, socket_state)
         } else {
-            received_bytes = self.handle_fragment(&mut cursor);
-        }
+            self.handle_fragment(&mut cursor)
+        };
 
         return match received_bytes {
             Ok(Some(payload)) => Ok(Some(Packet::sequenced_unordered(addr, payload, ))),
             Ok(None) => Ok(None),
-            Err(e) => Err(NetworkError::ReceiveFailed.into()),
+            Err(_) => Err(NetworkError::ReceiveFailed.into()),
         };
     }
 
@@ -55,10 +52,10 @@ impl PacketProcessor {
 
         self.create_fragment_if_not_exists(&fragment_header);
 
-        let mut num_fragments_received = 0;
-        let mut num_fragments_total = 0;
-        let mut sequence = 0;
-        let mut total_buffer = Vec::new();
+        let num_fragments_received;
+        let num_fragments_total;
+        let sequence;
+        let total_buffer;
 
         {
             // get entry of previous received fragments
@@ -122,7 +119,7 @@ impl PacketProcessor {
 
                 Ok(Some(payload))
             }
-            Err(e) => Err(NetworkError::HeaderParsingFailed.into()),
+            Err(_) => Err(NetworkError::HeaderParsingFailed.into()),
         }
     }
 
@@ -155,12 +152,11 @@ impl PacketProcessor {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::PacketProcessor;
-    use infrastructure::DeliveryMethod;
     use net::{NetworkConfig, SocketState};
-    use packet::{header, Packet};
-    use std::io::Cursor;
+    use packet::Packet;
     use total_fragments_needed;
 
     /// Tests if a packet will be processed right.
@@ -173,7 +169,7 @@ mod tests {
         let config = NetworkConfig::default();
         let mut packet_processor = PacketProcessor::new(&config);
 
-        let mut test_data: Vec<u8> = vec![1, 2, 3, 4, 5];
+        let test_data: Vec<u8> = vec![1, 2, 3, 4, 5];
 
         // first setup packet data
         let packet = Packet::sequenced_unordered("127.0.0.1:12345".parse().unwrap(), test_data.clone());
@@ -181,7 +177,7 @@ mod tests {
         let mut socket_sate = SocketState::new(&config).unwrap();
         let mut result = socket_sate.pre_process_packet(packet, &config).unwrap();
 
-        let mut packet_data = result.1.parts();
+        let packet_data = result.1.parts();
 
         assert_eq!(packet_data.len(), 1);
 
@@ -204,7 +200,7 @@ mod tests {
         let config = NetworkConfig::default();
         let mut packet_processor = PacketProcessor::new(&config);
 
-        let mut test_data: Vec<u8> = vec![1; 4000];
+        let test_data: Vec<u8> = vec![1; 4000];
 
         // first setup packet data
         let packet = Packet::sequenced_unordered("127.0.0.1:12345".parse().unwrap(), test_data.clone());
@@ -212,7 +208,7 @@ mod tests {
         let mut socket_sate = SocketState::new(&config).unwrap();
         let mut result = socket_sate.pre_process_packet(packet, &config).unwrap();
 
-        let mut packet_data = result.1.parts();
+        let packet_data = result.1.parts();
 
         let expected_fragments =
             total_fragments_needed(test_data.len() as u16, config.fragment_size) as usize;

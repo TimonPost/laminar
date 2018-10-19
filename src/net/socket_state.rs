@@ -57,9 +57,9 @@ impl SocketState {
 
         let connection = self.connections.get_connection_or_insert(&packet.addr())?;
 
-        let mut connection_seq: u16 = 0;
-        let mut their_last_seq: u16 = 0;
-        let mut their_ack_field: u32 = 0;
+        let connection_seq: u16;
+        let their_last_seq: u16;
+        let their_ack_field: u32;
 
         {
             let mut lock = connection
@@ -178,14 +178,13 @@ impl SocketState {
 
 #[cfg(test)]
 mod test {
-    use net::{constants, NetworkConfig, SocketState, VirtualConnection};
+    use net::{constants, NetworkConfig, SocketState};
     use packet::header::{FragmentHeader, HeaderReader, PacketHeader};
     use packet::{Packet, PacketData};
 
     use std::io::Cursor;
-    use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
+    use std::net::{IpAddr, SocketAddr};
     use std::str::FromStr;
-    use std::{thread, time};
 
     use total_fragments_needed;
 
@@ -197,7 +196,7 @@ mod test {
         let config = NetworkConfig::default();
 
         // - 1 so that packet can fit inside one fragment.
-        let mut data = vec![0; config.fragment_size as usize - 1];
+        let data = vec![0; config.fragment_size as usize - 1];
 
         // do some test processing of the data.
         let mut processed_packet: (SocketAddr, PacketData) =
