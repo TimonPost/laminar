@@ -27,14 +27,22 @@ byteorder = "1.2.6"
 log = "0.4"
 failure = "0.1"
 failure_derive = "0.1"
-clap = { version = "2.32", features = ["yaml"] }
+clap = { version = "2.32", features = ["yaml"], optional = true }
+env_logger = { version = "0.5.13", optional = true }
 
 [dev-dependencies]
 criterion = "0.2"
+
+[features]
+tester = [
+  "env_logger",
+  "clap"
+]
 
 [[bench]]
 name = "packet_processing"
 harness = false
 
 [[bin]]
-name = "tester"
+name = "laminar-tester"
+required-features = ["tester"]
