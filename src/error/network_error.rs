@@ -25,6 +25,8 @@ pub enum NetworkErrorKind
     UDPSocketStateCreationFailed,
     #[fail(display = "The received data did not have any length.")]
     ReceivedDataToShort,
+    #[fail(display = "The protocol versions do not match.")]
+    ProtocolVersionMismatch,
 }
 
 #[derive(Debug)]

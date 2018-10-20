@@ -5,8 +5,10 @@ use net::{SocketState, NetworkConfig};
 use packet::{header, Packet};
 use sequence_buffer::{SequenceBuffer, ReassemblyData};
 use self::header::{FragmentHeader, PacketHeader, HeaderReader};
-
-use error::{self, PacketErrorKind, FragmentErrorKind, NetworkResult};
+use protocol_version::ProtocolVersion;
+use super::PacketTypeId;
+use error::{self, PacketErrorKind, FragmentErrorKind, NetworkResult, NetworkErrorKind};
+use byteorder::{BigEndian, ReadBytesExt};
 
 /// A wrapper for processing data.
 pub struct PacketProcessor {
@@ -28,14 +30,25 @@ impl PacketProcessor {
         addr: SocketAddr,
         socket_state: &mut SocketState,
     ) -> NetworkResult<Option<Packet>> {
-        let prefix_byte = packet[0];
         let mut cursor = Cursor::new(packet);
 
-        let received_bytes = if prefix_byte & 1 == 0 {
-            // a normal packet starts by a header whose first bit is always 0.
-            self.handle_normal_packet(&mut cursor, &addr, socket_state)
-        } else {
-            self.handle_fragment(&mut cursor)
+        let protocol_id: u32 = cursor.read_u32::<BigEndian>()?;
+        let packet_id: PacketTypeId = PacketTypeId::get_packet_type(cursor.read_u8()?);
+
+        // set cursor back at 0 because values are read later again.
+        cursor.set_position(0);
+
+        if !ProtocolVersion::valid_version(protocol_id) {
+            return Err(NetworkErrorKind::ProtocolVersionMismatch.into());
+        }
+
+        // set cursor back to 0 because above values will be read again later in code.
+        cursor.set_position(0);
+
+        let received_bytes = match packet_id {
+            PacketTypeId::Packet => self.handle_normal_packet(&mut cursor, &addr, socket_state),
+            PacketTypeId::Fragment => self.handle_fragment(&mut cursor),
+            _ => { Ok(None) }
         };
 
         return match received_bytes {
@@ -222,7 +235,6 @@ mod tests {
                 is_packet_reassembled = true;
             }
         }
-
         assert!(is_packet_reassembled);
     }
 }

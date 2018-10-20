@@ -5,6 +5,7 @@ use packet::PacketTypeId;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use error::{NetworkResult, FragmentErrorKind};
 use std::io::{Cursor, Write};
+use protocol_version::ProtocolVersion;
 
 #[derive(Copy, Clone, Debug)]
 /// This header represents a fragmented packet header.
@@ -54,6 +55,7 @@ impl HeaderParser for FragmentHeader {
 
     fn parse(&self) -> <Self as HeaderParser>::Output {
         let mut wtr = Vec::new();
+        wtr.write_u32::<BigEndian>(ProtocolVersion::get_crc32())?;
         wtr.write_u8(PacketTypeId::get_id(self.packet_type_id))?;
         wtr.write_u16::<BigEndian>(self.sequence)?;
         wtr.write_u8(self.id)?;
@@ -76,18 +78,14 @@ impl HeaderReader for FragmentHeader {
     type Header = NetworkResult<FragmentHeader>;
 
     fn read(rdr: &mut Cursor<Vec<u8>>) -> <Self as HeaderReader>::Header {
-        let packet_type_id = PacketTypeId::get_packet_type(rdr.read_u8()?);
-
-        if packet_type_id != PacketTypeId::Fragment {
-            return Err(FragmentErrorKind::FragmentHasWrongId)?;
-        }
-
+        let _ = rdr.read_u32::<BigEndian>()?;
+        let _ = rdr.read_u8();
         let sequence = rdr.read_u16::<BigEndian>()?;
         let id = rdr.read_u8()?;
         let num_fragments = rdr.read_u8()?;
 
         let mut header = FragmentHeader {
-            packet_type_id,
+            packet_type_id: PacketTypeId::Fragment,
             sequence,
             id,
             num_fragments,
