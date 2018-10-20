@@ -3,8 +3,9 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use net::constants::PACKET_HEADER_SIZE;
 use infrastructure::DeliveryMethod;
 use packet::PacketTypeId;
+use error::{NetworkResult, PacketErrorKind};
 
-use std::io::{self, Cursor, Error, ErrorKind};
+use std::io::Cursor;
 
 #[derive(Copy, Clone, Debug)]
 /// This is the default header.
@@ -52,7 +53,7 @@ impl PacketHeader {
 }
 
 impl HeaderParser for PacketHeader {
-    type Output = io::Result<Vec<u8>>;
+    type Output = NetworkResult<Vec<u8>>;
 
     fn parse(&self) -> <Self as HeaderParser>::Output {
         let mut wtr = Vec::new();
@@ -66,13 +67,13 @@ impl HeaderParser for PacketHeader {
 }
 
 impl HeaderReader for PacketHeader {
-    type Header = io::Result<PacketHeader>;
+    type Header = NetworkResult<PacketHeader>;
 
     fn read(rdr: &mut Cursor<Vec<u8>>) -> <Self as HeaderReader>::Header {
         let packet_type = PacketTypeId::get_packet_type(rdr.read_u8()?);
 
         if packet_type != PacketTypeId::Packet {
-            return Err(Error::new(ErrorKind::Other, "Invalid packet header"));
+            return Err(PacketErrorKind::PacketHasWrongId)?
         }
 
         let delivery_method_id = rdr.read_u8()?;

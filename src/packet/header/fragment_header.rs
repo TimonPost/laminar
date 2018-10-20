@@ -3,7 +3,8 @@ use super::{HeaderParser, HeaderReader};
 use net::constants::FRAGMENT_HEADER_SIZE;
 use packet::PacketTypeId;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use std::io::{self, Cursor, Error, ErrorKind, Write};
+use error::{NetworkResult, FragmentErrorKind};
+use std::io::{Cursor, Write};
 
 #[derive(Copy, Clone, Debug)]
 /// This header represents a fragmented packet header.
@@ -49,7 +50,7 @@ impl FragmentHeader {
 }
 
 impl HeaderParser for FragmentHeader {
-    type Output = io::Result<Vec<u8>>;
+    type Output = NetworkResult<Vec<u8>>;
 
     fn parse(&self) -> <Self as HeaderParser>::Output {
         let mut wtr = Vec::new();
@@ -63,7 +64,7 @@ impl HeaderParser for FragmentHeader {
                 Some(header) => {
                     wtr.write(&header.parse()?)?;
                 }
-                None => return Err(Error::new(ErrorKind::Other, "Invalid fragment header")),
+                None => return Err(FragmentErrorKind::PacketHeaderNotFound.into()),
             }
         }
 
@@ -72,13 +73,13 @@ impl HeaderParser for FragmentHeader {
 }
 
 impl HeaderReader for FragmentHeader {
-    type Header = io::Result<FragmentHeader>;
+    type Header = NetworkResult<FragmentHeader>;
 
     fn read(rdr: &mut Cursor<Vec<u8>>) -> <Self as HeaderReader>::Header {
         let packet_type_id = PacketTypeId::get_packet_type(rdr.read_u8()?);
 
         if packet_type_id != PacketTypeId::Fragment {
-            return Err(Error::new(ErrorKind::Other, "Invalid fragment header"));
+            return Err(FragmentErrorKind::FragmentHasWrongId)?;
         }
 
         let sequence = rdr.read_u16::<BigEndian>()?;

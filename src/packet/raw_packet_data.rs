@@ -1,5 +1,5 @@
 use super::header::HeaderParser;
-use std::io::Result;
+use error::NetworkResult;
 
 #[derive(Clone, Debug)]
 /// This is the raw packet data that.
@@ -11,7 +11,8 @@ pub struct RawPacketData {
 }
 
 impl RawPacketData {
-    pub fn new(header: &HeaderParser<Output = Result<Vec<u8>>>, body: Vec<u8>) -> RawPacketData {
+    /// Create a new raw packet from the given header bytes and body bytes.
+    pub fn new(header: &HeaderParser<Output = NetworkResult<Vec<u8>>>, body: Vec<u8>) -> RawPacketData {
         let header = header.parse().unwrap();
         RawPacketData { header, body }
     }
