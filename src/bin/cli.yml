@@ -2,50 +2,124 @@ name: tester
 version: "0.0.1"
 author: Fletcher Haynes <fletcher@capitalprawn.com>
 about: Testing binary for laminar
+
 subcommands:
-  - server:
-    - LISTEN_HOST:
-      help: "What host the server bind to. 0.0.0.0/0 will bind to all"
-      required: true
-      takes_value: true
-      long: bind-host
-      short: h
-    - LISTEN_PORT:
-      help: "What port the server should listen on"
-      required: true
-      takes_value: true
-      long: bind-port
-      short: p
-    - SHUTDOWN_TIMER:
-      help: The number of seconds the server will remain running, then shut itself down
-      required: false
-      default_value: 600
-      takes_value: true
-      long: shutdown
-      short: s
-  - client:
-    CONNECT_HOST:
-      help: "What host the client will connect to, as a hostname or IP address"
-      required: true
-      takes_value: true
-      long: connect-host
-      short: h
-    CONNECT_PORT:
-      help: "What port the client will connect to"
-      required: true
-      takes_value: true
-      long: connect-port
-      short: p
-    TEST_TO_RUN:
-      help: "Which client test to run. Run laminar-tester show-tests to see all available"
-      required: true
-      takes_value: true
-      long: test
-      short: t
-  - show-tests:
-      about: Shows all tests available
-      subcommands:
-        - server:
-          about: Shows server tests
-        - client:
-          about: Shows client tests
+    - server:
+        about: Starts the tester in server mode
+        author: Fletcher Haynes <fletcher@capitalprawn.com>
+        version: "0.0.1"
+        args:
+            - LISTEN_HOST:
+                help: "What host the server bind to. 0.0.0.0/0 will bind to all"
+                required: true
+                takes_value: true
+                long: bind-host
+                default_value: "127.0.0.1"
+                short: h
+            - LISTEN_PORT:
+                help: "What port the server should listen on"
+                required: true
+                takes_value: true
+                long: bind-port
+                default_value: "2264"
+                short: p
+            - SHUTDOWN_TIMER:
+                help: The number of seconds the server will remain running, then shut itself down
+                required: false
+                default_value: "600"
+                takes_value: true
+                long: shutdown
+                short: s
+    - client:
+        about: Starts the tester in client mode
+        author: Fletcher Haynes <fletcher@capitalprawn.com>
+        version: "0.0.1"
+        args:
+            - CONNECT_HOST:
+                help: "What host the client will connect to, as a hostname or IP address"
+                required: true
+                takes_value: true
+                long: connect-host
+                default_value: "127.0.0.1"
+                short: h
+            - CONNECT_PORT:
+                help: "What port the client will connect to"
+                required: true
+                takes_value: true
+                long: connect-port
+                default_value: "2264"
+                short: p
+            - LISTEN_HOST:
+                help: "What host the client should bind to. 0.0.0.0/0 will bind to all"
+                required: true
+                takes_value: true
+                long: bind-host
+                default_value: "127.0.0.1"
+                short: h
+            - LISTEN_PORT:
+                help: "What port the client should listen on"
+                required: true
+                takes_value: true
+                long: bind-port
+                default_value: "0"
+                short: p
+            - TEST_TO_RUN:
+                help: "Which client test to run. Run `laminar-tester show-tests` to see all available"
+                required: true
+                takes_value: true
+                long: test
+                short: t
+                default_value: "steady-stream"
+            - CLIENT_TIMEOUT:
+                help: "How long the client will wait on the server before it times out"
+                required: true
+                takes_value: true
+                long: timeout
+                default_value: "10"
+            - TEST_DURATION:
+                help: "For tests based on duration, length of time it should run in seconds"
+                required: false
+                takes_value: true
+                long: test-duration
+                default_value: "60"
+            - PACKETS_PER_SECOND:
+                help: "How many packets per second to send for applicable tests."
+                required: false
+                takes_value: true
+                long: pps
+                default_value: "60"
+    - show-tests:
+        about: Shows all tests available
+        author: Fletcher Haynes <fletcher@capitalprawn.com>
+        version: "0.0.1"
+        subcommands:
+            - server:
+              about: Shows server tests
+            - client:
+                about: Shows client tests
+            - server:
+                about: Starts the tester in server mode
+                author: Fletcher Haynes <fletcher@capitalprawn.com>
+                version: "0.0.1"
+                args:
+                    - LISTEN_HOST:
+                        help: "What host the server bind to. 0.0.0.0/0 will bind to all"
+                        required: true
+                        takes_value: true
+                        long: bind-host
+                        default_value: "127.0.0.1"
+                        short: h
+                    - LISTEN_PORT:
+                        help: "What port the server should listen on"
+                        required: true
+                        takes_value: true
+                        long: bind-port
+                        default_value: "2264"
+                        short: p
+                    - SHUTDOWN_TIMER:
+                        help: The number of seconds the server will remain running, then shut itself down
+                        required: false
+                        default_value: "600"
+                        takes_value: true
+                        long: shutdown
+                        short: s

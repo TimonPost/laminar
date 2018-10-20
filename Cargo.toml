@@ -37,4 +37,4 @@ name = "packet_processing"
 harness = false
 
 [[bin]]
-name = "tester"
+name = "laminar-tester"
