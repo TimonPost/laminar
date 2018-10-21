@@ -1,14 +1,14 @@
 use std::io::{Cursor, Read, Write};
 use std::net::SocketAddr;
 
-use net::{SocketState, NetworkConfig};
-use packet::{header, Packet};
-use sequence_buffer::{SequenceBuffer, ReassemblyData};
-use self::header::{FragmentHeader, PacketHeader, HeaderReader};
-use protocol_version::ProtocolVersion;
+use self::header::{FragmentHeader, HeaderReader, PacketHeader};
 use super::PacketTypeId;
-use error::{self, PacketErrorKind, FragmentErrorKind, NetworkResult, NetworkErrorKind};
 use byteorder::{BigEndian, ReadBytesExt};
+use error::{FragmentErrorKind, NetworkErrorKind, NetworkResult};
+use net::{NetworkConfig, SocketState};
+use packet::{header, Packet};
+use protocol_version::ProtocolVersion;
+use sequence_buffer::{ReassemblyData, SequenceBuffer};
 
 /// A wrapper for processing data.
 pub struct PacketProcessor {
@@ -18,9 +18,13 @@ pub struct PacketProcessor {
 }
 
 impl PacketProcessor {
-    pub fn new(config: &NetworkConfig) -> Self
-    {
-        PacketProcessor { reassembly_buffer: SequenceBuffer::with_capacity(config.fragment_reassembly_buffer_size), config: config.clone() }
+    pub fn new(config: &NetworkConfig) -> Self {
+        PacketProcessor {
+            reassembly_buffer: SequenceBuffer::with_capacity(
+                config.fragment_reassembly_buffer_size,
+            ),
+            config: config.clone(),
+        }
     }
 
     /// Process data and return the resulting packet
@@ -48,11 +52,11 @@ impl PacketProcessor {
         let received_bytes = match packet_id {
             PacketTypeId::Packet => self.handle_normal_packet(&mut cursor, &addr, socket_state),
             PacketTypeId::Fragment => self.handle_fragment(&mut cursor),
-            _ => { Ok(None) }
+            _ => Ok(None),
         };
 
         return match received_bytes {
-            Ok(Some(payload)) => Ok(Some(Packet::sequenced_unordered(addr, payload, ))),
+            Ok(Some(payload)) => Ok(Some(Packet::sequenced_unordered(addr, payload))),
             Ok(None) => Ok(None),
             Err(e) => Err(e)?,
         };
@@ -132,17 +136,17 @@ impl PacketProcessor {
     }
 
     /// if fragment does not exist we need to insert a new entry
-    fn create_fragment_if_not_exists(&mut self, fragment_header: &FragmentHeader) -> NetworkResult<()> {
+    fn create_fragment_if_not_exists(
+        &mut self,
+        fragment_header: &FragmentHeader,
+    ) -> NetworkResult<()> {
         if !self.reassembly_buffer.exists(fragment_header.sequence()) {
             if fragment_header.id() == 0 {
                 match fragment_header.packet_header() {
-                    Some(header) => {
+                    Some(_header) => {
                         let reassembly_data = ReassemblyData::new(
                             fragment_header.sequence(),
-                            header.ack_seq(),
-                            header.ack_field(),
                             fragment_header.fragment_count(),
-                            fragment_header.size() as usize,
                             (9 + self.config.fragment_size) as usize,
                         );
 
@@ -180,7 +184,8 @@ mod tests {
         let test_data: Vec<u8> = vec![1, 2, 3, 4, 5];
 
         // first setup packet data
-        let packet = Packet::sequenced_unordered("127.0.0.1:12345".parse().unwrap(), test_data.clone());
+        let packet =
+            Packet::sequenced_unordered("127.0.0.1:12345".parse().unwrap(), test_data.clone());
 
         let mut socket_sate = SocketState::new(&config).unwrap();
         let mut result = socket_sate.pre_process_packet(packet, &config).unwrap();
@@ -211,7 +216,8 @@ mod tests {
         let test_data: Vec<u8> = vec![1; 4000];
 
         // first setup packet data
-        let packet = Packet::sequenced_unordered("127.0.0.1:12345".parse().unwrap(), test_data.clone());
+        let packet =
+            Packet::sequenced_unordered("127.0.0.1:12345".parse().unwrap(), test_data.clone());
 
         let mut socket_sate = SocketState::new(&config).unwrap();
         let mut result = socket_sate.pre_process_packet(packet, &config).unwrap();

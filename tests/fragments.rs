@@ -26,15 +26,22 @@ pub fn fragment_packet_integration_test() {
     let mut server = ServerMoq::new(NetworkConfig::default(), true, SERVER_ADDR.parse().unwrap());
     let server_thread = server.start_receiving(rx, test_data.clone());
 
-    let client = ClientStub::new(Duration::from_millis(0), CLIENT_ADDR.parse().unwrap(), TOTAL_PACKETS_TO_SEND);
+    let client = ClientStub::new(
+        Duration::from_millis(0),
+        CLIENT_ADDR.parse().unwrap(),
+        TOTAL_PACKETS_TO_SEND,
+    );
 
     let stopwatch = Instant::now();
 
-    server.add_client(test_data.to_vec(), client).join();
+    server
+        .add_client(test_data.to_vec(), client)
+        .join()
+        .unwrap();
 
     // notify server to stop receiving.
-    tx.send(true);
+    tx.send(true).unwrap();
 
-    let total_received = server_thread.join().unwrap();
-    let elapsed_time = stopwatch.elapsed();
+    let _total_received = server_thread.join().unwrap();
+    let _elapsed_time = stopwatch.elapsed();
 }

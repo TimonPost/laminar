@@ -32,7 +32,7 @@ pub fn send_data() {
     let packet = construct_packet();
 
     // next send or packet to the endpoint we earlier putted into the packet.
-    udp_socket.send(packet);
+    udp_socket.send(packet).unwrap();
 }
 
 /// This is an example of how to receive data over udp on an specific socket address with blocking the current thread.
@@ -44,7 +44,7 @@ pub fn receive_data_with_blocking() {
     let mut udp_socket: UdpSocket = UdpSocket::bind(server_address(), config).unwrap();
 
     // next we could specify if or socket should block the current thread when receiving data or not (default = false)
-    udp_socket.set_nonblocking(false);
+    udp_socket.set_nonblocking(false).unwrap();
 
     // Next start receiving.
     let result = udp_socket.recv();
@@ -80,7 +80,7 @@ pub fn receive_data_without_blocking() {
     let mut udp_socket: UdpSocket = UdpSocket::bind(client_address(), config).unwrap();
 
     // next we could specify if or socket should block the current thread when receiving data or not (default = false)
-    udp_socket.set_nonblocking(false);
+    udp_socket.set_nonblocking(false).unwrap();
 
     // setup a thread to do the receiving
     // Next start receiving.
