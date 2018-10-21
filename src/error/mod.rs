@@ -2,7 +2,7 @@ mod error_kinds;
 mod network_error;
 
 pub use self::network_error::{NetworkErrorKind, NetworkError};
-pub use self::error_kinds::{PacketErrorKind, FragmentErrorKind, TcpErrorKind};
+pub use self::error_kinds::{PacketErrorKind, FragmentErrorKind};
 
 use std::result;
 use failure::Error;
