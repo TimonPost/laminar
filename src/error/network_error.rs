@@ -1,4 +1,4 @@
-use super::{FragmentErrorKind, PacketErrorKind, TcpErrorKind};
+use super::{FragmentErrorKind, PacketErrorKind};
 
 use std::fmt::{self, Display,Formatter};
 use std::io;
@@ -13,8 +13,6 @@ pub enum NetworkErrorKind
     FragmentError { inner: FragmentErrorKind },
     #[fail(display = "Something went wrong with receiving/parsing packets. Reason: {:?}.", inner)]
     PacketError { inner: PacketErrorKind },
-    #[fail(display = "Something went wrong with TCP. Reason: {:?}.", inner)]
-    TcpError { inner: TcpErrorKind},
     #[fail(display = "Could not add a connection to the connection pool, because the connection lock is poisoned. Reason: {:?}.", inner)]
     FailedToAddConnection { inner: String },
     #[fail(display = "Ans Io Error occurred. Reason: {:?}.", inner )]
@@ -105,11 +103,5 @@ impl From<FragmentErrorKind> for NetworkError {
 impl From<PacketErrorKind> for NetworkError {
     fn from(inner: PacketErrorKind) -> Self {
         NetworkErrorKind::PacketError { inner }.into()
-    }
-}
-
-impl From<TcpErrorKind> for NetworkError {
-    fn from(inner: TcpErrorKind) -> Self {
-        NetworkErrorKind::TcpError { inner }.into()
     }
 }

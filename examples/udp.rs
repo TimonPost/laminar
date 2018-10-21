@@ -1,4 +1,4 @@
-//! This module provides examples for the TCP api.
+//! This module provides examples for the UDP api.
 //! 1. sending data
 //! 2. receiving data
 //! 3. constructing the packet for sending.

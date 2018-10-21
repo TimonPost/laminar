@@ -43,7 +43,7 @@ And import the laminar modules you want to use.
 extern crate laminar;
 
 // this module contains all socket related logic.
-use laminar::net::{UdpSocket, SocketAddr, NetworkConfig, Connection, Quality, TcpSocket, TcpClient, TcpSocketState};
+use laminar::net::{UdpSocket, SocketAddr, NetworkConfig, Connection, Quality};
 // this module contains packet related logic.
 use laminar::packet::{Packet};
 ```
@@ -58,8 +58,9 @@ use laminar::packet::{Packet};
 These are the features from this crate:
 
 - Semi-reliable UDP
-- UDP
-- TCP
+- Fragmentation
+- RTT estimation
+- Virtual connection management.
 
 ## Examples
 These are some basic examples demonstrating how to use this crate. See [examples](https://github.com/amethyst/laminar/tree/master/examples) for more.

@@ -28,16 +28,3 @@ pub enum FragmentErrorKind
     #[fail(display = "The fragment supposed to be in a cache but it was not found.")]
     CouldNotFindFragmentById
 }
-
-/// Errors that could occur with TCP-protocol
-#[derive(Fail, Debug, PartialEq, Eq, Clone)]
-pub enum TcpErrorKind {
-    #[fail(display = "Could not clone TCP-Stream.")]
-    TcpStreamCloneFailed,
-    #[fail(display = "Could not take 'rx' channel from inside the 'outgoing loop'.")]
-    TcpSteamFailedTakeRx,
-    #[fail(display = "Could not get the lock from TCP-connections hash, because it was poisoned.")]
-    TcpClientConnectionsHashPoisoned,
-    #[fail(display = "Could not get the lock for a specific TCP-client, because it was poisoned.")]
-    TcpClientLockFailed,
-}

@@ -6,7 +6,7 @@ authors = [
     "Fletcher Haynes <fletcher@capitalprawn.com>",
     "TimonPost <timonpost@hotmail.nl>",
 ]
-description = "A simple semi-reliable UDP/TCP protocol for multiplayer games"
+description = "A simple semi-reliable UDP protocol for multiplayer games"
 keywords = ["gamedev", "networking", "udp", "amethyst"]
 categories = ["game-engines", "network-programming"]
 
