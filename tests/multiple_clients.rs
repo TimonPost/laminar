@@ -32,12 +32,36 @@ pub fn multiple_client_integration_test() {
 
     // create client stubs.
     let mut clients = Vec::new();
-    clients.push(ClientStub::new(sixteenth_a_second, "127.0.0.1:12346".parse().unwrap(), TOTAL_PACKETS_TO_SEND));
-    clients.push(ClientStub::new(sixteenth_a_second, "127.0.0.1:12347".parse().unwrap(), TOTAL_PACKETS_TO_SEND));
-    clients.push(ClientStub::new(sixteenth_a_second, "127.0.0.1:12348".parse().unwrap(), TOTAL_PACKETS_TO_SEND));
-    clients.push(ClientStub::new(sixteenth_a_second, "127.0.0.1:12349".parse().unwrap(), TOTAL_PACKETS_TO_SEND));
-    clients.push(ClientStub::new(sixteenth_a_second, "127.0.0.1:12350".parse().unwrap(), TOTAL_PACKETS_TO_SEND));
-    clients.push(ClientStub::new(sixteenth_a_second, "127.0.0.1:12351".parse().unwrap(), TOTAL_PACKETS_TO_SEND));
+    clients.push(ClientStub::new(
+        sixteenth_a_second,
+        "127.0.0.1:12346".parse().unwrap(),
+        TOTAL_PACKETS_TO_SEND,
+    ));
+    clients.push(ClientStub::new(
+        sixteenth_a_second,
+        "127.0.0.1:12347".parse().unwrap(),
+        TOTAL_PACKETS_TO_SEND,
+    ));
+    clients.push(ClientStub::new(
+        sixteenth_a_second,
+        "127.0.0.1:12348".parse().unwrap(),
+        TOTAL_PACKETS_TO_SEND,
+    ));
+    clients.push(ClientStub::new(
+        sixteenth_a_second,
+        "127.0.0.1:12349".parse().unwrap(),
+        TOTAL_PACKETS_TO_SEND,
+    ));
+    clients.push(ClientStub::new(
+        sixteenth_a_second,
+        "127.0.0.1:12350".parse().unwrap(),
+        TOTAL_PACKETS_TO_SEND,
+    ));
+    clients.push(ClientStub::new(
+        sixteenth_a_second,
+        "127.0.0.1:12351".parse().unwrap(),
+        TOTAL_PACKETS_TO_SEND,
+    ));
 
     let stopwatch = Instant::now();
 
@@ -50,12 +74,12 @@ pub fn multiple_client_integration_test() {
 
     // wait for clients to send data
     for handle in handles {
-        handle.join();
+        handle.join().unwrap();
     }
 
     // notify server to stop receiving.
-    tx.send(true);
+    tx.send(true).unwrap();
 
-    let total_received = server_thread.join().unwrap();
-    let elapsed_time = stopwatch.elapsed();
+    let _total_received = server_thread.join().unwrap();
+    let _elapsed_time = stopwatch.elapsed();
 }

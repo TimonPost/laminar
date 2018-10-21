@@ -14,11 +14,11 @@ extern crate lazy_static;
 
 pub mod error;
 pub mod events;
+pub mod infrastructure;
 pub mod net;
 pub mod packet;
 pub mod protocol_version;
 mod sequence_buffer;
-pub mod infrastructure;
 
 /// This functions checks how many times a number fits into another number and will round up.
 ///
@@ -50,6 +50,10 @@ pub mod infrastructure;
 /// So for 4000 bytes we need 4 fragments
 /// [fragment: 1024] [fragment: 1024] [fragment: 1024] [fragment: 928]
 fn total_fragments_needed(payload_length: u16, fragment_size: u16) -> u16 {
-    let remainder = if payload_length % fragment_size > 0 { 1 } else { 0 };
+    let remainder = if payload_length % fragment_size > 0 {
+        1
+    } else {
+        0
+    };
     ((payload_length / fragment_size) + remainder)
 }
