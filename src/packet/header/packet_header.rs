@@ -4,7 +4,7 @@ use net::constants::PACKET_HEADER_SIZE;
 use infrastructure::DeliveryMethod;
 use packet::PacketTypeId;
 use error::{NetworkResult, PacketErrorKind};
-
+use protocol_version::ProtocolVersion;
 use std::io::Cursor;
 
 #[derive(Copy, Clone, Debug)]
@@ -57,6 +57,7 @@ impl HeaderParser for PacketHeader {
 
     fn parse(&self) -> <Self as HeaderParser>::Output {
         let mut wtr = Vec::new();
+        wtr.write_u32::<BigEndian>(ProtocolVersion::get_crc32());
         wtr.write_u8(PacketTypeId::get_id(self.packet_type_id))?;
         wtr.write_u8(DeliveryMethod::get_delivery_method_id(self.delivery_method))?;
         wtr.write_u16::<BigEndian>(self.seq)?;
@@ -70,19 +71,15 @@ impl HeaderReader for PacketHeader {
     type Header = NetworkResult<PacketHeader>;
 
     fn read(rdr: &mut Cursor<Vec<u8>>) -> <Self as HeaderReader>::Header {
-        let packet_type = PacketTypeId::get_packet_type(rdr.read_u8()?);
-
-        if packet_type != PacketTypeId::Packet {
-            return Err(PacketErrorKind::PacketHasWrongId)?
-        }
-
+        let _ = rdr.read_u32::<BigEndian>()?;
+        let _ = rdr.read_u8();
         let delivery_method_id = rdr.read_u8()?;
         let seq = rdr.read_u16::<BigEndian>()?;
         let ack_seq = rdr.read_u16::<BigEndian>()?;
         let ack_field = rdr.read_u32::<BigEndian>()?;
 
         Ok(PacketHeader {
-            packet_type_id: packet_type,
+            packet_type_id: PacketTypeId::Packet,
             delivery_method: DeliveryMethod::get_delivery_method_from_id(delivery_method_id),
             seq,
             ack_seq,

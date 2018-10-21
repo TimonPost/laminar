@@ -8,11 +8,15 @@ extern crate serde;
 extern crate log;
 #[macro_use]
 extern crate failure_derive;
+extern crate crc;
+#[macro_use]
+extern crate lazy_static;
 
 pub mod error;
 pub mod events;
 pub mod net;
 pub mod packet;
+pub mod protocol_version;
 mod sequence_buffer;
 pub mod infrastructure;
 

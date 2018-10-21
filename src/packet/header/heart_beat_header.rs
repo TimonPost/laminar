@@ -1,9 +1,10 @@
 use super::{HeaderParser, HeaderReader};
-use net::constants::{HEART_BEAT_HEADER_SIZE};
+use net::constants::HEART_BEAT_HEADER_SIZE;
 use packet::PacketTypeId;
-use byteorder::{ReadBytesExt, WriteBytesExt};
+use byteorder::{ReadBytesExt, WriteBytesExt,BigEndian};
 use std::io::Cursor;
 use error::{NetworkResult, PacketErrorKind};
+use protocol_version::ProtocolVersion;
 
 #[derive(Copy, Clone, Debug)]
 /// This header represents an heartbeat packet header.
@@ -26,6 +27,7 @@ impl HeaderParser for HeartBeatHeader {
 
     fn parse(&self) -> <Self as HeaderParser>::Output {
         let mut wtr = Vec::new();
+        wtr.write_u32::<BigEndian>(ProtocolVersion::get_crc32());
         wtr.write_u8(PacketTypeId::get_id(self.packet_type_id))?;
 
         Ok(wtr)
@@ -36,14 +38,10 @@ impl HeaderReader for HeartBeatHeader {
     type Header = NetworkResult<HeartBeatHeader>;
 
     fn read(rdr: &mut Cursor<Vec<u8>>) -> <Self as HeaderReader>::Header {
-        let packet_type_id = PacketTypeId::get_packet_type(rdr.read_u8()?);
-
-        if packet_type_id != PacketTypeId::HeartBeat {
-            return Err(PacketErrorKind::PacketHasWrongId)?
-        }
-
+        let _ = rdr.read_u32::<BigEndian>()?;
+        let _ = rdr.read_u8();
         let header = HeartBeatHeader {
-           packet_type_id
+           packet_type_id: PacketTypeId::HeartBeat
         };
 
         Ok(header)
