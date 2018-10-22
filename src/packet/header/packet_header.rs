@@ -1,9 +1,9 @@
 use super::{HeaderParser, HeaderReader};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use net::constants::PACKET_HEADER_SIZE;
+use error::NetworkResult;
 use infrastructure::DeliveryMethod;
+use net::constants::PACKET_HEADER_SIZE;
 use packet::PacketTypeId;
-use error::{NetworkResult, PacketErrorKind};
 use protocol_version::ProtocolVersion;
 use std::io::Cursor;
 
@@ -26,7 +26,12 @@ impl PacketHeader {
     /// When we compose packet headers, the local sequence becomes the sequence number of the packet, and the remote sequence becomes the ack.
     /// The ack bitfield is calculated by looking into a queue of up to 33 packets, containing sequence numbers in the range [remote sequence - 32, remote sequence].
     /// We set bit n (in [1,32]) in ack bits to 1 if the sequence number remote sequence - n is in the received queue.
-    pub fn new(seq_num: u16, last_seq: u16, bit_field: u32, delivery_method: DeliveryMethod) -> PacketHeader {
+    pub fn new(
+        seq_num: u16,
+        last_seq: u16,
+        bit_field: u32,
+        delivery_method: DeliveryMethod,
+    ) -> PacketHeader {
         PacketHeader {
             packet_type_id: PacketTypeId::Packet,
             delivery_method,
@@ -57,7 +62,7 @@ impl HeaderParser for PacketHeader {
 
     fn parse(&self) -> <Self as HeaderParser>::Output {
         let mut wtr = Vec::new();
-        wtr.write_u32::<BigEndian>(ProtocolVersion::get_crc32());
+        wtr.write_u32::<BigEndian>(ProtocolVersion::get_crc32())?;
         wtr.write_u8(PacketTypeId::get_id(self.packet_type_id))?;
         wtr.write_u8(DeliveryMethod::get_delivery_method_id(self.delivery_method))?;
         wtr.write_u16::<BigEndian>(self.seq)?;
@@ -94,8 +99,8 @@ impl HeaderReader for PacketHeader {
 
 #[cfg(test)]
 mod tests {
-    use packet::header::{HeaderParser, HeaderReader, PacketHeader};
     use infrastructure::DeliveryMethod;
+    use packet::header::{HeaderParser, HeaderReader, PacketHeader};
     use std::io::Cursor;
 
     #[test]

@@ -1,7 +1,5 @@
-use std::hash::Hasher;
 use std::sync::Mutex;
 
-use crc::Hasher32;
 use crc::crc32;
 
 pub use net::constants::PROTOCOL_VERSION;
@@ -14,12 +12,10 @@ lazy_static! {
 /// Wrapper to provide some functions to perform with the current protocol version.
 pub struct ProtocolVersion;
 
-impl ProtocolVersion
-{
+impl ProtocolVersion {
     /// Get the current protocol version.
-    pub fn get_version() -> &'static str
-    {
-        return PROTOCOL_VERSION
+    pub fn get_version() -> &'static str {
+        return PROTOCOL_VERSION;
     }
 
     /// This will return the crc32 from the current protocol version.

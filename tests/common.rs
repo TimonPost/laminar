@@ -30,7 +30,7 @@ impl ServerMoq {
         expected_payload: Vec<u8>,
     ) -> JoinHandle<u32> {
         let mut udp_socket: UdpSocket = UdpSocket::bind(self.host, self.config.clone()).unwrap();
-        udp_socket.set_nonblocking(self.non_blocking);
+        udp_socket.set_nonblocking(self.non_blocking).unwrap();
 
         let mut packet_throughput = 0;
         let mut packets_total_received = 0;
@@ -47,7 +47,7 @@ impl ServerMoq {
                         packets_total_received += 1;
                         packet_throughput += 1;
 
-                        udp_socket.send(packet);
+                        udp_socket.send(packet).unwrap();
                     }
                     Ok(None) => {}
                     Err(_) => {
@@ -96,7 +96,8 @@ impl ServerMoq {
                     Err(_) => {}
                 }
 
-                let send_result = client.send(Packet::sequenced_unordered(host, data_to_send.clone()));
+                let send_result =
+                    client.send(Packet::sequenced_unordered(host, data_to_send.clone()));
 
                 if len <= config.fragment_size as usize {
                     assert_eq!(
