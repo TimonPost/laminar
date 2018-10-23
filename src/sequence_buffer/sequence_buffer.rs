@@ -57,7 +57,7 @@ impl<T> SequenceBuffer<T> where T: Default + Clone + Send + Sync {
             return false;
         }
 
-        return true;
+        true
     }
 
     /// Get the length of the collection.

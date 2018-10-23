@@ -71,13 +71,12 @@ impl ConnectionPool {
         let connections = self.connections.clone();
         let poll_interval = self.poll_interval;
 
-        let sender = events_sender.clone();
         Ok(thread::Builder::new()
             .name("check_for_timeouts".into())
             .spawn(move || loop {
                 match connections.read() {
                     Ok(lock) => {
-                        ConnectionPool::check_for_timeouts(&*lock, poll_interval, &sender);
+                        ConnectionPool::check_for_timeouts(&*lock, poll_interval, &events_sender);
                     }
                     Err(e) => {
                         panic!("Error when checking for timed out connections: {}", e)

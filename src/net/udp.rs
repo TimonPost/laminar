@@ -41,7 +41,6 @@ impl UdpSocket {
 
             self.packet_processor
                 .process_data(packet, addr, &mut self.state)
-                .map_err(|err| err.into())
         } else {
             Err(NetworkErrorKind::ReceivedDataToShort)?
         }

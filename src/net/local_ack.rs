@@ -36,12 +36,12 @@ impl LocalAckRecord {
         let mut dropped_packets = Vec::new();
         let mut acked_packets = Vec::new();
 
-        for key in self.packets.keys().into_iter() {
+        for key in self.packets.keys() {
             let diff = seq.wrapping_sub(*key);
             if diff == 0 {
                 acked_packets.push(*key);
             } else if diff <= 32 {
-                let field_acked = (seq_field & (1 << diff - 1) != 0);
+                let field_acked = (seq_field & (1 << (diff - 1)) != 0);
                 if field_acked {
                     acked_packets.push(*key);
                 }
@@ -50,7 +50,7 @@ impl LocalAckRecord {
             }
         }
 
-        for seq_number in acked_packets.iter() {
+        for seq_number in &acked_packets {
             self.packets.remove(seq_number);
         }
 
