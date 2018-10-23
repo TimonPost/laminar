@@ -57,6 +57,14 @@ impl ConnectionPool {
         Ok(connection.clone())
     }
 
+    // Get the number of connected clients.
+    pub fn count(&self) -> usize {
+        match self.connections.read() {
+            Ok(connections) => { connections.len() },
+            Err(_) => { 0 },
+        }
+    }
+
     /// Start loop that detects when a connection has timed out.
     ///
     /// This function starts a background thread that does the following:
@@ -74,9 +82,9 @@ impl ConnectionPool {
         Ok(thread::Builder::new()
             .name("check_for_timeouts".into())
             .spawn(move || loop {
-                match connections.read() {
-                    Ok(lock) => {
-                        ConnectionPool::check_for_timeouts(&*lock, poll_interval, &events_sender);
+                match connections.write() {
+                    Ok(ref mut lock) => {
+                        ConnectionPool::check_for_timeouts(&mut *lock, poll_interval, &events_sender);
                     }
                     Err(e) => {
                         panic!("Error when checking for timed out connections: {}", e)
@@ -88,13 +96,16 @@ impl ConnectionPool {
 
     /// Check if there are any connections that have not been active for the given Duration.
     fn check_for_timeouts(
-        connections: &Connections,
+        connections: &mut Connections,
         sleepy_time: Duration,
         events_sender: &Sender<Event>,
     ) {
+        let mut timed_out_clients: Vec<SocketAddr> = Vec::with_capacity(connections.len());
+
         for (key, value) in connections.iter() {
             if let Ok(c) = value.read() {
                 if c.last_heard() >= sleepy_time {
+                    timed_out_clients.push(key.clone());
                     let event = Event::TimedOut(value.clone());
 
                     events_sender
@@ -105,27 +116,33 @@ impl ConnectionPool {
                 }
             }
         }
+
+        for addr in timed_out_clients {
+            connections.remove(&addr);
+        }
     }
 }
 
-#[cfg(tests)]
-mod test {
+#[cfg(test)]
+mod tests {
     use std::sync::mpsc::channel;
     use std::thread;
     use std::time::Duration;
 
-    use super::{Arc, ConnectionPool, Mutex, TIMEOUT_POLL_INTERVAL};
+    use super::{Arc, ConnectionPool, TIMEOUT_POLL_INTERVAL};
     use events::Event;
     use net::connection::VirtualConnection;
 
     #[test]
-    fn connection_timed_out() {
+    pub fn connection_timed_out() {
         let (tx, rx) = channel();
 
         let mut connections = ConnectionPool::new();
         let handle = connections.start_time_out_loop(tx.clone()).unwrap();
 
         connections.get_connection_or_insert(&("127.0.0.1:12345".parse().unwrap()));
+
+        assert_eq!(connections.count(), 1);
 
         /// Sleep a little longer than te polling interval.
         thread::sleep(Duration::from_millis(TIMEOUT_POLL_INTERVAL * 1000 + 100));
@@ -145,6 +162,8 @@ mod test {
             }
             Err(e) => panic!("No events found!"),
         };
+
+        assert_eq!(connections.count(), 0);
     }
 
     #[test]
