@@ -1,0 +1,11 @@
+[package]
+name = "laminar-abstractions"
+version = "0.1.0"
+authors = ["Timon Post <timonpost@hotmail.nl>"]
+
+[dependencies.laminar]
+path = "../laminar"
+branch = "master"
+
+[dependencies]
+log = "0.4.5"
