@@ -22,6 +22,12 @@ impl HeartBeatHeader {
     }
 }
 
+impl Default for HeartBeatHeader {
+    fn default() -> Self {
+        HeartBeatHeader::new()
+    }
+}
+
 impl HeaderParser for HeartBeatHeader {
     type Output = NetworkResult<Vec<u8>>;
 
@@ -49,6 +55,6 @@ impl HeaderReader for HeartBeatHeader {
 
     /// Get the size of this header.
     fn size(&self) -> u8 {
-        return HEART_BEAT_HEADER_SIZE;
+        HEART_BEAT_HEADER_SIZE
     }
 }
