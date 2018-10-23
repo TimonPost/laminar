@@ -44,7 +44,8 @@ impl SocketState {
         })
     }
 
-    /// This will initialize the seq number, ack number and give back the raw data of the packet with the updated information.
+    /// This will initialize the seq number, ack number and give back the raw data of the packet
+    /// with the updated information. As such the packet argument is consumed.
     pub fn pre_process_packet(
         &mut self,
         packet: Packet,
@@ -78,9 +79,6 @@ impl SocketState {
                 CongestionData::new(connection_seq, Instant::now()),
                 connection_seq,
             );
-
-            // queue new packet
-            lock.waiting_packets.enqueue(connection_seq, packet.clone());
         }
 
         let mut packet_data = PacketData::new();
@@ -92,12 +90,11 @@ impl SocketState {
             packet.delivery_method(),
         );
 
-        let payload = packet.payload();
-        let payload_length = payload.len() as u16; /* safe cast because max packet size is u16 */
+        let payload_length = packet.payload().len() as u16; /* safe cast because max packet size is u16 */
 
-        // spit the packet if the payload lenght is greater than the allowrd fragment size.
+        // spit the packet if the payload lenght is greater than the allowed fragment size.
         if payload_length <= config.fragment_size {
-            packet_data.add_fragment(&packet_header, payload.to_vec());
+            packet_data.add_fragment(&packet_header, packet.payload().to_vec());
         } else {
             let num_fragments = total_fragments_needed(payload_length, config.fragment_size) as u8; /* safe cast max fragments is u8 */
 
@@ -120,20 +117,27 @@ impl SocketState {
 
                 // get specific slice of data for fragment
                 let fragment_data =
-                    &payload[start_fragment_pos as usize..end_fragment_pos as usize]; /* upcast is safe */
+                    &packet.payload()[start_fragment_pos as usize..end_fragment_pos as usize]; /* upcast is safe */
 
                 packet_data.add_fragment(&fragment, fragment_data.to_vec());
             }
         }
 
-        let mut lock = connection
-            .write()
-            .map_err(|error| NetworkError::poisoned_connection_error(error.description()))?;
+        let packet_addr = packet.addr();
 
-        // each time we send a packet we increase the local sequence number
-        lock.seq_num = lock.seq_num.wrapping_add(1);
+        {
+            let mut lock = connection
+                .write()
+                .map_err(|error| NetworkError::poisoned_connection_error(error.description()))?;
 
-        Ok((packet.addr(), packet_data))
+            // each time we send a packet we increase the local sequence number
+            lock.seq_num = lock.seq_num.wrapping_add(1);
+
+            // queue new packet
+            lock.waiting_packets.enqueue(connection_seq, packet);
+        }
+
+        Ok((packet_addr, packet_data))
     }
 
     /// This will return all dropped packets from this connection.
