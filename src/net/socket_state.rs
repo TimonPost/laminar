@@ -107,11 +107,11 @@ impl SocketState {
 
             for fragment_id in 0..num_fragments {
                 let fragment =
-                    FragmentHeader::new(fragment_id, num_fragments, packet_header.clone());
+                    FragmentHeader::new(fragment_id, num_fragments, packet_header);
 
                 // get start end pos in buffer
-                let start_fragment_pos = fragment_id as u16 * config.fragment_size; /* upcast is safe */
-                let mut end_fragment_pos = (fragment_id as u16 + 1) * config.fragment_size; /* upcast is safe */
+                let start_fragment_pos = u16::from(fragment_id) * config.fragment_size; /* upcast is safe */
+                let mut end_fragment_pos = (u16::from(fragment_id) + 1) * config.fragment_size; /* upcast is safe */
 
                 // If remaining buffer fits int one packet just set the end position to the length of the packet payload.
                 if end_fragment_pos > payload_length {

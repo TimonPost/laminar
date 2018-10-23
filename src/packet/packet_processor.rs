@@ -55,11 +55,11 @@ impl PacketProcessor {
             _ => Ok(None),
         };
 
-        return match received_bytes {
+        match received_bytes {
             Ok(Some(payload)) => Ok(Some(Packet::sequenced_unordered(addr, payload))),
             Ok(None) => Ok(None),
             Err(e) => Err(e)?,
-        };
+        }
     }
 
     /// Extract fragments from data.
@@ -115,7 +115,7 @@ impl PacketProcessor {
             return Ok(Some(total_buffer));
         }
 
-        return Ok(None);
+        Ok(None)
     }
 
     /// Extract header and data from normal packet.
