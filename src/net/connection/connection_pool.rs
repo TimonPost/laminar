@@ -82,44 +82,56 @@ impl ConnectionPool {
         Ok(thread::Builder::new()
             .name("check_for_timeouts".into())
             .spawn(move || loop {
-                match connections.write() {
-                    Ok(ref mut lock) => {
-                        ConnectionPool::check_for_timeouts(&mut *lock, poll_interval, &events_sender);
-                    }
-                    Err(e) => {
-                        panic!("Error when checking for timed out connections: {}", e)
+                let timed_out_clients = ConnectionPool::check_for_timeouts(&connections, poll_interval, &events_sender);
+
+                if timed_out_clients.len() > 0 {
+                    match connections.write() {
+                        Ok(ref mut lock) => {
+                            for timed_out_client in timed_out_clients {
+                                lock.remove(&timed_out_client);
+                            }
+                        }
+                        Err(e) => {
+                            panic!("Error when checking for timed out connections: {}", e)
+                        }
                     }
                 }
+
                 thread::sleep(poll_interval);
             })?)
     }
 
     /// Check if there are any connections that have not been active for the given Duration.
     fn check_for_timeouts(
-        connections: &mut Connections,
+        connections: &ConnectionsCollection,
         sleepy_time: Duration,
         events_sender: &Sender<Event>,
-    ) {
-        let mut timed_out_clients: Vec<SocketAddr> = Vec::with_capacity(connections.len());
+    ) -> Vec<SocketAddr> {
+        let mut timed_out_clients: Vec<SocketAddr> = Vec::new();
 
-        for (key, value) in connections.iter() {
-            if let Ok(c) = value.read() {
-                if c.last_heard() >= sleepy_time {
-                    timed_out_clients.push(key.clone());
-                    let event = Event::TimedOut(value.clone());
+        match connections.read() {
+            Ok(ref lock) => {
+                for (key, value) in lock.iter() {
+                    if let Ok(c) = value.read() {
+                        if c.last_heard() >= sleepy_time {
+                            timed_out_clients.push(key.clone());
+                            let event = Event::TimedOut(value.clone());
 
-                    events_sender
-                        .send(event)
-                        .expect("Unable to send disconnect event");
+                            events_sender
+                                .send(event)
+                                .expect("Unable to send disconnect event");
 
-                    error!("Client has timed out: {:?}", key);
+                            error!("Client has timed out: {:?}", key);
+                        }
+                    }
                 }
+            }
+            Err(e) => {
+                panic!("Error when checking for timed out connections: {}", e)
             }
         }
 
-        for addr in timed_out_clients {
-            connections.remove(&addr);
-        }
+        timed_out_clients
     }
 }
 
@@ -134,7 +146,7 @@ mod tests {
     use net::connection::VirtualConnection;
 
     #[test]
-    pub fn connection_timed_out() {
+    fn connection_timed_out() {
         let (tx, rx) = channel();
 
         let mut connections = ConnectionPool::new();
