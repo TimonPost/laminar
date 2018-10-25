@@ -1,0 +1,25 @@
+version: '3'
+services:
+  server:
+    image: "zerosubnet/laminar:latest"
+    command: server -s 30
+    networks:
+      - laminet
+    environment:
+      - RUST_LOG=debug
+      - RUST_BACKTRACE=1
+
+  client:
+    image: "zerosubnet/laminar:latest"
+    command: client --test-duration 20
+    networks:
+      - laminet
+    environment:
+      - RUST_LOG=debug
+      - RUST_BACKTRACE=1
+    depends_on: 
+      - server
+
+networks:
+  laminet:
+    driver: bridge

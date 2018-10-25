@@ -66,6 +66,8 @@ fn process_client_subcommand(m: &clap::ArgMatches<'_>) {
     let test_duration = m.value_of("TEST_DURATION").unwrap();
     let endpoint = listen_host.to_string() + ":" + listen_port;
     let destination = connect_host.to_string() + ":" + connect_port;
+    debug!("Endpoint is: {:?}", endpoint);
+    debug!("Client destination is: {:?}", destination);
     run_client(&test_name, &endpoint, &destination, &pps, &test_duration);
     exit(0);
 }
@@ -99,7 +101,15 @@ fn run_server(socket_addr: &str) {
 
 fn run_client(test_name: &str, destination: &str, endpoint: &str, pps: &str, test_duration: &str) {
     let network_config = net::NetworkConfig::default();
-    let mut client = net::UdpSocket::bind(endpoint, network_config.clone()).unwrap();
+    let mut client = match net::UdpSocket::bind(endpoint, network_config.clone()) {
+        Ok(c) => { c }
+        Err(e) => { 
+            println!("Error binding was: {:?}", e);
+            exit(1);
+
+        }
+    };
+
     client.set_nonblocking(true);
 
     // See which test we want to run
