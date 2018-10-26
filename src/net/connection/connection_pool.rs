@@ -86,9 +86,9 @@ impl ConnectionPool {
 
                 if timed_out_clients.len() > 0 {
                     match connections.write() {
-                        Ok(ref mut connections_lock) => {
+                        Ok(ref mut connections) => {
                             for timed_out_client in timed_out_clients {
-                                connections_lock.remove(&timed_out_client);
+                                connections.remove(&timed_out_client);
                             }
                         }
                         Err(e) => {
@@ -110,8 +110,8 @@ impl ConnectionPool {
         let mut timed_out_clients: Vec<SocketAddr> = Vec::new();
 
         match connections.read() {
-            Ok(ref connections_lock) => {
-                for (key, value) in connections_lock.iter() {
+            Ok(ref connections) => {
+                for (key, value) in connections.iter() {
                     if let Ok(connection) = value.read() {
                         if connection.last_heard() >= sleepy_time {
                             timed_out_clients.push(key.clone());
