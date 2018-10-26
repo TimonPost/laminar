@@ -86,9 +86,9 @@ impl ConnectionPool {
 
                 if timed_out_clients.len() > 0 {
                     match connections.write() {
-                        Ok(ref mut lock) => {
+                        Ok(ref mut connections_lock) => {
                             for timed_out_client in timed_out_clients {
-                                lock.remove(&timed_out_client);
+                                connections_lock.remove(&timed_out_client);
                             }
                         }
                         Err(e) => {
@@ -110,10 +110,10 @@ impl ConnectionPool {
         let mut timed_out_clients: Vec<SocketAddr> = Vec::new();
 
         match connections.read() {
-            Ok(ref lock) => {
-                for (key, value) in lock.iter() {
-                    if let Ok(c) = value.read() {
-                        if c.last_heard() >= sleepy_time {
+            Ok(ref connections_lock) => {
+                for (key, value) in connections_lock.iter() {
+                    if let Ok(connection) = value.read() {
+                        if connection.last_heard() >= sleepy_time {
                             timed_out_clients.push(key.clone());
                             let event = Event::TimedOut(value.clone());
 
@@ -121,7 +121,7 @@ impl ConnectionPool {
                                 .send(event)
                                 .expect("Unable to send disconnect event");
 
-                            error!("Client has timed out: {:?}", key);
+                            info!("Client has timed out: {:?}", key);
                         }
                     }
                 }
