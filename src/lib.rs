@@ -11,6 +11,7 @@ extern crate failure_derive;
 extern crate crc;
 #[macro_use]
 extern crate lazy_static;
+extern crate rand;
 
 pub mod error;
 pub mod events;
