@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::net::SocketAddr;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 use std::time::Instant;
@@ -6,11 +7,10 @@ use std::time::Instant;
 use error::{FragmentErrorKind, NetworkError, NetworkResult, PacketErrorKind};
 use events::Event;
 use net::connection::{ConnectionPool, NetworkQualityMeasurer};
-use net::{NetworkConfig, SocketAddr};
+use net::NetworkConfig;
 use packet::header::{FragmentHeader, PacketHeader};
-use packet::{Packet, PacketData};
+use packet::{Packet, PacketData, PacketProcessor};
 use sequence_buffer::CongestionData;
-use total_fragments_needed;
 
 /// This type handles the UDP-socket state.
 ///
@@ -96,15 +96,15 @@ impl SocketState {
         if payload_length <= config.fragment_size {
             packet_data.add_fragment(&packet_header, packet.payload().to_vec());
         } else {
-            let num_fragments = total_fragments_needed(payload_length, config.fragment_size) as u8; /* safe cast max fragments is u8 */
+            let num_fragments =
+                PacketProcessor::total_fragments_needed(payload_length, config.fragment_size) as u8; /* safe cast max fragments is u8 */
 
             if num_fragments > config.max_fragments {
                 Err(FragmentErrorKind::ExceededMaxFragments)?;
             }
 
             for fragment_id in 0..num_fragments {
-                let fragment =
-                    FragmentHeader::new(fragment_id, num_fragments, packet_header);
+                let fragment = FragmentHeader::new(fragment_id, num_fragments, packet_header);
 
                 // get start end pos in buffer
                 let start_fragment_pos = u16::from(fragment_id) * config.fragment_size; /* upcast is safe */
@@ -197,13 +197,11 @@ impl SocketState {
 mod test {
     use net::{constants, NetworkConfig, SocketState};
     use packet::header::{FragmentHeader, HeaderReader, PacketHeader};
-    use packet::{Packet, PacketData};
+    use packet::{Packet, PacketData, PacketProcessor};
 
     use std::io::Cursor;
     use std::net::{IpAddr, SocketAddr};
     use std::str::FromStr;
-
-    use total_fragments_needed;
 
     #[test]
     pub fn construct_packet_less_than_mtu() {
@@ -235,7 +233,8 @@ mod test {
         let mut processed_packet: (SocketAddr, PacketData) =
             simulate_packet_processing(data.clone(), &config);
 
-        let num_fragments = total_fragments_needed(data.len() as u16, config.fragment_size);
+        let num_fragments =
+            PacketProcessor::total_fragments_needed(data.len() as u16, config.fragment_size);
 
         // check if packet is divided into fragment right
         assert_eq!(processed_packet.1.fragment_count(), num_fragments as usize);

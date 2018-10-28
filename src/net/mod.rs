@@ -14,4 +14,3 @@ pub use self::local_ack::LocalAckRecord;
 pub use self::network_config::NetworkConfig;
 pub use self::socket_state::SocketState;
 pub use self::udp::UdpSocket;
-pub use std::net::SocketAddr;

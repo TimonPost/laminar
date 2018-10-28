@@ -1,7 +1,8 @@
 extern crate laminar;
 
-use laminar::net::{constants, NetworkConfig, SocketAddr, UdpSocket};
+use laminar::net::{constants, NetworkConfig, UdpSocket};
 use laminar::packet::Packet;
+use std::net::SocketAddr;
 use std::sync::mpsc::Receiver;
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};

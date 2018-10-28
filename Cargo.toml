@@ -27,11 +27,11 @@ byteorder = "1.2.6"
 log = "0.4"
 failure = "0.1"
 failure_derive = "0.1"
-clap = { version = "2.32", features = ["yaml"], optional = true }
-env_logger = { version = "0.5.13", optional = true }
 crc = "1.8"
 lazy_static = "1.1.0"
 rand = "0.5"
+clap = { version = "2.32", features = ["yaml"], optional = true }
+env_logger = { version = "0.5.13", optional = true }
 
 [dev-dependencies]
 criterion = "0.2"

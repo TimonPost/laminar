@@ -6,7 +6,7 @@ extern crate laminar;
 
 use std::io::stdin;
 
-use laminar::{error::Result, net::NetworkConfig, net::UdpSocket, packet::Packet};
+use laminar::{error::Result, NetworkConfig, Packet, UdpSocket};
 
 const SERVER: &str = "localhost:12351";
 
@@ -29,7 +29,10 @@ fn server() -> Result<()> {
 
                 println!("Received {:?} from {:?}", msg, ip);
 
-                socket.send(Packet::sequenced_unordered(packet.addr(), "Copy that!".as_bytes().to_vec()))?;
+                socket.send(Packet::sequenced_unordered(
+                    packet.addr(),
+                    "Copy that!".as_bytes().to_vec(),
+                ))?;
             }
             None => {}
         }
@@ -53,7 +56,10 @@ fn client() -> Result<()> {
         stdin.read_line(&mut s_buffer)?;
         let line = s_buffer.replace(|x| x == '\n' || x == '\r', "");
 
-        socket.send(Packet::sequenced_unordered(server, line.clone().into_bytes()))?;
+        socket.send(Packet::sequenced_unordered(
+            server,
+            line.clone().into_bytes(),
+        ))?;
 
         if line == "Bye!" {
             break;

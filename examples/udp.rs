@@ -5,8 +5,10 @@
 
 extern crate laminar;
 
-use laminar::net::{NetworkConfig, SocketAddr, UdpSocket};
+use laminar::net::{NetworkConfig, UdpSocket};
 use laminar::packet::Packet;
+
+use std::net::SocketAddr;
 
 /// The socket address of where the server is located.
 const SERVER_ADDR: &'static str = "127.0.0.1:12345";
