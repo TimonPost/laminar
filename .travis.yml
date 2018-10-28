@@ -5,6 +5,16 @@ rust:
   - beta
   - nightly
 
+os:
+- linux
+- osx
+- windows
+
+branches:
+  only:
+  - staging
+  - trying
+
 # Allow for occasional compiler breakage on nightly Rust.
 matrix:
   allow_failures:
