@@ -2,6 +2,7 @@ mod external_ack;
 mod local_ack;
 mod network_config;
 mod socket_state;
+mod link_conditioner;
 
 mod connection;
 pub mod constants;
