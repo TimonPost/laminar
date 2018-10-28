@@ -4,17 +4,18 @@ extern crate env_logger;
 #[macro_use]
 extern crate clap;
 extern crate laminar;
+extern crate rand;
 
+use std::net::SocketAddr;
 use std::process::exit;
 use std::thread;
-use std::time::{Instant, Duration};
-use std::net::SocketAddr;
+use std::time::{Duration, Instant};
 
 use clap::App;
 
+use laminar::infrastructure::DeliveryMethod;
 use laminar::net;
 use laminar::packet::Packet;
-use laminar::infrastructure::DeliveryMethod;
 
 fn main() {
     let yaml = load_yaml!("cli.yml");
@@ -35,9 +36,7 @@ fn process_server_subcommand(m: &clap::ArgMatches<'_>) {
     let st = m.value_of("SHUTDOWN_TIMER").unwrap();
 
     let shutdown_timer = match st.parse::<u64>() {
-        Ok(parsed_st) => {
-            parsed_st
-        }
+        Ok(parsed_st) => parsed_st,
         Err(_) => {
             error!("Invalid shutdown timer value");
             exit(1);
@@ -102,11 +101,10 @@ fn run_server(socket_addr: &str) {
 fn run_client(test_name: &str, destination: &str, endpoint: &str, pps: &str, test_duration: &str) {
     let network_config = net::NetworkConfig::default();
     let mut client = match net::UdpSocket::bind(endpoint, network_config.clone()) {
-        Ok(c) => { c }
-        Err(e) => { 
+        Ok(c) => c,
+        Err(e) => {
             println!("Error binding was: {:?}", e);
             exit(1);
-
         }
     };
 
@@ -117,7 +115,7 @@ fn run_client(test_name: &str, destination: &str, endpoint: &str, pps: &str, tes
         "steady-stream" => {
             test_steady_stream(&mut client, destination, pps, test_duration);
             exit(0);
-        },
+        }
         _ => {
             error!("Invalid test name");
             exit(1);
@@ -133,7 +131,11 @@ fn test_steady_stream(client: &mut net::UdpSocket, target: &str, pps: &str, test
     let pps = pps.parse::<u64>().unwrap();
     let test_duration = test_duration.parse::<u64>().unwrap();
     let test_duration = Duration::from_secs(test_duration);
-    let test_packet = Packet::new(server_addr, data_to_send.clone().into(), DeliveryMethod::ReliableOrdered);
+    let test_packet = Packet::new(
+        server_addr,
+        data_to_send.clone().into(),
+        DeliveryMethod::ReliableOrdered,
+    );
     let time_quantum = 1000 / pps;
     let start_time = Instant::now();
     let mut packets_sent = 0;
