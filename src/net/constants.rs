@@ -16,4 +16,4 @@ pub const DEFAULT_MTU: u16 = 1452;
 /// It is used for:
 /// - Generating crc32 for the packet header.
 /// - Validating if arriving packets have the same protocol version.
-pub const PROTOCOL_VERSION: &'static str = "laminar-0.1.0";
+pub const PROTOCOL_VERSION: &str = "laminar-0.1.0";

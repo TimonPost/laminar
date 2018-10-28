@@ -36,7 +36,7 @@ impl ExternalAcks {
             // If the packet is more recent, we update the remote sequence to be equal to the sequence number of the packet.
             self.last_seq = seq_num;
         } else if neg_diff <= 32 {
-            self.field |= 1 << neg_diff - 1;
+            self.field |= 1 << (neg_diff - 1);
         }
     }
 }

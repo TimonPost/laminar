@@ -1,12 +1,9 @@
 use std::net::{self, ToSocketAddrs};
 
-use error::{NetworkResult, NetworkError, NetworkErrorKind};
+use error::{NetworkError, NetworkErrorKind, NetworkResult};
 use events::Event;
 use net::{NetworkConfig, SocketState};
 use packet::{Packet, PacketProcessor};
-
-/// Maximum amount of data that we can read from a datagram
-const BUFFER_SIZE: usize = 1024;
 
 /// Represents an <ip>:<port> combination listening for UDP traffic
 pub struct UdpSocket {
@@ -44,7 +41,6 @@ impl UdpSocket {
 
             self.packet_processor
                 .process_data(packet, addr, &mut self.state)
-                .map_err(|err| err.into())
         } else {
             Err(NetworkErrorKind::ReceivedDataToShort)?
         }

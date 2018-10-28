@@ -57,7 +57,7 @@ impl NetworkQualityMeasurer {
     /// `as_milliseconds` is not supported yet supported in rust stable.
     /// See this stackoverflow post for more info: https://stackoverflow.com/questions/36816072/how-do-i-get-a-duration-as-a-number-of-milliseconds-in-rust
     fn as_milliseconds(&self, duration: Duration) -> u64 {
-        let nanos = duration.subsec_nanos() as u64;
+        let nanos = u64::from(duration.subsec_nanos());
         (1000 * 1000 * 1000 * duration.as_secs() + nanos) / (1000 * 1000)
     }
 
@@ -70,7 +70,7 @@ impl NetworkQualityMeasurer {
     /// We do this so that if one packet has an bad rtt it will not directly bring down the or network quality estimation.
     /// The default is 10% smoothing so if in total or packet is 50 milliseconds later than max allowed rtt we will increase or rtt estimation with 5.
     fn smooth_out_rtt(&self, rtt: u64) -> f32 {
-        let exceeded_rrt_time = rtt as i64 - self.config.rtt_max_value as i64;
+        let exceeded_rrt_time = rtt as i64 - i64::from(self.config.rtt_max_value);
         exceeded_rrt_time as f32 * self.config.rtt_smoothing_factor
     }
 }

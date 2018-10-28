@@ -99,7 +99,7 @@ impl Packet {
 
     /// Get the payload (raw data) of this packet.
     pub fn payload(&self) -> &[u8] {
-        return &self.payload;
+        &self.payload
     }
 
     /// Get the endpoint from this packet.

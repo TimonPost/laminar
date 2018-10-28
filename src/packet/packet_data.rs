@@ -4,7 +4,7 @@ use super::RawPacketData;
 use error::NetworkResult;
 
 /// Contains the raw data this packet exists of. Note that a packet can be divided into separate fragments
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct PacketData {
     parts: Vec<RawPacketData>,
 }
@@ -38,7 +38,7 @@ impl PacketData {
     pub fn parts(&mut self) -> Vec<Vec<u8>> {
         let mut parts_data: Vec<Vec<u8>> = Vec::new();
 
-        for part in self.parts.iter_mut() {
+        for part in &mut self.parts {
             parts_data.push(part.serialize());
         }
 

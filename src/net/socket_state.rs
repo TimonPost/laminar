@@ -1,15 +1,15 @@
+use std::error::Error;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
-use std::time::{Duration, Instant};
-use std::error::Error;
+use std::time::Instant;
 
+use error::{FragmentErrorKind, NetworkError, NetworkResult, PacketErrorKind};
+use events::Event;
+use net::connection::{ConnectionPool, NetworkQualityMeasurer};
+use net::{NetworkConfig, SocketAddr};
+use packet::header::{FragmentHeader, PacketHeader};
 use packet::{Packet, PacketData};
 use sequence_buffer::CongestionData;
-use packet::header::{FragmentHeader, PacketHeader};
-use net::{SocketAddr, NetworkConfig};
-use net::connection::{ConnectionPool,NetworkQualityMeasurer};
-use error::{NetworkError, NetworkResult, PacketErrorKind, FragmentErrorKind};
-use events::Event;
 use total_fragments_needed;
 
 /// This type handles the UDP-socket state.
@@ -44,7 +44,8 @@ impl SocketState {
         })
     }
 
-    /// This will initialize the seq number, ack number and give back the raw data of the packet with the updated information.
+    /// This will initialize the seq number, ack number and give back the raw data of the packet
+    /// with the updated information. As such the packet argument is consumed.
     pub fn pre_process_packet(
         &mut self,
         packet: Packet,
@@ -78,21 +79,22 @@ impl SocketState {
                 CongestionData::new(connection_seq, Instant::now()),
                 connection_seq,
             );
-
-            // queue new packet
-            lock.waiting_packets.enqueue(connection_seq, packet.clone());
         }
 
         let mut packet_data = PacketData::new();
 
-        let packet_header = PacketHeader::new(connection_seq, their_last_seq, their_ack_field, packet.delivery_method());
+        let packet_header = PacketHeader::new(
+            connection_seq,
+            their_last_seq,
+            their_ack_field,
+            packet.delivery_method(),
+        );
 
-        let payload = packet.payload();
-        let payload_length = payload.len() as u16; /* safe cast because max packet size is u16 */
+        let payload_length = packet.payload().len() as u16; /* safe cast because max packet size is u16 */
 
-        // spit the packet if the payload lenght is greater than the allowrd fragment size.
+        // spit the packet if the payload lenght is greater than the allowed fragment size.
         if payload_length <= config.fragment_size {
-            packet_data.add_fragment(&packet_header, payload.to_vec());
+            packet_data.add_fragment(&packet_header, packet.payload().to_vec());
         } else {
             let num_fragments = total_fragments_needed(payload_length, config.fragment_size) as u8; /* safe cast max fragments is u8 */
 
@@ -102,11 +104,11 @@ impl SocketState {
 
             for fragment_id in 0..num_fragments {
                 let fragment =
-                    FragmentHeader::new(fragment_id, num_fragments, packet_header.clone());
+                    FragmentHeader::new(fragment_id, num_fragments, packet_header);
 
                 // get start end pos in buffer
-                let start_fragment_pos = fragment_id as u16 * config.fragment_size; /* upcast is safe */
-                let mut end_fragment_pos = (fragment_id as u16 + 1) * config.fragment_size; /* upcast is safe */
+                let start_fragment_pos = u16::from(fragment_id) * config.fragment_size; /* upcast is safe */
+                let mut end_fragment_pos = (u16::from(fragment_id) + 1) * config.fragment_size; /* upcast is safe */
 
                 // If remaining buffer fits int one packet just set the end position to the length of the packet payload.
                 if end_fragment_pos > payload_length {
@@ -115,20 +117,27 @@ impl SocketState {
 
                 // get specific slice of data for fragment
                 let fragment_data =
-                    &payload[start_fragment_pos as usize..end_fragment_pos as usize]; /* upcast is safe */
+                    &packet.payload()[start_fragment_pos as usize..end_fragment_pos as usize]; /* upcast is safe */
 
                 packet_data.add_fragment(&fragment, fragment_data.to_vec());
             }
         }
 
-        let mut lock = connection
-            .write()
-            .map_err(|error|  NetworkError::poisoned_connection_error(error.description()))?;
+        let packet_addr = packet.addr();
 
-        // each time we send a packet we increase the local sequence number
-        lock.seq_num = lock.seq_num.wrapping_add(1);
+        {
+            let mut lock = connection
+                .write()
+                .map_err(|error| NetworkError::poisoned_connection_error(error.description()))?;
 
-        Ok((packet.addr(), packet_data))
+            // each time we send a packet we increase the local sequence number
+            lock.seq_num = lock.seq_num.wrapping_add(1);
+
+            // queue new packet
+            lock.waiting_packets.enqueue(connection_seq, packet);
+        }
+
+        Ok((packet_addr, packet_data))
     }
 
     /// This will return all dropped packets from this connection.
@@ -137,18 +146,22 @@ impl SocketState {
 
         let mut lock = connection
             .write()
-            .map_err(|error|  NetworkError::poisoned_connection_error(error.description()))?;
+            .map_err(|error| NetworkError::poisoned_connection_error(error.description()))?;
 
         let packets = lock.dropped_packets.drain(..).collect();
         Ok(packets)
     }
 
     /// This will process an incoming packet and update acknowledgement information.
-    pub fn process_received(&mut self, addr: SocketAddr, packet: &PacketHeader) -> NetworkResult<()> {
+    pub fn process_received(
+        &mut self,
+        addr: SocketAddr,
+        packet: &PacketHeader,
+    ) -> NetworkResult<()> {
         let connection = self.connections.get_connection_or_insert(&addr)?;
         let mut lock = connection
             .write()
-            .map_err(|error|  NetworkError::poisoned_connection_error(error.description()))?;
+            .map_err(|error| NetworkError::poisoned_connection_error(error.description()))?;
 
         lock.their_acks.ack(packet.seq);
         lock.last_heard = Instant::now();
@@ -173,9 +186,9 @@ impl SocketState {
         rx.try_iter().collect()
     }
 
-    // Wrapper around getting the events sender
-    // This will cause a clone to be done, but this is low cost
-    fn get_events_sender(&self) -> Sender<Event> {
+    /// Wrapper around getting the events sender
+    /// This will cause a clone to be done, but this is low cost
+    pub fn get_events_sender(&self) -> Sender<Event> {
         self.events.0.clone()
     }
 }
@@ -191,9 +204,6 @@ mod test {
     use std::str::FromStr;
 
     use total_fragments_needed;
-
-    static TEST_HOST_IP: &'static str = "127.0.0.1";
-    static TEST_PORT: &'static str = "20000";
 
     #[test]
     pub fn construct_packet_less_than_mtu() {
