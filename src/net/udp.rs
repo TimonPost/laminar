@@ -2,9 +2,9 @@ use std::net::{self, ToSocketAddrs};
 
 use error::{NetworkError, NetworkErrorKind, NetworkResult};
 use events::Event;
+use net::link_conditioner::LinkConditioner;
 use net::{NetworkConfig, SocketState};
 use packet::{Packet, PacketProcessor};
-use net::link_conditioner::LinkConditioner;
 
 /// Represents an <ip>:<port> combination listening for UDP traffic
 pub struct UdpSocket {
@@ -54,13 +54,20 @@ impl UdpSocket {
         let (addr, mut packet_data) = self.state.pre_process_packet(packet, &self.config)?;
 
         let mut bytes_sent = 0;
-        if let Some(link_conditioner) = &self.link_conditioner {
-            if link_conditioner.should_send() {
+        if cfg!(feature = "tester") {
+            if let Some(link_conditioner) = &self.link_conditioner {
+                if link_conditioner.should_send() {
+                    for payload in packet_data.parts() {
+                        bytes_sent += self.socket.send_to(&payload, addr).map_err(|io| {
+                            NetworkError::from(NetworkErrorKind::IOError { inner: io })
+                        })?;
+                    }
+                }
+            } else {
                 for payload in packet_data.parts() {
-                    bytes_sent += self
-                        .socket
-                        .send_to(&payload, addr)
-                        .map_err(|io| NetworkError::from(NetworkErrorKind::IOError { inner: io }))?;
+                    bytes_sent += self.socket.send_to(&payload, addr).map_err(|io| {
+                        NetworkError::from(NetworkErrorKind::IOError { inner: io })
+                    })?;
                 }
             }
         } else {
