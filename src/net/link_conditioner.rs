@@ -1,14 +1,14 @@
-//! This module provides means to simulate various network conditions for development. The primary focus is 
+//! This module provides means to simulate various network conditions for development. The primary focus is
 //! for testing applications under adverse conditions such as high packet loss networks, or high latency
 //! networks.
 
-use rand::prelude::*;
+use rand::prelude::random;
 
 pub struct LinkConditioner {
     // Value between 0 and 1, representing the % change a packet will be dropped on sending
     packet_loss: f64,
     // Value in milliseconds, representing the delay imposed between packets
-    latency: u32
+    latency: u32,
 }
 
 impl LinkConditioner {
@@ -16,7 +16,7 @@ impl LinkConditioner {
     pub fn new() -> LinkConditioner {
         LinkConditioner {
             packet_loss: 0.0,
-            latency: 0
+            latency: 0,
         }
     }
 
@@ -35,4 +35,3 @@ impl LinkConditioner {
         }
     }
 }
-
