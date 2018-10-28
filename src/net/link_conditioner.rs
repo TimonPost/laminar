@@ -29,9 +29,9 @@ impl LinkConditioner {
     pub fn should_send(&self) -> bool {
         let r = random::<f64>();
         if r <= self.packet_loss {
-            true
-        } else {
             false
+        } else {
+            true
         }
     }
 }

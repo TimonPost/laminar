@@ -2,6 +2,7 @@ use std::net::{self, ToSocketAddrs};
 
 use error::{NetworkError, NetworkErrorKind, NetworkResult};
 use events::Event;
+use net::link_conditioner::LinkConditioner;
 use net::{NetworkConfig, SocketState};
 use packet::{Packet, PacketProcessor};
 
@@ -12,6 +13,7 @@ pub struct UdpSocket {
     recv_buffer: Vec<u8>,
     config: NetworkConfig,
     packet_processor: PacketProcessor,
+    link_conditioner: Option<LinkConditioner>,
 }
 
 impl UdpSocket {
@@ -26,6 +28,7 @@ impl UdpSocket {
             recv_buffer: vec![0; config.receive_buffer_max_size],
             packet_processor: PacketProcessor::new(&config),
             config,
+            link_conditioner: None,
         })
     }
 
@@ -49,16 +52,23 @@ impl UdpSocket {
     /// Sends data on the socket to the given address. On success, returns the number of bytes written.
     pub fn send(&mut self, packet: Packet) -> NetworkResult<usize> {
         let (addr, mut packet_data) = self.state.pre_process_packet(packet, &self.config)?;
-
         let mut bytes_sent = 0;
-
-        for payload in packet_data.parts() {
-            bytes_sent += self
-                .socket
-                .send_to(&payload, addr)
-                .map_err(|io| NetworkError::from(NetworkErrorKind::IOError { inner: io }))?;
+        if let Some(link_conditioner) = &self.link_conditioner {
+            if link_conditioner.should_send() {
+                for payload in packet_data.parts() {
+                    bytes_sent += self.socket.send_to(&payload, addr).map_err(|io| {
+                        NetworkError::from(NetworkErrorKind::IOError { inner: io })
+                    })?;
+                }
+            }
+        } else {
+            for payload in packet_data.parts() {
+                bytes_sent += self
+                    .socket
+                    .send_to(&payload, addr)
+                    .map_err(|io| NetworkError::from(NetworkErrorKind::IOError { inner: io }))?;
+            }
         }
-
         Ok(bytes_sent)
     }
 
