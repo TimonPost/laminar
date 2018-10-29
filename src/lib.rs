@@ -1,5 +1,5 @@
-//! Laminar semi-reliable UDP protocol for multiplayer games. This library just implements the low level
-//! aspects of a UDP socket. It provides light weight wrappers and basic stream based functionality.
+//! Laminar semi-reliable UDP protocol for multiplayer games. This library implements wraps around a UDP
+//! and provides light weight stream based interface that provides certain guarentees like reliablity.
 //!
 //! Laminar was designed to be used within the [Amethyst][amethyst] game engine.
 //!
@@ -21,8 +21,11 @@
 //! # Example
 //!
 //! ```rust
+//! extern crate laminar;
+//!
 //! use laminar::{UdpSocket, NetworkConfig};
 //! use laminar::Packet;
+//!
 //! use std::net::Ipv4Addr;
 //!
 //! fn main() {
@@ -34,15 +37,22 @@
 //!   let packet: Packet = Packet::sequenced_unordered(addr, data.to_vec());
 //!
 //!   socket.send(packet).unwrap();
+//!
+//!   let data = socket.recv().unwrap();
+//!   println!("{:?}", data);
 //! }
 //! ```
 
 extern crate bincode;
 extern crate byteorder;
-extern crate failure;
+extern crate crc;
+extern crate lazy_static;
 extern crate serde;
+
 #[macro_use]
 extern crate log;
+
+extern crate failure;
 #[macro_use]
 extern crate failure_derive;
 extern crate crc;

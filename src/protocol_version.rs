@@ -1,6 +1,7 @@
 use std::sync::Mutex;
 
 use crc::crc32;
+use lazy_static::lazy_static;
 
 pub use net::constants::PROTOCOL_VERSION;
 
