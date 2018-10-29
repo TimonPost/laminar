@@ -7,7 +7,7 @@
 //!
 //! # Concepts
 //!
-//! This library is mostly based off of [Gaffer on Games][gog] and RakNet. The idea is provide a low level
+//! This library is mostly based off of [Gaffer on Games][gog] and shares features with RakNet. The idea is to provide a low level
 //! UDP protocol that supports the use cases of video games that require multiplayer features. The library
 //! itself provides a few low level types of packets that provides different types of guarentees. The most
 //! basic are unreliable and reliable packets. This generally correlates to state update packets that do not
@@ -55,9 +55,6 @@ extern crate log;
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
-extern crate crc;
-#[macro_use]
-extern crate lazy_static;
 extern crate rand;
 
 pub mod error;
