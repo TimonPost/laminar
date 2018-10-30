@@ -10,10 +10,11 @@ extern crate laminar;
 extern crate serde_derive;
 extern crate serde;
 
-use laminar::net::{NetworkConfig, SocketAddr, UdpSocket};
+use laminar::net::{NetworkConfig, UdpSocket};
 use laminar::packet::Packet;
 
 use bincode::{deserialize, serialize};
+use std::net::SocketAddr;
 use std::{thread, time};
 
 /// The socket address of where the server is located.
