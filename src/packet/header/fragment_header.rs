@@ -1,27 +1,24 @@
-use super::PacketHeader;
-use super::{HeaderParser, HeaderReader};
+use super::{HeaderParser, HeaderReader, AckedPacketHeader, StandardHeader};
 use net::constants::FRAGMENT_HEADER_SIZE;
-use packet::PacketTypeId;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use error::{NetworkResult, FragmentErrorKind};
-use std::io::{Cursor, Write};
-use protocol_version::ProtocolVersion;
+use std::io::Cursor;
 
 #[derive(Copy, Clone, Debug)]
 /// This header represents a fragmented packet header.
 pub struct FragmentHeader {
-    packet_type_id: PacketTypeId,
+    standard_header: StandardHeader,
     sequence: u16,
     id: u8,
     num_fragments: u8,
-    packet_header: Option<PacketHeader>,
+    packet_header: Option<AckedPacketHeader>,
 }
 
 impl FragmentHeader {
     /// Create new fragment with the given packet header
-    pub fn new(id: u8, num_fragments: u8, packet_header: PacketHeader) -> Self {
+    pub fn new(standard_header: StandardHeader, id: u8, num_fragments: u8, packet_header: AckedPacketHeader) -> Self {
         FragmentHeader {
-            packet_type_id: PacketTypeId::Fragment,
+            standard_header,
             id,
             num_fragments,
             packet_header: Some(packet_header),
@@ -45,55 +42,54 @@ impl FragmentHeader {
     }
 
     /// Get the packet header if attached to fragment.
-    pub fn packet_header(&self) -> Option<PacketHeader> {
+    pub fn packet_header(&self) -> Option<AckedPacketHeader> {
         self.packet_header
     }
 }
 
 impl HeaderParser for FragmentHeader {
-    type Output = NetworkResult<Vec<u8>>;
+    type Output = NetworkResult<()>;
 
-    fn parse(&self) -> <Self as HeaderParser>::Output {
-        let mut wtr = Vec::new();
-        wtr.write_u32::<BigEndian>(ProtocolVersion::get_crc32())?;
-        wtr.write_u8(PacketTypeId::get_id(self.packet_type_id))?;
-        wtr.write_u16::<BigEndian>(self.sequence)?;
-        wtr.write_u8(self.id)?;
-        wtr.write_u8(self.num_fragments)?;
+    fn parse(&self, buffer: &mut Vec<u8>) -> <Self as HeaderParser>::Output {
+        self.standard_header.parse(buffer)?;
+        buffer.write_u16::<BigEndian>(self.sequence)?;
+        buffer.write_u8(self.id)?;
+        buffer.write_u8(self.num_fragments)?;
 
+        // append acked header only first time
         if self.id == 0 {
             match self.packet_header {
                 Some(header) => {
-                    wtr.write(&header.parse()?)?;
+                    header.parse(buffer)?;
                 }
                 None => return Err(FragmentErrorKind::PacketHeaderNotFound.into()),
             }
         }
 
-        Ok(wtr)
+        Ok(())
     }
 }
 
 impl HeaderReader for FragmentHeader {
     type Header = NetworkResult<FragmentHeader>;
 
-    fn read(rdr: &mut Cursor<Vec<u8>>) -> <Self as HeaderReader>::Header {
-        let _ = rdr.read_u32::<BigEndian>()?;
-        let _ = rdr.read_u8();
+    fn read(rdr: &mut Cursor<&[u8]>) -> <Self as HeaderReader>::Header {
+        let standard_header = StandardHeader::read(rdr)?;
         let sequence = rdr.read_u16::<BigEndian>()?;
         let id = rdr.read_u8()?;
         let num_fragments = rdr.read_u8()?;
 
         let mut header = FragmentHeader {
-            packet_type_id: PacketTypeId::Fragment,
+            standard_header,
             sequence,
             id,
             num_fragments,
             packet_header: None,
         };
 
+        // append acked header is only appended to first packet.
         if id == 0 {
-            header.packet_header = Some(PacketHeader::read(rdr)?);
+            header.packet_header = Some(AckedPacketHeader::read(rdr)?);
         }
 
         Ok(header)
@@ -117,20 +113,25 @@ impl HeaderReader for FragmentHeader {
 
 #[cfg(test)]
 mod tests {
-    use packet::header::{FragmentHeader, HeaderParser, HeaderReader, PacketHeader};
+    use packet::header::{FragmentHeader, HeaderParser, HeaderReader, AckedPacketHeader, StandardHeader};
     use infrastructure::DeliveryMethod;
+    use packet::PacketTypeId;
     use std::io::Cursor;
 
     #[test]
     pub fn serializes_deserialize_fragment_header_test() {
-        let packet_header = PacketHeader::new(1, 1, 5421, DeliveryMethod::Unreliable);
-        let _packet_serialized: Vec<u8> = packet_header.parse().unwrap();
+        // create default header
+        let standard_header = StandardHeader::new(DeliveryMethod::UnreliableUnordered, PacketTypeId::Fragment);
 
-        let fragment = FragmentHeader::new(0, 1, packet_header.clone());
-        let fragment_serialized = fragment.parse().unwrap();
+        let packet_header = AckedPacketHeader::new(standard_header.clone(), 1, 1, 5421);
 
-        let mut cursor = Cursor::new(fragment_serialized);
-        let fragment_deserialized: FragmentHeader = FragmentHeader::read(&mut cursor).unwrap();
+        // create fragment header with the default header and acked header.
+        let fragment = FragmentHeader::new(standard_header.clone(), 0, 1, packet_header.clone());
+        let mut fragment_buffer= Vec::with_capacity((fragment.size() + 1) as usize);
+        fragment.parse(&mut fragment_buffer).unwrap();
+
+        let mut cursor: Cursor<&[u8]> = Cursor::new(fragment_buffer.as_slice());
+        let fragment_deserialized = FragmentHeader::read(&mut cursor).unwrap();
 
         assert_eq!(fragment_deserialized.id, 0);
         assert_eq!(fragment_deserialized.num_fragments, 1);

@@ -1,10 +1,10 @@
-use packet::header::{PacketHeader, FragmentHeader};
+use packet::header::{AckedPacketHeader, FragmentHeader};
 
 /// These are the different packets that could be send by te user.
 pub enum PacketType
 {
     /// Packet header containing packet information.
-    Normal(PacketHeader),
+    Normal(AckedPacketHeader),
     /// Part of an packet also called 'fragment' containing fragment info.
     Fragment(FragmentHeader),
     /// Packet to keep the connection alive.

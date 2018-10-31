@@ -1,7 +1,9 @@
 use super::{FragmentErrorKind, PacketErrorKind};
 
+use std::sync::PoisonError;
 use std::fmt::{self, Display,Formatter};
 use std::io;
+use std::error::Error;
 
 use failure::{Fail, Backtrace, Context};
 
@@ -105,5 +107,11 @@ impl From<FragmentErrorKind> for NetworkError {
 impl From<PacketErrorKind> for NetworkError {
     fn from(inner: PacketErrorKind) -> Self {
         NetworkErrorKind::PacketError { inner }.into()
+    }
+}
+
+impl<T> From<PoisonError<T>> for NetworkError {
+    fn from(inner: PoisonError<T>) -> Self {
+        NetworkErrorKind::FailedToAddConnection { inner: inner.description().to_owned() }.into()
     }
 }

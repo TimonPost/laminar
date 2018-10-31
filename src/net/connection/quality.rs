@@ -1,10 +1,8 @@
-use std::sync::RwLockWriteGuard;
-use std::time::Duration;
-
-use net::connection::VirtualConnection;
-
 use net::NetworkConfig;
 use sequence_buffer::CongestionData;
+
+use std::time::Duration;
+use std::sync::Arc;
 
 /// Represents the quality of a network.
 pub enum NetworkQuality {
@@ -14,28 +12,22 @@ pub enum NetworkQuality {
 
 /// This type helps with calculating the round trip time from any packet.
 /// It is able to smooth out the network jitter if there is any.
-pub struct NetworkQualityMeasurer {
-    config: NetworkConfig,
+pub struct RttMeasurer {
+    config: Arc<NetworkConfig>,
 }
 
-impl NetworkQualityMeasurer {
-    pub fn new(config: NetworkConfig) -> NetworkQualityMeasurer {
-        NetworkQualityMeasurer { config }
+impl RttMeasurer {
+    pub fn new(config: &Arc<NetworkConfig>) -> RttMeasurer {
+        RttMeasurer { config: config.clone() }
     }
 
     /// This will calculate the round trip time (rtt) from the given acknowledgement.
     /// Where after it updates the rtt from the given connection.
-    pub fn update_connection_rtt(
+    pub fn get_rtt(
         &self,
-        connection: &mut RwLockWriteGuard<VirtualConnection>,
-        ack_seq: u16,
-    ) {
-        let smoothed_rrt = {
-            let congestion_data = connection.congestion_avoidance_buffer.get_mut(ack_seq);
-            self.get_smoothed_rtt(congestion_data)
-        };
-
-        connection.rtt = smoothed_rrt;
+        congestion_data: Option<&mut CongestionData>
+    ) -> f32 {
+        self.get_smoothed_rtt(congestion_data)
     }
 
     /// This will get the smoothed round trip time (rtt) from the time we last heard from an packet.
@@ -79,9 +71,10 @@ impl NetworkQualityMeasurer {
 mod test {
     use net::connection::{VirtualConnection};
     use net::NetworkConfig;
-    use super::NetworkQualityMeasurer;
+    use super::RttMeasurer;
     use std::net::ToSocketAddrs;
     use std::time::Duration;
+    use std::sync::Arc;
 
     static TEST_HOST_IP: &'static str = "127.0.0.1";
     static TEST_BAD_HOST_IP: &'static str = "800.0.0.1";
@@ -92,12 +85,12 @@ mod test {
         let mut addr = format!("{}:{}", TEST_HOST_IP, TEST_PORT)
             .to_socket_addrs()
             .unwrap();
-        let _new_conn = VirtualConnection::new(addr.next().unwrap());
+        let _new_conn = VirtualConnection::new(addr.next().unwrap(), &Arc::new(NetworkConfig::default()));
     }
 
     #[test]
     fn convert_duration_to_milliseconds_test() {
-        let network_quality = NetworkQualityMeasurer::new(NetworkConfig::default());
+        let network_quality = RttMeasurer::new(&Arc::new(NetworkConfig::default()));
         let milliseconds1 = network_quality.as_milliseconds(Duration::from_secs(1));
         let milliseconds2 = network_quality.as_milliseconds(Duration::from_millis(1500));
         let milliseconds3 = network_quality.as_milliseconds(Duration::from_millis(1671));
@@ -114,7 +107,7 @@ mod test {
         config.rtt_smoothing_factor = 0.10;
         config.rtt_max_value = 250;
 
-        let network_quality = NetworkQualityMeasurer::new(config.clone());
+        let network_quality = RttMeasurer::new(&Arc::new(config));
         let smoothed_rtt = network_quality.smooth_out_rtt(300);
 
         // 300ms has exceeded 50ms over the max allowed rtt. So we check if or smoothing factor is now 10% from 50.

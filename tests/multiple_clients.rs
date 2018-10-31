@@ -5,6 +5,7 @@ mod common;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
+use laminar::infrastructure::DeliveryMethod;
 use laminar::net::NetworkConfig;
 
 use common::{ClientStub, ServerMoq};
@@ -36,31 +37,37 @@ pub fn multiple_client_integration_test() {
         sixteenth_a_second,
         "127.0.0.1:12346".parse().unwrap(),
         TOTAL_PACKETS_TO_SEND,
+        DeliveryMethod::UnreliableUnordered
     ));
     clients.push(ClientStub::new(
         sixteenth_a_second,
         "127.0.0.1:12347".parse().unwrap(),
         TOTAL_PACKETS_TO_SEND,
+        DeliveryMethod::UnreliableUnordered
     ));
     clients.push(ClientStub::new(
         sixteenth_a_second,
         "127.0.0.1:12348".parse().unwrap(),
         TOTAL_PACKETS_TO_SEND,
+        DeliveryMethod::UnreliableUnordered
     ));
     clients.push(ClientStub::new(
         sixteenth_a_second,
         "127.0.0.1:12349".parse().unwrap(),
         TOTAL_PACKETS_TO_SEND,
+        DeliveryMethod::UnreliableUnordered
     ));
     clients.push(ClientStub::new(
         sixteenth_a_second,
         "127.0.0.1:12350".parse().unwrap(),
         TOTAL_PACKETS_TO_SEND,
+        DeliveryMethod::UnreliableUnordered
     ));
     clients.push(ClientStub::new(
         sixteenth_a_second,
         "127.0.0.1:12351".parse().unwrap(),
         TOTAL_PACKETS_TO_SEND,
+        DeliveryMethod::UnreliableUnordered
     ));
 
     let stopwatch = Instant::now();
