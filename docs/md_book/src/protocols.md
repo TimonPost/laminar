@@ -1,6 +1,8 @@
+# Networking protocols
+
 So first and possibly the important one is which protocol to use and when. Let’s first take a look at TCP and UDP.
 
-# IP
+## IP
 All communication over the internet is happening over IP (Internet Protocol). 
 This protocol only passes packets across the network without any guarantee that it will arrive at the destination. 
 Sometimes IP passes along multiple copies of the same packet and these packets make their way to the destination via different paths, causing packets to arrive out of order and in duplicate.
@@ -21,7 +23,7 @@ The TCP protocol will also split up and reassemble packets if those are too larg
 - Ordered
 - Automatic [fragmentation](LINK) of packets
 - Stream based
-- Control Flow ([Congestion Avoidance](LINK))
+- Control Flow ([Congestion Avoidance](congestion_avoidence/congestion_avoidance.md))
  
 ## UDP
 UDP stands for “user datagram protocol” and it’s another protocol built on top of IP, but unlike TCP, instead of adding lots of features and complexity, UDP is a very thin layer over IP.
@@ -31,8 +33,8 @@ Like IP, UDP is an unreliable protocol. In practice however, most packets that a
 **Characteristics**
 - Not Reliable
 - Not Ordered
-- No [fragmentation](LINK) of packets
-- No control flow
+- No [fragmentation](fragmentation.md) of packets
+- No control flow ([Congestion Avoidance](congestion_avoidence/congestion_avoidance.md))
 - Packet loss could happen.
 - Message based
 
