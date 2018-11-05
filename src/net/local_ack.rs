@@ -1,4 +1,3 @@
-use packet::Packet;
 use std::collections::HashMap;
 
 /// Packets waiting for an ack
@@ -9,7 +8,7 @@ use std::collections::HashMap;
 #[derive(Debug, Default)]
 pub struct LocalAckRecord {
     // packets waiting for acknowledgement.
-    packets: HashMap<u16, Packet>,
+    packets: HashMap<u16, Box<[u8]>>,
 }
 
 impl LocalAckRecord {
@@ -24,15 +23,13 @@ impl LocalAckRecord {
     }
 
     /// Adds a packet to the queue awaiting for an acknowledgement.
-    pub fn enqueue(&mut self, seq: u16, packet: Packet) {
-        // TODO: Handle overwriting other packet?
-        //   That really shouldn't happen, but it should be encoded here
-        self.packets.insert(seq, packet);
+    pub fn enqueue(&mut self, seq: u16, payload: &[u8]) {
+        self.packets.insert(seq, Box::from(payload));
     }
 
     /// Finds and removes acked packets, returning dropped packets
     #[allow(unused_parens)]
-    pub fn ack(&mut self, seq: u16, seq_field: u32) -> Vec<(u16, Packet)> {
+    pub fn ack(&mut self, seq: u16, seq_field: u32) -> Vec<(u16, Box<[u8]>)> {
         let mut dropped_packets = Vec::new();
         let mut acked_packets = Vec::new();
 
@@ -63,15 +60,15 @@ impl LocalAckRecord {
 
 #[cfg(test)]
 mod test {
-    use super::super::LocalAckRecord;
-    use super::Packet;
+    use net::LocalAckRecord;
+    use packet::Packet;
     use std::net::{IpAddr, SocketAddr};
     use std::str::FromStr;
 
     #[test]
     fn acking_single_packet() {
         let mut record: LocalAckRecord = Default::default();
-        record.enqueue(0, dummy_packet());
+        record.enqueue(0, &Vec::new());
         let dropped = record.ack(0, 0);
         assert_eq!(dropped.len(), 0);
         assert!(record.is_empty());
@@ -80,9 +77,9 @@ mod test {
     #[test]
     fn acking_several_packets() {
         let mut record: LocalAckRecord = Default::default();
-        record.enqueue(0, dummy_packet());
-        record.enqueue(1, dummy_packet());
-        record.enqueue(2, dummy_packet());
+        record.enqueue(0, &Vec::new());
+        record.enqueue(1, &Vec::new());
+        record.enqueue(2, &Vec::new());
         let dropped = record.ack(2, 1 | (1 << 1));
         assert_eq!(dropped.len(), 0);
         assert!(record.is_empty());
@@ -93,7 +90,7 @@ mod test {
         let mut record: LocalAckRecord = Default::default();
 
         for i in 0..33 {
-            record.enqueue(i, dummy_packet())
+            record.enqueue(i, &Vec::new())
         }
 
         let dropped = record.ack(32, !0);
@@ -107,12 +104,12 @@ mod test {
         let mut record: LocalAckRecord = Default::default();
 
         for i in 0..33 {
-            record.enqueue(i, dummy_packet());
+            record.enqueue(i, &Vec::new());
         }
 
         let dropped = record.ack(33, !0);
 
-        assert_eq!(dropped, vec![(0, dummy_packet())]);
+        assert_eq!(dropped, vec![(0, Vec::new().into_boxed_slice())]);
         assert!(record.is_empty());
     }
 
@@ -121,7 +118,7 @@ mod test {
         let mut record: LocalAckRecord = Default::default();
 
         for i in 0..33_u16 {
-            record.enqueue(i.wrapping_sub(16), dummy_packet());
+            record.enqueue(i.wrapping_sub(16), &Vec::new());
         }
 
         let dropped = record.ack(16, !0);
@@ -133,11 +130,11 @@ mod test {
     #[test]
     fn not_dropping_new_packets() {
         let mut record: LocalAckRecord = Default::default();
-        record.enqueue(0, dummy_packet());
-        record.enqueue(1, dummy_packet());
-        record.enqueue(2, dummy_packet());
-        record.enqueue(5, dummy_packet());
-        record.enqueue(30000, dummy_packet());
+        record.enqueue(0, &Vec::new());
+        record.enqueue(1, &Vec::new());
+        record.enqueue(2, &Vec::new());
+        record.enqueue(5, &Vec::new());
+        record.enqueue(30000, &Vec::new());
         let dropped = record.ack(1, 1);
         assert_eq!(dropped.len(), 0);
         assert_eq!(record.len(), 3);
@@ -146,30 +143,21 @@ mod test {
     #[test]
     fn drops_old_packets() {
         let mut record: LocalAckRecord = Default::default();
-        record.enqueue(0, dummy_packet());
-        record.enqueue(40, dummy_packet());
+        record.enqueue(0, &Vec::new());
+        record.enqueue(40,&Vec::new());
         let dropped = record.ack(40, 0);
-        assert_eq!(dropped, vec![(0, dummy_packet())]);
+        assert_eq!(dropped, vec![(0, Vec::new().into_boxed_slice())]);
         assert!(record.is_empty());
     }
 
     #[test]
     fn drops_really_old_packets() {
         let mut record: LocalAckRecord = Default::default();
-        record.enqueue(50000, dummy_packet());
-        record.enqueue(0, dummy_packet());
-        record.enqueue(1, dummy_packet());
+        record.enqueue(50000, &Vec::new());
+        record.enqueue(0, &Vec::new());
+        record.enqueue(1, &Vec::new());
         let dropped = record.ack(1, 1);
-        assert_eq!(dropped, vec![(50000, dummy_packet())]);
+        assert_eq!(dropped, vec![(50000, Vec::new().into_boxed_slice())]);
         assert!(record.is_empty());
-    }
-
-    pub fn dummy_packet() -> Packet {
-        let addr = SocketAddr::new(
-            IpAddr::from_str("0.0.0.0").expect("Unreadable input IP."),
-            12345,
-        );
-
-        Packet::sequenced_unordered(addr, Vec::new())
     }
 }

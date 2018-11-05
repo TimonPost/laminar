@@ -165,7 +165,7 @@ impl Client {
         match serialized {
             Ok(raw_data) => {
                 self.udp_socket
-                    .send(Packet::sequenced_unordered(server_address(), raw_data));
+                    .send(Packet::reliable_unordered(server_address(), raw_data));
             }
             Err(e) => println!("Some error occurred: {:?}", e),
         }

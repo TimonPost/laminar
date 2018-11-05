@@ -5,6 +5,7 @@ mod common;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
+use laminar::infrastructure::DeliveryMethod;
 use laminar::net::NetworkConfig;
 
 use common::{ClientStub, ServerMoq};
@@ -30,6 +31,7 @@ pub fn fragment_packet_integration_test() {
         Duration::from_millis(0),
         CLIENT_ADDR.parse().unwrap(),
         TOTAL_PACKETS_TO_SEND,
+        DeliveryMethod::ReliableUnordered
     );
 
     let stopwatch = Instant::now();

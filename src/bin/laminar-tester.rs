@@ -133,7 +133,7 @@ fn test_steady_stream(client: &mut net::UdpSocket, target: &str, pps: &str, test
     let test_duration = Duration::from_secs(test_duration);
     let test_packet = Packet::new(
         server_addr,
-        data_to_send.clone().into(),
+        data_to_send.clone().into_bytes().into_boxed_slice(),
         DeliveryMethod::ReliableOrdered,
     );
     let time_quantum = 1000 / pps;

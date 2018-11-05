@@ -1,5 +1,6 @@
 extern crate laminar;
 
+use laminar::infrastructure::DeliveryMethod;
 use laminar::net::{constants, NetworkConfig, UdpSocket};
 use laminar::packet::Packet;
 use std::net::SocketAddr;
@@ -44,15 +45,13 @@ impl ServerMoq {
                 match result {
                     Ok(Some(packet)) => {
                         assert_eq!(packet.payload(), expected_payload.as_slice());
-
                         packets_total_received += 1;
                         packet_throughput += 1;
 
                         udp_socket.send(packet).unwrap();
                     }
                     Ok(None) => {}
-                    Err(_) => {
-                        // if no packets are send we try to detect if the client has send us an notifier to stop the receive loop.
+                    Err(e) => {
                         match cancellation_channel.try_recv() {
                             Ok(val) => {
                                 if val == true {
@@ -93,18 +92,15 @@ impl ServerMoq {
                         assert_eq!(packet.payload(), data_to_send.as_slice());
                         assert_eq!(packet.addr(), host);
                     }
-                    Ok(None) => {}
+                    Ok(None) => { }
                     Err(_) => {}
                 }
 
                 let send_result =
-                    client.send(Packet::sequenced_unordered(host, data_to_send.clone()));
+                    client.send(Packet::new(host, data_to_send.clone().into_boxed_slice(), client_stub.packet_delivery));
 
                 if len <= config.fragment_size as usize {
-                    assert_eq!(
-                        send_result.unwrap(),
-                        len + constants::PACKET_HEADER_SIZE as usize
-                    );
+                    send_result.is_ok();
                 } else {
                     // if fragment, todo: add size assert.
                     send_result.is_ok();
@@ -120,6 +116,7 @@ pub struct ClientStub {
     timeout_sending: Duration,
     endpoint: SocketAddr,
     packets_to_send: u32,
+    packet_delivery: DeliveryMethod
 }
 
 impl ClientStub {
@@ -127,11 +124,13 @@ impl ClientStub {
         timeout_sending: Duration,
         endpoint: SocketAddr,
         packets_to_send: u32,
+        packet_delivery: DeliveryMethod
     ) -> ClientStub {
         ClientStub {
             timeout_sending,
             endpoint,
             packets_to_send,
+            packet_delivery
         }
     }
 }

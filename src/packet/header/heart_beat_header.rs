@@ -29,21 +29,20 @@ impl Default for HeartBeatHeader {
 }
 
 impl HeaderParser for HeartBeatHeader {
-    type Output = NetworkResult<Vec<u8>>;
+    type Output = NetworkResult<()>;
 
-    fn parse(&self) -> <Self as HeaderParser>::Output {
-        let mut wtr = Vec::new();
-        wtr.write_u32::<BigEndian>(ProtocolVersion::get_crc32())?;
-        wtr.write_u8(PacketTypeId::get_id(self.packet_type_id))?;
+    fn parse(&self, buffer: &mut Vec<u8>) -> <Self as HeaderParser>::Output {
+        buffer.write_u32::<BigEndian>(ProtocolVersion::get_crc32())?;
+        buffer.write_u8(PacketTypeId::get_id(self.packet_type_id))?;
 
-        Ok(wtr)
+        Ok(())
     }
 }
 
 impl HeaderReader for HeartBeatHeader {
     type Header = NetworkResult<HeartBeatHeader>;
 
-    fn read(rdr: &mut Cursor<Vec<u8>>) -> <Self as HeaderReader>::Header {
+    fn read(rdr: &mut Cursor<&[u8]>) -> <Self as HeaderReader>::Header {
         let _ = rdr.read_u32::<BigEndian>()?;
         let _ = rdr.read_u8();
         let header = HeartBeatHeader {

@@ -1,6 +1,7 @@
 use super::VirtualConnection;
 use error::{NetworkResult, NetworkError};
 use events::Event;
+use net::NetworkConfig;
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -23,10 +24,11 @@ pub struct ConnectionPool {
     connections: ConnectionsCollection,
     sleepy_time: Duration,
     poll_interval: Duration,
+    config: Arc<NetworkConfig>,
 }
 
 impl ConnectionPool {
-    pub fn new() -> ConnectionPool {
+    pub fn new(config: &Arc<NetworkConfig>) -> ConnectionPool {
         let sleepy_time = Duration::from_secs(1);
         let poll_interval = Duration::from_secs(TIMEOUT_POLL_INTERVAL);
 
@@ -35,6 +37,7 @@ impl ConnectionPool {
             connections: Arc::new(RwLock::new(HashMap::new())),
             sleepy_time,
             poll_interval,
+            config: config.clone()
         }
     }
 
@@ -52,7 +55,7 @@ impl ConnectionPool {
 
         let connection = lock
             .entry(*addr)
-            .or_insert_with(|| Arc::new(RwLock::new(VirtualConnection::new(*addr))));
+            .or_insert_with(|| Arc::new(RwLock::new(VirtualConnection::new(*addr, &self.config))));
 
         Ok(connection.clone())
     }
@@ -144,12 +147,13 @@ mod tests {
     use super::{Arc, ConnectionPool, TIMEOUT_POLL_INTERVAL};
     use events::Event;
     use net::connection::VirtualConnection;
+    use net::NetworkConfig;
 
     #[test]
     fn connection_timed_out() {
         let (tx, rx) = channel();
 
-        let mut connections = ConnectionPool::new();
+        let mut connections = ConnectionPool::new(&Arc::new(NetworkConfig::default()));
         let handle = connections.start_time_out_loop(tx.clone()).unwrap();
 
         connections.get_connection_or_insert(&("127.0.0.1:12345".parse().unwrap()));
@@ -180,7 +184,7 @@ mod tests {
 
     #[test]
     fn insert_connection() {
-        let mut connections = ConnectionPool::new();
+        let mut connections = ConnectionPool::new(&Arc::new(NetworkConfig::default()));
 
         let addr = &("127.0.0.1:12345".parse().unwrap());
         connections.get_connection_or_insert(addr);
