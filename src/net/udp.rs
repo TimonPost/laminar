@@ -6,6 +6,7 @@ use events::Event;
 use net::link_conditioner::LinkConditioner;
 use net::NetworkConfig;
 use packet::Packet;
+
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
 use std::thread;
