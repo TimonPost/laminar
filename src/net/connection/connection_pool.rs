@@ -1,4 +1,5 @@
 use super::VirtualConnection;
+
 use error::{NetworkResult, NetworkError};
 use events::Event;
 use net::NetworkConfig;

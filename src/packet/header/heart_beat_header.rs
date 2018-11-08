@@ -1,9 +1,12 @@
-use super::{HeaderParser, HeaderReader};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use error::NetworkResult;
+
+use super::{HeaderParser, HeaderReader};
+
 use net::constants::HEART_BEAT_HEADER_SIZE;
-use packet::PacketTypeId;
 use protocol_version::ProtocolVersion;
+use error::NetworkResult;
+use packet::PacketTypeId;
+
 use std::io::Cursor;
 
 #[derive(Copy, Clone, Debug)]

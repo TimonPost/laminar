@@ -1,7 +1,10 @@
-use super::{HeaderParser, HeaderReader, AckedPacketHeader, StandardHeader};
-use net::constants::FRAGMENT_HEADER_SIZE;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+
+use super::{HeaderParser, HeaderReader, AckedPacketHeader, StandardHeader};
+
 use error::{NetworkResult, FragmentErrorKind};
+use net::constants::FRAGMENT_HEADER_SIZE;
+
 use std::io::Cursor;
 
 #[derive(Copy, Clone, Debug)]

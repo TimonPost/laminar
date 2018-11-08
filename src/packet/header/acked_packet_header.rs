@@ -1,8 +1,11 @@
-use super::{HeaderParser, HeaderReader};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use error::NetworkResult;
+
+use super::{HeaderParser, HeaderReader};
+
 use net::constants::ACKED_PACKET_HEADER;
 use packet::header::StandardHeader;
+use error::NetworkResult;
+
 use std::io::Cursor;
 
 #[derive(Copy, Clone, Debug)]

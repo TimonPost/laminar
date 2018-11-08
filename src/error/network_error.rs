@@ -1,11 +1,11 @@
+use failure::{Fail, Backtrace, Context};
+
 use super::{FragmentErrorKind, PacketErrorKind};
 
 use std::sync::PoisonError;
 use std::fmt::{self, Display,Formatter};
-use std::io;
 use std::error::Error;
-
-use failure::{Fail, Backtrace, Context};
+use std::io;
 
 #[derive(Fail, Debug)]
 /// Enum with all possible network errors that could occur.

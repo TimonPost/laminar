@@ -1,5 +1,6 @@
-use std::net::SocketAddr;
 use infrastructure::DeliveryMethod;
+
+use std::net::SocketAddr;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 /// This is a user friendly packet containing the payload from the packet and the endpoint from where it came.

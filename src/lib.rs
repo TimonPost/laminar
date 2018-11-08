@@ -43,20 +43,20 @@
 //! }
 //! ```
 
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate lazy_static;
+#[macro_use]
+extern crate failure_derive;
 extern crate bincode;
 extern crate byteorder;
 extern crate crc;
-#[macro_use]
-extern crate lazy_static;
 extern crate serde;
-
-#[macro_use]
-extern crate log;
-
 extern crate failure;
-#[macro_use]
-extern crate failure_derive;
 extern crate rand;
+
+mod sequence_buffer;
 
 pub mod error;
 pub mod events;
@@ -64,7 +64,6 @@ pub mod infrastructure;
 pub mod net;
 pub mod packet;
 pub mod protocol_version;
-mod sequence_buffer;
 
 pub use net::{NetworkConfig, UdpSocket};
 pub use packet::Packet;

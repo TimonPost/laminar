@@ -1,15 +1,15 @@
-use std::net::{self, ToSocketAddrs};
-use net::connection::ConnectionPool;
-
 use error::{NetworkError, NetworkErrorKind, NetworkResult};
-use events::Event;
 use net::link_conditioner::LinkConditioner;
+use net::connection::ConnectionPool;
 use net::NetworkConfig;
+use events::Event;
 use packet::Packet;
+
 use std::sync::mpsc::{self, Receiver, Sender};
+use std::net::{self, ToSocketAddrs};
+use std::error::Error;
 use std::sync::Arc;
 use std::thread;
-use std::error::Error;
 
 /// Represents an <ip>:<port> combination listening for UDP traffic
 pub struct UdpSocket {
@@ -35,7 +35,7 @@ impl UdpSocket {
 
         Ok(UdpSocket {
             socket,
-            recv_buffer: vec![0;config.receive_buffer_max_size],
+            recv_buffer: vec![0; config.receive_buffer_max_size],
             config: config.clone(),
             link_conditioner: None,
             connections: connection_pool,
@@ -60,7 +60,6 @@ impl UdpSocket {
                 .map_err(|error| NetworkError::poisoned_connection_error(error.description()))?;
 
             return lock.process_incoming(&packet)
-
         } else {
             Err(NetworkErrorKind::ReceivedDataToShort)?
         }
@@ -88,14 +87,14 @@ impl UdpSocket {
         } else {
             for payload in packet_data.parts() {
                 bytes_sent += self
-                .socket
-                .send_to(payload, packet.addr())
-                .map_err( |io | NetworkError::from(NetworkErrorKind::IOError { inner: io })) ?;
+                    .socket
+                    .send_to(payload, packet.addr())
+                    .map_err(|io| NetworkError::from(NetworkErrorKind::IOError { inner: io }))?;
             }
         }
 
-    Ok(bytes_sent)
-}
+        Ok(bytes_sent)
+    }
 
     /// Sets the blocking mode of the socket. In non-blocking mode, recv_from will not block if there is no data to be read. In blocking mode, it will. If using non-blocking mode, it is important to wait some amount of time between iterations, or it will quickly use all CPU available
     pub fn set_nonblocking(&mut self, nonblocking: bool) -> NetworkResult<()> {

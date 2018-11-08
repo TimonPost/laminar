@@ -1,9 +1,9 @@
-use std::sync::Mutex;
-
 use crc::crc32;
 use lazy_static;
 
 pub use net::constants::PROTOCOL_VERSION;
+
+use std::sync::Mutex;
 
 lazy_static! {
     // The CRC32 of the current protocol version.

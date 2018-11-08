@@ -1,6 +1,6 @@
-use std::sync::{Arc, RwLock};
-
 use net::{NetworkQuality, VirtualConnection};
+
+use std::sync::{Arc, RwLock};
 
 /// Events that are generated in response to a change in state of the connected client
 pub enum Event {

@@ -1,5 +1,6 @@
-use std::io::Write;
 use error::NetworkResult;
+
+use std::io::Write;
 
 /// Contains the raw data this packet exists of. Note that a packet can be divided into separate fragments
 #[derive(Debug, Default)]

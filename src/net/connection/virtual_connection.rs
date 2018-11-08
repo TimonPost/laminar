@@ -1,16 +1,16 @@
-use net::NetworkConfig;
 use infrastructure::{UnreliableChannel, SequencedChannel, ReliableChannel, Fragmentation, DeliveryMethod, Channel};
 use error::{NetworkResult, NetworkErrorKind};
-use packet::header::StandardHeader;
 use packet::{Packet, PacketTypeId, PacketData};
 use protocol_version::ProtocolVersion;
+use packet::header::StandardHeader;
 use packet::header::HeaderReader;
+use net::NetworkConfig;
 
-use std::io::Cursor;
-use std::fmt;
-use std::net::SocketAddr;
 use std::time::{Duration, Instant};
+use std::net::SocketAddr;
+use std::io::Cursor;
 use std::sync::Arc;
+use std::fmt;
 
 /// Contains the information about a certain 'virtual connection' over udp.
 /// This connections also keeps track of network quality, processing packets, buffering data related to connection etc.
