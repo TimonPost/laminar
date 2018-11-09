@@ -45,14 +45,20 @@
 
 #![cfg_attr(feature = "cargo-clippy", deny(needless_return))]
 #![warn(missing_docs)]
-#![deny(unused_imports)]
+#[deny(
+trivial_casts,
+trivial_numeric_casts,
+unused_extern_crates,
+unused_import_braces,
+unused_qualifications,
+unused_results,
+unused_imports
+)]
 
-extern crate bincode;
 extern crate byteorder;
 extern crate crc;
 #[macro_use]
 extern crate lazy_static;
-extern crate serde;
 
 #[macro_use]
 extern crate log;
