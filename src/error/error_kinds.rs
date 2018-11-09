@@ -1,3 +1,5 @@
+use failure_derive::Fail;
+
 /// Errors that could occur with constructing parsing packet contents
 #[derive(Fail, Debug, PartialEq, Eq, Clone)]
 pub enum PacketErrorKind {

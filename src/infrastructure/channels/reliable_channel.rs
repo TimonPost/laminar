@@ -10,6 +10,7 @@ use packet::{Packet, PacketData,PacketTypeId};
 use std::io::{Cursor, Read};
 use std::time::Instant;
 use std::sync::Arc;
+use log::error;
 
 /// This channel should be used for processing packets reliable. All packets will be sent and received, ordering depends on given 'ordering' parameter.
 ///
