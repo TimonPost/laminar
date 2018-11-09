@@ -47,7 +47,6 @@
 #![warn(missing_docs)]
 #![deny(unused_imports)]
 
-
 extern crate bincode;
 extern crate byteorder;
 extern crate crc;

@@ -24,4 +24,5 @@ matrix:
   fast_finish: true
 
 script:
+  - cargo clippy
   - cargo test --verbose --all --all-features

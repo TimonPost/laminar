@@ -125,7 +125,7 @@ impl Fragmentation {
             cursor.read_to_end(&mut payload)?;
 
             // add the payload from the fragment to the buffer whe have in cache
-            reassembly_data.buffer.write(payload.as_slice())?;
+            reassembly_data.buffer.write_all(payload.as_slice())?;
 
             num_fragments_received = reassembly_data.num_fragments_received;
             num_fragments_total = reassembly_data.num_fragments_total;

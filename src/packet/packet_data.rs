@@ -17,8 +17,8 @@ impl PacketData {
     /// Add fragment to this packet
     pub fn add_fragment(&mut self, fragment: &[u8], fragment_data: &[u8]) -> NetworkResult<()> {
         let mut part = Vec::with_capacity(fragment.len() + fragment_data.len());
-        part.write(fragment)?;
-        part.write(fragment_data)?;
+        part.write_all(fragment)?;
+        part.write_all(fragment_data)?;
         self.parts.push(part);
         Ok(())
     }

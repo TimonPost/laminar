@@ -59,7 +59,7 @@ impl UdpSocket {
                 .write()
                 .map_err(|error| NetworkError::poisoned_connection_error(error.description()))?;
 
-            return lock.process_incoming(&packet)
+            lock.process_incoming(&packet)
 
         } else {
             Err(NetworkErrorKind::ReceivedDataToShort)?
