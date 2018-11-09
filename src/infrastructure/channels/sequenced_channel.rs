@@ -4,8 +4,6 @@ use packet::PacketData;
 use infrastructure::DeliveryMethod;
 use error::NetworkResult;
 
-use std::io::Cursor;
-
 /// This channel should be used for processing packets sequenced.
 ///
 /// *Details*

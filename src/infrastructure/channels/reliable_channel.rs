@@ -5,9 +5,9 @@ use packet::header::{HeaderParser, HeaderReader, AckedPacketHeader, StandardHead
 use sequence_buffer::{SequenceBuffer, CongestionData};
 use infrastructure::{DeliveryMethod, Fragmentation};
 use error::{PacketErrorKind,NetworkResult};
-use packet::{Packet, PacketData,PacketTypeId};
+use packet::{PacketData,PacketTypeId};
 
-use std::io::{Cursor, Read};
+use std::io::Cursor;
 use std::time::Instant;
 use std::sync::Arc;
 

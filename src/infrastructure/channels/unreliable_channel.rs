@@ -6,8 +6,6 @@ use infrastructure::DeliveryMethod;
 use packet::{PacketData, PacketTypeId};
 use error::NetworkResult;
 
-use std::io::{Cursor, Read};
-
 /// This channel should be used for unreliable processing of packets.
 ///
 /// **Details**

@@ -7,7 +7,6 @@ mod reliable_channel;
 use infrastructure::DeliveryMethod;
 use error::NetworkResult;
 use packet::PacketData;
-use std::io::Cursor;
 
 pub use self::unreliable_channel::UnreliableChannel;
 pub use self::sequenced_channel::SequencedChannel;
