@@ -1,4 +1,4 @@
-use std::net::{self, ToSocketAddrs};
+use std::net::{self, ToSocketAddrs, SocketAddr};
 use net::connection::ConnectionPool;
 
 use error::{NetworkError, NetworkErrorKind, NetworkResult};
@@ -80,22 +80,33 @@ impl UdpSocket {
         if let Some(link_conditioner) = &self.link_conditioner {
             if link_conditioner.should_send() {
                 for payload in packet_data.parts() {
-                    bytes_sent += self.socket.send_to(&payload, packet.addr()).map_err(|io| {
-                        NetworkError::from(NetworkErrorKind::IOError { inner: io })
-                    })?;
+                    bytes_sent += self.send_packet(&packet.addr(), &payload)?;
                 }
             }
         } else {
+            for payload in lock.gather_dropped_packets() {
+                bytes_sent += self.send_packet(&packet.addr(), &payload)?;
+            }
+
             for payload in packet_data.parts() {
-                bytes_sent += self
-                .socket
-                .send_to(payload, packet.addr())
-                .map_err( |io | NetworkError::from(NetworkErrorKind::IOError { inner: io })) ?;
+                bytes_sent += self.send_packet(&packet.addr(), &payload)?;
             }
         }
 
-    Ok(bytes_sent)
-}
+        Ok(bytes_sent)
+    }
+
+    /// Send a single packet over the udp socket.
+    fn send_packet(&self, addr: &SocketAddr, payload: &[u8]) -> NetworkResult<usize>  {
+        let mut bytes_sent = 0;
+
+        bytes_sent += self
+            .socket
+            .send_to(payload, addr)
+            .map_err(|io| NetworkError::from(NetworkErrorKind::IOError { inner: io }))?;
+
+        Ok(bytes_sent)
+    }
 
     /// Sets the blocking mode of the socket. In non-blocking mode, recv_from will not block if there is no data to be read. In blocking mode, it will. If using non-blocking mode, it is important to wait some amount of time between iterations, or it will quickly use all CPU available
     pub fn set_nonblocking(&mut self, nonblocking: bool) -> NetworkResult<()> {
