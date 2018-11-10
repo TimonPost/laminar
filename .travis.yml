@@ -7,6 +7,8 @@ rust:
 
 before_script:
   - rustup component add clippy-preview
+  - export PATH=$PATH:/home/travis/.cargo/bin
+  - export RUSTFLAGS="-D warnings"
 
 os:
 - linux
@@ -28,5 +30,5 @@ matrix:
   fast_finish: true
 
 script:
-  - cargo clippy -- -D warnings
+  - cargo clippy --all --all-features -- -D warnings
   - cargo test --verbose --all --all-features
