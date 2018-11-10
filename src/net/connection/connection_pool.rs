@@ -10,6 +10,7 @@ use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::Duration;
 use std::error::Error;
+use log::{info, error};
 
 pub type Connection = Arc<RwLock<VirtualConnection>>;
 pub type Connections = HashMap<SocketAddr, Connection>;
