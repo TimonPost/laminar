@@ -60,6 +60,30 @@ impl ReliableChannel {
             rtt: 0.0,
         }
     }
+
+    /// Check if this channel has dropped packets.
+    ///
+    /// You could directly call `ReliableChannel::drain_dropped_packets()` and if it returns an empty vector you know there are no packets.
+    /// But draining a vector will have its extra check logic even if it's empty.
+    /// So that's why this function exists just a little shortcut to check if there are dropped packets which will be faster at the end.
+    pub fn has_dropped_packets(&self) -> bool {
+        !self.dropped_packets.is_empty()
+    }
+
+    /// Creates a draining iterator that removes dropped packets and yield the ones that are removed.
+    ///
+    /// So why drain?
+    /// You have to think about the packet flow first.
+    /// 1. Once we send a packet we place it in a queue until acknowledged.
+    /// 2. If the packet doesn't get acknowledged in some time it will be dropped.
+    /// 3. When we notice the packet drop we directly want to resend the dropped packet.
+    /// 4. Once we notice that we start at '1' again.
+    ///
+    /// So keeping track of old dropped packets does not make sense, at least for now.
+    /// We except when dropped packets are retrieved they will be sent out so we don't need to keep track of them internally the caller of this function will have ownership over them after the call.
+    pub fn drain_dropped_packets(&mut self) -> Vec<Box<[u8]>> {
+        return self.dropped_packets.drain(..).collect()
+    }
 }
 
 impl Channel for ReliableChannel {
@@ -141,9 +165,6 @@ impl Channel for ReliableChannel {
 
         self.dropped_packets = dropped_packets.into_iter().map(|(_, p)| p).collect();
 
-        let a = buffer.len();
-        let b = acked_header.size();
-        // TODO: resent packets if there are dropped packets
         Ok(&buffer[acked_header.size() as usize .. buffer.len()])
     }
 }

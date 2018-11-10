@@ -109,6 +109,17 @@ impl VirtualConnection {
 
         Ok(Some(Packet::new(self.remote_address, Box::from(payload), header.delivery_method)))
     }
+
+    /// This will gather dropped packets from the reliable channels.
+    ///
+    /// Note that after requesting dropped packets the dropped packets will be removed from this client.
+    pub fn gather_dropped_packets(&mut self) -> Vec<Box<[u8]>> {
+        if self.reliable_unordered_channel.has_dropped_packets() {
+            return self.reliable_unordered_channel.drain_dropped_packets();
+        }
+
+        Vec::new()
+    }
 }
 
 impl fmt::Debug for VirtualConnection {
@@ -127,7 +138,7 @@ mod tests {
     use net::NetworkConfig;
     use net::connection::VirtualConnection;
     use packet::header::{AckedPacketHeader, StandardHeader, HeaderReader, HeaderParser};
-    use infrastructure::DeliveryMethod;
+    use infrastructure::{DeliveryMethod, ReliableChannel, Channel};
     use packet::PacketTypeId;
     use net::constants::STANDARD_HEADER_SIZE;
     use std::sync::Arc;
