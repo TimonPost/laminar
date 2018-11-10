@@ -11,13 +11,13 @@ use failure::{Fail, Backtrace, Context};
 /// Enum with all possible network errors that could occur.
 pub enum NetworkErrorKind
 {
-    #[fail(display = "Something went wrong with receiving/parsing fragments. Reason: {:?}.", self)]
+    #[fail(display = "Something went wrong with receiving/parsing fragments. Reason: {:?}.", _0)]
     FragmentError(FragmentErrorKind),
-    #[fail(display = "Something went wrong with receiving/parsing packets. Reason: {:?}.", self)]
+    #[fail(display = "Something went wrong with receiving/parsing packets. Reason: {:?}.", _0)]
     PacketError(PacketErrorKind),
-    #[fail(display = "Could not add a connection to the connection pool, because the connection lock is poisoned. Reason: {:?}.", self)]
+    #[fail(display = "Could not add a connection to the connection pool, because the connection lock is poisoned. Reason: {:?}.", _0)]
     FailedToAddConnection(String),
-    #[fail(display = "Ans Io Error occurred. Reason: {:?}.", Self)]
+    #[fail(display = "Ans Io Error occurred. Reason: {:?}.", _0)]
     IOError(io::Error),
     #[fail(display = "Something went wrong when setting non-blocking option.")]
     UnableToSetNonblocking,
@@ -76,7 +76,7 @@ impl NetworkError {
 
     /// Generate an `NetworkErrorKind` for poisoned connection.
     pub fn poisoned_connection_error(msg: &str) -> NetworkErrorKind {
-        NetworkErrorKind::FailedToAddConnection { inner: msg.to_owned() }
+        NetworkErrorKind::FailedToAddConnection(msg.to_owned())
     }
 }
 
