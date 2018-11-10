@@ -21,6 +21,7 @@ branches:
 matrix:
   allow_failures:
     - rust: nightly
+    - rust: beta
   fast_finish: true
 
 script:
