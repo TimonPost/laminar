@@ -5,11 +5,12 @@ use packet::header::{HeaderParser, HeaderReader, AckedPacketHeader, StandardHead
 use sequence_buffer::{SequenceBuffer, CongestionData};
 use infrastructure::{DeliveryMethod, Fragmentation};
 use error::{PacketErrorKind,NetworkResult};
-use packet::{Packet, PacketData,PacketTypeId};
+use packet::{PacketData,PacketTypeId};
 
-use std::io::{Cursor, Read};
+use std::io::{Cursor};
 use std::time::Instant;
 use std::sync::Arc;
+use log::error;
 
 /// This channel should be used for processing packets reliable. All packets will be sent and received, ordering depends on given 'ordering' parameter.
 ///
@@ -35,7 +36,7 @@ pub struct ReliableChannel {
     // congestion control
     rtt_measurer: RttMeasurer,
     congestion_data: SequenceBuffer<CongestionData>,
-    quality: NetworkQuality,
+    _quality: NetworkQuality,
     rtt: f32,
 }
 
@@ -56,9 +57,38 @@ impl ReliableChannel {
             // congestion control
             rtt_measurer: RttMeasurer::new(config),
             congestion_data: SequenceBuffer::with_capacity(<u16>::max_value() as usize),
-            quality: NetworkQuality::Good,
+            _quality: NetworkQuality::Good,
             rtt: 0.0,
         }
+    }
+
+    /// Checks if channel is ordered or not
+    pub fn is_ordered(&self) -> bool {
+        self.ordered
+    }
+
+    /// Check if this channel has dropped packets.
+    ///
+    /// You could directly call `ReliableChannel::drain_dropped_packets()` and if it returns an empty vector you know there are no packets.
+    /// But draining a vector will have its extra check logic even if it's empty.
+    /// So that's why this function exists just a little shortcut to check if there are dropped packets which will be faster at the end.
+    pub fn has_dropped_packets(&self) -> bool {
+        !self.dropped_packets.is_empty()
+    }
+
+    /// Creates a draining iterator that removes dropped packets and yield the ones that are removed.
+    ///
+    /// So why drain?
+    /// You have to think about the packet flow first.
+    /// 1. Once we send a packet we place it in a queue until acknowledged.
+    /// 2. If the packet doesn't get acknowledged in some time it will be dropped.
+    /// 3. When we notice the packet drop we directly want to resend the dropped packet.
+    /// 4. Once we notice that we start at '1' again.
+    ///
+    /// So keeping track of old dropped packets does not make sense, at least for now.
+    /// We except when dropped packets are retrieved they will be sent out so we don't need to keep track of them internally the caller of this function will have ownership over them after the call.
+    pub fn drain_dropped_packets(&mut self) -> Vec<Box<[u8]>> {
+        self.dropped_packets.drain(..).collect()
     }
 }
 
@@ -95,7 +125,7 @@ impl Channel for ReliableChannel {
 
         let packet_type = if packet_data_size > 1 {
             PacketTypeId::Fragment
-        }else {
+        } else {
             PacketTypeId::Packet
         };
 
@@ -141,9 +171,6 @@ impl Channel for ReliableChannel {
 
         self.dropped_packets = dropped_packets.into_iter().map(|(_, p)| p).collect();
 
-        let a = buffer.len();
-        let b = acked_header.size();
-        // TODO: resent packets if there are dropped packets
         Ok(&buffer[acked_header.size() as usize .. buffer.len()])
     }
 }

@@ -11,12 +11,15 @@ use std::fmt;
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};
 use std::sync::Arc;
+use log::error;
 
 /// Contains the information about a certain 'virtual connection' over udp.
 /// This connections also keeps track of network quality, processing packets, buffering data related to connection etc.
 pub struct VirtualConnection {
     // client information
+    /// Last time we received a packet from this client
     pub last_heard: Instant,
+    /// The address of the remote endpoint
     pub remote_address: SocketAddr,
 
     // reliability channels for processing packets.
@@ -109,6 +112,17 @@ impl VirtualConnection {
 
         Ok(Some(Packet::new(self.remote_address, Box::from(payload), header.delivery_method)))
     }
+
+    /// This will gather dropped packets from the reliable channels.
+    ///
+    /// Note that after requesting dropped packets the dropped packets will be removed from this client.
+    pub fn gather_dropped_packets(&mut self) -> Vec<Box<[u8]>> {
+        if self.reliable_unordered_channel.has_dropped_packets() {
+            return self.reliable_unordered_channel.drain_dropped_packets();
+        }
+
+        Vec::new()
+    }
 }
 
 impl fmt::Debug for VirtualConnection {
@@ -126,17 +140,12 @@ impl fmt::Debug for VirtualConnection {
 mod tests {
     use net::NetworkConfig;
     use net::connection::VirtualConnection;
-    use packet::header::{AckedPacketHeader, StandardHeader, HeaderReader, HeaderParser};
-    use infrastructure::DeliveryMethod;
-    use packet::PacketTypeId;
-    use net::constants::STANDARD_HEADER_SIZE;
+    use infrastructure::{DeliveryMethod};
     use std::sync::Arc;
 
     const SERVER_ADDR: &str = "127.0.0.1:12345";
-    const CLIENT_ADDR: &str = "127.0.0.1:12346";
 
     fn create_virtual_connection() -> VirtualConnection {
-        let config = NetworkConfig::default();
         VirtualConnection::new(SERVER_ADDR.parse().unwrap(), &Arc::new(NetworkConfig::default()))
     }
 
@@ -151,7 +160,7 @@ mod tests {
     fn process_unreliable_packet() {
         let mut connection = create_virtual_connection();
 
-        let mut buffer = vec![1; 500];
+        let buffer = vec![1; 500];
 
         let mut packet_data = connection.process_outgoing(&buffer, DeliveryMethod::UnreliableUnordered).unwrap();
         assert_eq!(packet_data.fragment_count(), 1);
@@ -164,7 +173,7 @@ mod tests {
         let mut connection = create_virtual_connection();
 
 
-        let mut buffer = vec![1; 500];
+        let buffer = vec![1; 500];
 
         let mut packet_data = connection.process_outgoing(&buffer, DeliveryMethod::ReliableUnordered).unwrap();
         assert_eq!(packet_data.fragment_count(), 1);
@@ -176,7 +185,7 @@ mod tests {
     fn process_fragmented_packet() {
         let mut connection = create_virtual_connection();
 
-        let mut buffer = vec![1; 4000];
+        let buffer = vec![1; 4000];
 
         let mut packet_data = connection.process_outgoing(&buffer, DeliveryMethod::ReliableUnordered).unwrap();
 

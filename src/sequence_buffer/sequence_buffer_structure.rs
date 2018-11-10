@@ -61,6 +61,7 @@ impl<T> SequenceBuffer<T> where T: Default + Clone + Send + Sync {
     }
 
     /// Get the length of the collection.
+    #[allow(dead_code)]
     pub fn len(&self) -> usize {
         self.entries.len()
     }

@@ -3,6 +3,7 @@ use net::constants::FRAGMENT_HEADER_SIZE;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use error::{NetworkResult, FragmentErrorKind};
 use std::io::Cursor;
+use log::error;
 
 #[derive(Copy, Clone, Debug)]
 /// This header represents a fragmented packet header.

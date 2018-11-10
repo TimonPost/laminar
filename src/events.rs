@@ -13,8 +13,11 @@ pub enum Event {
     TimedOut(Arc<RwLock<VirtualConnection>>),
     /// This is generated when there is a change in the connection quality of a client.
     QualityChange {
+        /// Connection whose quality changed
         conn: Arc<RwLock<VirtualConnection>>,
+        /// Previous quality
         from: NetworkQuality,
+        /// New quality
         to: NetworkQuality,
     },
 }

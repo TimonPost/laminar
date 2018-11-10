@@ -34,7 +34,7 @@ pub fn send_data() {
     let packet = construct_packet();
 
     // next send or packet to the endpoint we earlier putted into the packet.
-    udp_socket.send(packet).unwrap();
+    udp_socket.send(&packet).unwrap();
 }
 
 /// This is an example of how to receive data over udp on an specific socket address with blocking the current thread.

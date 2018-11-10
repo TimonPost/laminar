@@ -31,6 +31,7 @@ fn server_address() -> SocketAddr {
 }
 
 /// This will run an simple example with client and server communicating.
+#[allow(unused_must_use)]
 pub fn main() {
     // set up or `Server` that will receive the messages we send with the `Client`
     let handle = thread::spawn(|| loop {
@@ -84,6 +85,7 @@ struct Server {
 }
 
 impl Server {
+    #[allow(unused_must_use)]
     pub fn new() -> Self {
         // you can change the config but if you want just go for the default.
         let config = NetworkConfig::default();
@@ -146,6 +148,7 @@ struct Client {
 }
 
 impl Client {
+    #[allow(unused_must_use)]
     pub fn new() -> Self {
         // you can change the config but if you want just go for the default.
         let config = NetworkConfig::default();
@@ -154,18 +157,19 @@ impl Client {
         let mut udp_socket = UdpSocket::bind(client_address(), config).unwrap();
 
         // next we could specify if or socket should block the current thread when receiving data or not (default = false)
+        
         udp_socket.set_nonblocking(false);
 
         Client { udp_socket }
     }
 
+    #[allow(unused_must_use)]
     pub fn send(&mut self, data_type: DataType) {
         let serialized = serialize(&data_type);
 
         match serialized {
             Ok(raw_data) => {
-                self.udp_socket
-                    .send(Packet::reliable_unordered(server_address(), raw_data));
+            self.udp_socket.send(&Packet::reliable_unordered(server_address(), raw_data));
             }
             Err(e) => println!("Some error occurred: {:?}", e),
         }

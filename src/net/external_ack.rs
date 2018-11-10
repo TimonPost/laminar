@@ -8,11 +8,13 @@
 pub struct ExternalAcks {
     /// the last sequence number we have received from the other side.
     pub last_seq: u16,
+    /// 
     pub field: u32,
     initialized: bool,
 }
 
 impl ExternalAcks {
+    /// Acks a packet
     pub fn ack(&mut self, seq_num: u16) {
         if !self.initialized {
             self.last_seq = seq_num;

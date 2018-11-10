@@ -140,7 +140,7 @@ fn test_steady_stream(client: &mut net::UdpSocket, target: &str, pps: &str, test
     let start_time = Instant::now();
     let mut packets_sent = 0;
     loop {
-        client.send(test_packet.clone());
+        client.send(&test_packet.clone());
         packets_sent += 1;
         let now = Instant::now();
         let d = now - start_time;

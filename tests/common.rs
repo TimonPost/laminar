@@ -1,7 +1,7 @@
 extern crate laminar;
 
 use laminar::infrastructure::DeliveryMethod;
-use laminar::net::{constants, NetworkConfig, UdpSocket};
+use laminar::net::{NetworkConfig, UdpSocket};
 use laminar::packet::Packet;
 use std::net::SocketAddr;
 use std::sync::mpsc::Receiver;
@@ -11,7 +11,6 @@ use std::time::{Duration, Instant};
 /// This is an test server we use to receive data from clients.
 pub struct ServerMoq {
     config: NetworkConfig,
-    client: Vec<ClientStub>,
     host: SocketAddr,
     non_blocking: bool,
 }
@@ -20,7 +19,6 @@ impl ServerMoq {
     pub fn new(config: NetworkConfig, non_blocking: bool, host: SocketAddr) -> Self {
         ServerMoq {
             config,
-            client: Vec::new(),
             host,
             non_blocking,
         }
@@ -48,17 +46,17 @@ impl ServerMoq {
                         packets_total_received += 1;
                         packet_throughput += 1;
 
-                        udp_socket.send(packet).unwrap();
+                        udp_socket.send(&packet).unwrap();
                     }
                     Ok(None) => {}
-                    Err(e) => {
+                    Err(_e) => {
                         match cancellation_channel.try_recv() {
                             Ok(val) => {
                                 if val == true {
                                     return packets_total_received;
                                 }
                             }
-                            Err(_) => {}
+                            Err(_e) => {}
                         }
                     }
                 }
@@ -80,7 +78,7 @@ impl ServerMoq {
         let config = self.config.clone();
         thread::spawn(move || {
             let mut client = UdpSocket::bind(client_stub.endpoint, config.clone()).unwrap();
-            client.set_nonblocking(true);
+            let _result = client.set_nonblocking(true);
 
             let len = data_to_send.len();
 
@@ -97,7 +95,7 @@ impl ServerMoq {
                 }
 
                 let send_result =
-                    client.send(Packet::new(host, data_to_send.clone().into_boxed_slice(), client_stub.packet_delivery));
+                    client.send(&Packet::new(host, data_to_send.clone().into_boxed_slice(), client_stub.packet_delivery));
 
                 if len <= config.fragment_size as usize {
                     send_result.is_ok();

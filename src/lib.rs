@@ -36,33 +36,36 @@
 //!   let data = "example data".as_bytes();
 //!   let packet: Packet = Packet::reliable_unordered(addr, data.to_vec());
 //!
-//!   socket.send(packet).unwrap();
+//!   socket.send(&packet).unwrap();
 //!
 //!   let data = socket.recv().unwrap();
 //!   println!("{:?}", data);
 //! }
 //! ```
 
+#![warn(missing_docs)]
+
 extern crate bincode;
 extern crate byteorder;
 extern crate crc;
-#[macro_use]
 extern crate lazy_static;
 extern crate serde;
-
-#[macro_use]
 extern crate log;
-
 extern crate failure;
-#[macro_use]
 extern crate failure_derive;
 extern crate rand;
 
+/// Contains network specific errors
 pub mod error;
+/// Contains events we feed back up to the application
 pub mod events;
+/// Contains code related to the piping needed for shuffling packets to and fro
 pub mod infrastructure;
+/// Network specific code and configuration
 pub mod net;
+/// Packet specific code and configuration
 pub mod packet;
+/// Protocol specific code and configuration
 pub mod protocol_version;
 mod sequence_buffer;
 

@@ -29,7 +29,7 @@ fn server() -> Result<()> {
 
                 println!("Received {:?} from {:?}", msg, ip);
 
-                socket.send(Packet::reliable_unordered(
+                socket.send(&Packet::reliable_unordered(
                     packet.addr(),
                     "Copy that!".as_bytes().to_vec(),
                 ))?;
@@ -56,7 +56,7 @@ fn client() -> Result<()> {
         stdin.read_line(&mut s_buffer)?;
         let line = s_buffer.replace(|x| x == '\n' || x == '\r', "");
 
-        socket.send(Packet::reliable_unordered(
+        socket.send(&Packet::reliable_unordered(
             server,
             line.clone().into_bytes(),
         ))?;

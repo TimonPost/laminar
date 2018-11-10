@@ -1,4 +1,4 @@
-use std::net::{self, ToSocketAddrs};
+use std::net::{self, ToSocketAddrs, SocketAddr};
 use net::connection::ConnectionPool;
 
 use error::{NetworkError, NetworkErrorKind, NetworkResult};
@@ -6,6 +6,7 @@ use events::Event;
 use net::link_conditioner::LinkConditioner;
 use net::NetworkConfig;
 use packet::Packet;
+
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
 use std::thread;
@@ -15,9 +16,9 @@ use std::error::Error;
 pub struct UdpSocket {
     socket: net::UdpSocket,
     recv_buffer: Vec<u8>,
-    config: Arc<NetworkConfig>,
+    _config: Arc<NetworkConfig>,
     link_conditioner: Option<LinkConditioner>,
-    timeout_check_thread: thread::JoinHandle<()>,
+    _timeout_check_thread: thread::JoinHandle<()>,
     events: (Sender<Event>, Receiver<Event>),
     connections: ConnectionPool
 }
@@ -36,10 +37,10 @@ impl UdpSocket {
         Ok(UdpSocket {
             socket,
             recv_buffer: vec![0;config.receive_buffer_max_size],
-            config: config.clone(),
+            _config: config.clone(),
             link_conditioner: None,
             connections: connection_pool,
-            timeout_check_thread: join_handle,
+            _timeout_check_thread: join_handle,
             events: (tx, rx),
         })
     }
@@ -48,8 +49,7 @@ impl UdpSocket {
     pub fn recv(&mut self) -> NetworkResult<Option<Packet>> {
         let (len, addr) = self
             .socket
-            .recv_from(&mut self.recv_buffer)
-            .map_err(|io| NetworkErrorKind::IOError { inner: io })?;
+            .recv_from(&mut self.recv_buffer)?;
 
         if len > 0 {
             let packet = &self.recv_buffer[..len];
@@ -59,7 +59,7 @@ impl UdpSocket {
                 .write()
                 .map_err(|error| NetworkError::poisoned_connection_error(error.description()))?;
 
-            return lock.process_incoming(&packet)
+            lock.process_incoming(&packet)
 
         } else {
             Err(NetworkErrorKind::ReceivedDataToShort)?
@@ -67,7 +67,7 @@ impl UdpSocket {
     }
 
     /// Sends data on the socket to the given address. On success, returns the number of bytes written.
-    pub fn send(&mut self, packet: Packet) -> NetworkResult<usize> {
+    pub fn send(&mut self, packet: &Packet) -> NetworkResult<usize> {
         let connection = self.connections.get_connection_or_insert(&packet.addr())?;
         let mut lock = connection
             .write()
@@ -80,22 +80,33 @@ impl UdpSocket {
         if let Some(link_conditioner) = &self.link_conditioner {
             if link_conditioner.should_send() {
                 for payload in packet_data.parts() {
-                    bytes_sent += self.socket.send_to(&payload, packet.addr()).map_err(|io| {
-                        NetworkError::from(NetworkErrorKind::IOError { inner: io })
-                    })?;
+                    bytes_sent += self.send_packet(&packet.addr(), &payload)?;
                 }
             }
         } else {
+            for payload in lock.gather_dropped_packets() {
+                bytes_sent += self.send_packet(&packet.addr(), &payload)?;
+            }
+
             for payload in packet_data.parts() {
-                bytes_sent += self
-                .socket
-                .send_to(payload, packet.addr())
-                .map_err( |io | NetworkError::from(NetworkErrorKind::IOError { inner: io })) ?;
+                bytes_sent += self.send_packet(&packet.addr(), &payload)?;
             }
         }
 
-    Ok(bytes_sent)
-}
+        Ok(bytes_sent)
+    }
+
+    /// Send a single packet over the udp socket.
+    fn send_packet(&self, addr: &SocketAddr, payload: &[u8]) -> NetworkResult<usize>  {
+        let mut bytes_sent = 0;
+
+        bytes_sent += self
+            .socket
+            .send_to(payload, addr)
+            .map_err(|io| NetworkError::from(NetworkErrorKind::IOError(io)))?;
+
+        Ok(bytes_sent)
+    }
 
     /// Sets the blocking mode of the socket. In non-blocking mode, recv_from will not block if there is no data to be read. In blocking mode, it will. If using non-blocking mode, it is important to wait some amount of time between iterations, or it will quickly use all CPU available
     pub fn set_nonblocking(&mut self, nonblocking: bool) -> NetworkResult<()> {
