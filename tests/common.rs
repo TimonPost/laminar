@@ -1,12 +1,15 @@
 extern crate laminar;
 
-use laminar::infrastructure::DeliveryMethod;
-use laminar::net::{NetworkConfig, UdpSocket};
-use laminar::packet::Packet;
-use std::net::SocketAddr;
-use std::sync::mpsc::Receiver;
-use std::thread::{self, JoinHandle};
-use std::time::{Duration, Instant};
+use laminar::{
+    net::{NetworkConfig, UdpSocket},
+    DeliveryMethod, Packet,
+};
+use std::{
+    net::SocketAddr,
+    sync::mpsc::Receiver,
+    thread::{self, JoinHandle},
+    time::{Duration, Instant},
+};
 
 /// This is an test server we use to receive data from clients.
 pub struct ServerMoq {
@@ -49,16 +52,14 @@ impl ServerMoq {
                         udp_socket.send(&packet).unwrap();
                     }
                     Ok(None) => {}
-                    Err(_e) => {
-                        match cancellation_channel.try_recv() {
-                            Ok(val) => {
-                                if val == true {
-                                    return packets_total_received;
-                                }
+                    Err(_e) => match cancellation_channel.try_recv() {
+                        Ok(val) => {
+                            if val == true {
+                                return packets_total_received;
                             }
-                            Err(_e) => {}
                         }
-                    }
+                        Err(_e) => {}
+                    },
                 }
 
                 if second_counter.elapsed().as_secs() >= 1 {
@@ -90,12 +91,15 @@ impl ServerMoq {
                         assert_eq!(packet.payload(), data_to_send.as_slice());
                         assert_eq!(packet.addr(), host);
                     }
-                    Ok(None) => { }
+                    Ok(None) => {}
                     Err(_) => {}
                 }
 
-                let send_result =
-                    client.send(&Packet::new(host, data_to_send.clone().into_boxed_slice(), client_stub.packet_delivery));
+                let send_result = client.send(&Packet::new(
+                    host,
+                    data_to_send.clone().into_boxed_slice(),
+                    client_stub.packet_delivery,
+                ));
 
                 if len <= config.fragment_size as usize {
                     send_result.is_ok();
@@ -114,7 +118,7 @@ pub struct ClientStub {
     timeout_sending: Duration,
     endpoint: SocketAddr,
     packets_to_send: u32,
-    packet_delivery: DeliveryMethod
+    packet_delivery: DeliveryMethod,
 }
 
 impl ClientStub {
@@ -122,13 +126,13 @@ impl ClientStub {
         timeout_sending: Duration,
         endpoint: SocketAddr,
         packets_to_send: u32,
-        packet_delivery: DeliveryMethod
+        packet_delivery: DeliveryMethod,
     ) -> ClientStub {
         ClientStub {
             timeout_sending,
             endpoint,
             packets_to_send,
-            packet_delivery
+            packet_delivery,
         }
     }
 }

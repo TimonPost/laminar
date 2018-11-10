@@ -23,8 +23,7 @@
 //! ```rust
 //! extern crate laminar;
 //!
-//! use laminar::{UdpSocket, NetworkConfig};
-//! use laminar::Packet;
+//! use laminar::{Packet, net::{UdpSocket, NetworkConfig}};
 //!
 //! use std::net::Ipv4Addr;
 //!
@@ -55,17 +54,18 @@ extern crate log;
 extern crate rand;
 extern crate serde;
 
-mod error;
 mod events;
 mod infrastructure;
-mod net;
 mod packet;
 mod protocol_version;
 mod sequence_buffer;
 
-pub use error::{NetworkErrorKind, NetworkResult};
+/// All internal error handling logic
+pub mod error;
+/// Networking modules
+pub mod net;
+
 pub use events::Event;
 pub use infrastructure::DeliveryMethod;
-pub use net::{NetworkConfig, UdpSocket};
 pub use packet::Packet;
 pub use protocol_version::ProtocolVersion;

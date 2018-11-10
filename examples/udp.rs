@@ -5,8 +5,10 @@
 
 extern crate laminar;
 
-use laminar::net::{NetworkConfig, UdpSocket};
-use laminar::packet::Packet;
+use laminar::{
+    net::{NetworkConfig, UdpSocket},
+    Packet,
+};
 
 use std::net::SocketAddr;
 

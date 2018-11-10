@@ -2,11 +2,11 @@ extern crate laminar;
 
 mod common;
 
-use std::sync::mpsc;
-use std::time::{Duration, Instant};
-
-use laminar::infrastructure::DeliveryMethod;
-use laminar::net::NetworkConfig;
+use laminar::{net::NetworkConfig, DeliveryMethod};
+use std::{
+    sync::mpsc,
+    time::{Duration, Instant},
+};
 
 use common::{ClientStub, ServerMoq};
 
@@ -31,7 +31,7 @@ pub fn normal_packet_integration_test() {
         Duration::from_millis(0),
         CLIENT_ADDR.parse().unwrap(),
         TOTAL_PACKETS_TO_SEND,
-        DeliveryMethod::UnreliableUnordered
+        DeliveryMethod::UnreliableUnordered,
     );
 
     let stopwatch = Instant::now();

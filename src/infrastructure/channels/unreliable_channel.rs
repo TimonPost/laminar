@@ -1,10 +1,10 @@
 use super::Channel;
 
+use error::NetworkResult;
+use infrastructure::DeliveryMethod;
 use net::constants::STANDARD_HEADER_SIZE;
 use packet::header::{HeaderParser, HeaderReader, StandardHeader};
-use infrastructure::DeliveryMethod;
 use packet::{PacketData, PacketTypeId};
-use error::NetworkResult;
 
 /// This channel should be used for unreliable processing of packets.
 ///
@@ -16,8 +16,7 @@ use error::NetworkResult;
 ///
 /// Basically just bare UDP, free to be dropped, used for very unnecessary data, great for 'general' position updates.
 /// Ordering depends on given 'ordering' parameter.
-pub struct UnreliableChannel
-{
+pub struct UnreliableChannel {
     ordered: bool,
 }
 
@@ -28,6 +27,7 @@ impl UnreliableChannel {
     }
 
     /// Returns if a channel is ordered or not
+    #[allow(dead_code)]
     pub fn is_ordered(&self) -> bool {
         self.ordered
     }
@@ -39,9 +39,13 @@ impl Channel for UnreliableChannel {
     /// 1. Generate default header.
     /// 2. Append payload.
     /// 3. Return the final data.
-    fn process_outgoing(&mut self, payload: &[u8], delivery_method: DeliveryMethod) -> NetworkResult<PacketData> {
+    fn process_outgoing(
+        &mut self,
+        payload: &[u8],
+        delivery_method: DeliveryMethod,
+    ) -> NetworkResult<PacketData> {
         let header = StandardHeader::new(delivery_method, PacketTypeId::Packet);
-        let mut buffer= Vec::with_capacity(header.size() as usize);
+        let mut buffer = Vec::with_capacity(header.size() as usize);
         header.parse(&mut buffer)?;
 
         let mut packet_data = PacketData::with_capacity(payload.len());
@@ -52,7 +56,7 @@ impl Channel for UnreliableChannel {
     /// Process a packet on receive.
     ///
     /// This will not do anything it will only return the bytes as they are received.
-    fn process_incoming<'d>(&mut self, buffer: &'d[u8]) -> NetworkResult<&'d[u8]> {
-        Ok(&buffer[STANDARD_HEADER_SIZE as usize .. buffer.len()])
+    fn process_incoming<'d>(&mut self, buffer: &'d [u8]) -> NetworkResult<&'d [u8]> {
+        Ok(&buffer[STANDARD_HEADER_SIZE as usize..buffer.len()])
     }
 }
