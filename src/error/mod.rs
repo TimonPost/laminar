@@ -19,11 +19,11 @@ pub type Result<T> = result::Result<T, Error>;
 ///  match result {
 ///      Err(error) => {
 ///         match *error.kind() {
-///             NetworkErrorKind::FragmentError { inner } => {},
-///             NetworkErrorKind::PacketError { inner } => {},
-///             NetworkErrorKind::TcpError { inner } => {},
-///             NetworkErrorKind::FailedToAddConnection { inner } => {},
-///             NetworkErrorKind::IOError { inner } => { },
+///             NetworkErrorKind::FragmentError(inner) => {},
+///             NetworkErrorKind::PacketError(inner) => {},
+///             NetworkErrorKind::TcpError(inner) => {},
+///             NetworkErrorKind::FailedToAddConnection(inner) => {},
+///             NetworkErrorKind::IOError(inner) => { },
 ///             NetworkErrorKind::UnableToSetNonblocking => {},
 ///             NetworkErrorKind::UDPSocketStateCreationFailed => {},
 ///             NetworkErrorKind::ReceivedDataToShort => {},

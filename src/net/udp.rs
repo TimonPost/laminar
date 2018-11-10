@@ -6,6 +6,7 @@ use events::Event;
 use net::link_conditioner::LinkConditioner;
 use net::NetworkConfig;
 use packet::Packet;
+
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
 use std::thread;
@@ -49,7 +50,7 @@ impl UdpSocket {
         let (len, addr) = self
             .socket
             .recv_from(&mut self.recv_buffer)
-            .map_err(|io| NetworkErrorKind::IOError { inner: io })?;
+            .map_err(|io| NetworkErrorKind::IOError(io))?;
 
         if len > 0 {
             let packet = &self.recv_buffer[..len];
@@ -103,7 +104,7 @@ impl UdpSocket {
         bytes_sent += self
             .socket
             .send_to(payload, addr)
-            .map_err(|io| NetworkError::from(NetworkErrorKind::IOError { inner: io }))?;
+            .map_err(|io| NetworkError::from(NetworkErrorKind::IOError(io)))?;
 
         Ok(bytes_sent)
     }

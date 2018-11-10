@@ -11,14 +11,14 @@ use failure::{Fail, Backtrace, Context};
 /// Enum with all possible network errors that could occur.
 pub enum NetworkErrorKind
 {
-    #[fail(display = "Something went wrong with receiving/parsing fragments. Reason: {:?}.", inner)]
-    FragmentError { inner: FragmentErrorKind },
-    #[fail(display = "Something went wrong with receiving/parsing packets. Reason: {:?}.", inner)]
-    PacketError { inner: PacketErrorKind },
-    #[fail(display = "Could not add a connection to the connection pool, because the connection lock is poisoned. Reason: {:?}.", inner)]
-    FailedToAddConnection { inner: String },
-    #[fail(display = "Ans Io Error occurred. Reason: {:?}.", inner )]
-    IOError { inner:  io::Error },
+    #[fail(display = "Something went wrong with receiving/parsing fragments. Reason: {:?}.", _0)]
+    FragmentError(FragmentErrorKind),
+    #[fail(display = "Something went wrong with receiving/parsing packets. Reason: {:?}.", _0)]
+    PacketError(PacketErrorKind),
+    #[fail(display = "Could not add a connection to the connection pool, because the connection lock is poisoned. Reason: {:?}.", _0)]
+    FailedToAddConnection(String),
+    #[fail(display = "Ans Io Error occurred. Reason: {:?}.", _0)]
+    IOError(io::Error),
     #[fail(display = "Something went wrong when setting non-blocking option.")]
     UnableToSetNonblocking,
     #[fail(display = "Something went wrong when creating UDP SocketState structure.")]
@@ -76,7 +76,7 @@ impl NetworkError {
 
     /// Generate an `NetworkErrorKind` for poisoned connection.
     pub fn poisoned_connection_error(msg: &str) -> NetworkErrorKind {
-        NetworkErrorKind::FailedToAddConnection { inner: msg.to_owned() }
+        NetworkErrorKind::FailedToAddConnection(msg.to_owned())
     }
 }
 
@@ -94,24 +94,24 @@ impl From<Context<NetworkErrorKind>> for NetworkError {
 
 impl From<io::Error> for NetworkError {
     fn from(inner: io::Error) -> NetworkError {
-        NetworkErrorKind::IOError { inner }.into()
+        NetworkErrorKind::IOError(inner).into()
     }
 }
 
 impl From<FragmentErrorKind> for NetworkError {
     fn from(inner: FragmentErrorKind) -> Self {
-        NetworkErrorKind::FragmentError { inner }.into()
+        NetworkErrorKind::FragmentError (inner).into()
     }
 }
 
 impl From<PacketErrorKind> for NetworkError {
     fn from(inner: PacketErrorKind) -> Self {
-        NetworkErrorKind::PacketError { inner }.into()
+        NetworkErrorKind::PacketError (inner).into()
     }
 }
 
 impl<T> From<PoisonError<T>> for NetworkError {
     fn from(inner: PoisonError<T>) -> Self {
-        NetworkErrorKind::FailedToAddConnection { inner: inner.description().to_owned() }.into()
+        NetworkErrorKind::FailedToAddConnection(inner.description().to_owned()).into()
     }
 }
