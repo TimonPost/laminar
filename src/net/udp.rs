@@ -16,9 +16,9 @@ use std::error::Error;
 pub struct UdpSocket {
     socket: net::UdpSocket,
     recv_buffer: Vec<u8>,
-    config: Arc<NetworkConfig>,
+    _config: Arc<NetworkConfig>,
     link_conditioner: Option<LinkConditioner>,
-    timeout_check_thread: thread::JoinHandle<()>,
+    _timeout_check_thread: thread::JoinHandle<()>,
     events: (Sender<Event>, Receiver<Event>),
     connections: ConnectionPool
 }
@@ -37,10 +37,10 @@ impl UdpSocket {
         Ok(UdpSocket {
             socket,
             recv_buffer: vec![0;config.receive_buffer_max_size],
-            config: config.clone(),
+            _config: config.clone(),
             link_conditioner: None,
             connections: connection_pool,
-            timeout_check_thread: join_handle,
+            _timeout_check_thread: join_handle,
             events: (tx, rx),
         })
     }
@@ -49,8 +49,7 @@ impl UdpSocket {
     pub fn recv(&mut self) -> NetworkResult<Option<Packet>> {
         let (len, addr) = self
             .socket
-            .recv_from(&mut self.recv_buffer)
-            .map_err(|io| NetworkErrorKind::IOError(io))?;
+            .recv_from(&mut self.recv_buffer)?;
 
         if len > 0 {
             let packet = &self.recv_buffer[..len];
@@ -60,7 +59,7 @@ impl UdpSocket {
                 .write()
                 .map_err(|error| NetworkError::poisoned_connection_error(error.description()))?;
 
-            return lock.process_incoming(&packet)
+            lock.process_incoming(&packet)
 
         } else {
             Err(NetworkErrorKind::ReceivedDataToShort)?
@@ -68,7 +67,7 @@ impl UdpSocket {
     }
 
     /// Sends data on the socket to the given address. On success, returns the number of bytes written.
-    pub fn send(&mut self, packet: Packet) -> NetworkResult<usize> {
+    pub fn send(&mut self, packet: &Packet) -> NetworkResult<usize> {
         let connection = self.connections.get_connection_or_insert(&packet.addr())?;
         let mut lock = connection
             .write()

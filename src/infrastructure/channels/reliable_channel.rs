@@ -5,9 +5,9 @@ use packet::header::{HeaderParser, HeaderReader, AckedPacketHeader, StandardHead
 use sequence_buffer::{SequenceBuffer, CongestionData};
 use infrastructure::{DeliveryMethod, Fragmentation};
 use error::{PacketErrorKind,NetworkResult};
-use packet::{Packet, PacketData,PacketTypeId};
+use packet::{PacketData,PacketTypeId};
 
-use std::io::{Cursor, Read};
+use std::io::{Cursor};
 use std::time::Instant;
 use std::sync::Arc;
 use log::error;
@@ -36,7 +36,7 @@ pub struct ReliableChannel {
     // congestion control
     rtt_measurer: RttMeasurer,
     congestion_data: SequenceBuffer<CongestionData>,
-    quality: NetworkQuality,
+    _quality: NetworkQuality,
     rtt: f32,
 }
 
@@ -57,9 +57,14 @@ impl ReliableChannel {
             // congestion control
             rtt_measurer: RttMeasurer::new(config),
             congestion_data: SequenceBuffer::with_capacity(<u16>::max_value() as usize),
-            quality: NetworkQuality::Good,
+            _quality: NetworkQuality::Good,
             rtt: 0.0,
         }
+    }
+
+    /// Checks if channel is ordered or not
+    pub fn is_ordered(&self) -> bool {
+        self.ordered
     }
 
     /// Check if this channel has dropped packets.
@@ -83,7 +88,7 @@ impl ReliableChannel {
     /// So keeping track of old dropped packets does not make sense, at least for now.
     /// We except when dropped packets are retrieved they will be sent out so we don't need to keep track of them internally the caller of this function will have ownership over them after the call.
     pub fn drain_dropped_packets(&mut self) -> Vec<Box<[u8]>> {
-        return self.dropped_packets.drain(..).collect()
+        self.dropped_packets.drain(..).collect()
     }
 }
 
@@ -120,7 +125,7 @@ impl Channel for ReliableChannel {
 
         let packet_type = if packet_data_size > 1 {
             PacketTypeId::Fragment
-        }else {
+        } else {
             PacketTypeId::Packet
         };
 

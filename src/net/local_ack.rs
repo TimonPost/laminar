@@ -61,9 +61,6 @@ impl LocalAckRecord {
 #[cfg(test)]
 mod test {
     use net::LocalAckRecord;
-    use packet::Packet;
-    use std::net::{IpAddr, SocketAddr};
-    use std::str::FromStr;
 
     #[test]
     fn acking_single_packet() {

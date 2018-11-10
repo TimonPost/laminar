@@ -1,9 +1,16 @@
+/// Fragment header size
 pub const FRAGMENT_HEADER_SIZE: u8 = 4 + STANDARD_HEADER_SIZE;
+/// Acked packet header size
 pub const ACKED_PACKET_HEADER: u8 = 8 + STANDARD_HEADER_SIZE;
+/// Standard header size
 pub const STANDARD_HEADER_SIZE: u8 = 6;
+/// Heartbeat header size
 pub const HEART_BEAT_HEADER_SIZE: u8 = 5;
+/// Default max number of fragments to size
 pub const MAX_FRAGMENTS_DEFAULT: u16 = 16;
+/// Default max size of each fragment
 pub const FRAGMENT_SIZE_DEFAULT: u16 = 1024;
+
 /// Maximum transmission unit of the payload.
 ///
 /// Derived from ethernet_mtu - ipv6_header_size - udp_header_size - packet header size

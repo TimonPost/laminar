@@ -6,8 +6,6 @@ use infrastructure::DeliveryMethod;
 use packet::{PacketData, PacketTypeId};
 use error::NetworkResult;
 
-use std::io::{Cursor, Read};
-
 /// This channel should be used for unreliable processing of packets.
 ///
 /// **Details**
@@ -27,6 +25,11 @@ impl UnreliableChannel {
     /// Create a new instance of the unreliable channel.
     pub fn new(ordered: bool) -> UnreliableChannel {
         UnreliableChannel { ordered }
+    }
+
+    /// Returns if a channel is ordered or not
+    pub fn is_ordered(&self) -> bool {
+        self.ordered
     }
 }
 

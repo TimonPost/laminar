@@ -10,7 +10,7 @@ use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::Duration;
 use std::error::Error;
-use log::{info, error};
+use log::{info};
 
 pub type Connection = Arc<RwLock<VirtualConnection>>;
 pub type Connections = HashMap<SocketAddr, Connection>;
@@ -18,33 +18,32 @@ pub type ConnectionsCollection = Arc<RwLock<Connections>>;
 
 // Default time between checks of all clients for timeouts in seconds
 const TIMEOUT_POLL_INTERVAL: u64 = 1;
-
+const TIMEOUT_DEFAULT: u64 = 10;
 /// This is a pool of virtual connections (connected) over UDP.
 pub struct ConnectionPool {
-    timeout: Duration,
+    /// All the connections we are aware of
     connections: ConnectionsCollection,
+    /// This is how long a connection is allowed to go unheard from before we mark it as disconnected
+    #[allow(dead_code)]
     sleepy_time: Duration,
+    /// This is how frequently we check the connections for activity
     poll_interval: Duration,
+    /// The network config in use by this pool
     config: Arc<NetworkConfig>,
 }
 
 impl ConnectionPool {
+    /// Creates and returns a new ConnectionPool
     pub fn new(config: &Arc<NetworkConfig>) -> ConnectionPool {
-        let sleepy_time = Duration::from_secs(1);
+        let sleepy_time = Duration::from_secs(TIMEOUT_DEFAULT);
         let poll_interval = Duration::from_secs(TIMEOUT_POLL_INTERVAL);
 
         ConnectionPool {
-            timeout: Duration::from_secs(1),
             connections: Arc::new(RwLock::new(HashMap::new())),
             sleepy_time,
             poll_interval,
             config: config.clone()
         }
-    }
-
-    /// Set disconnect timeout (duration after which a client is seen as disconnected).
-    pub fn set_timeout(&mut self, timeout: Duration) {
-        self.timeout = timeout;
     }
 
     /// Insert connection if it does not exists.
@@ -62,6 +61,7 @@ impl ConnectionPool {
     }
 
     // Get the number of connected clients.
+    #[allow(dead_code)]
     pub fn count(&self) -> usize {
         match self.connections.read() {
             Ok(connections) => { connections.len() },
@@ -88,7 +88,7 @@ impl ConnectionPool {
             .spawn(move || loop {
                 let timed_out_clients = ConnectionPool::check_for_timeouts(&connections, poll_interval, &events_sender);
 
-                if timed_out_clients.len() > 0 {
+                if !timed_out_clients.is_empty() {
                     match connections.write() {
                         Ok(ref mut connections) => {
                             for timed_out_client in timed_out_clients {
@@ -147,7 +147,6 @@ mod tests {
 
     use super::{Arc, ConnectionPool, TIMEOUT_POLL_INTERVAL};
     use events::Event;
-    use net::connection::VirtualConnection;
     use net::NetworkConfig;
 
     #[test]
@@ -155,16 +154,16 @@ mod tests {
         let (tx, rx) = channel();
 
         let mut connections = ConnectionPool::new(&Arc::new(NetworkConfig::default()));
-        let handle = connections.start_time_out_loop(tx.clone()).unwrap();
+        let _handle = connections.start_time_out_loop(tx.clone()).unwrap();
 
-        connections.get_connection_or_insert(&("127.0.0.1:12345".parse().unwrap()));
+        let _result = connections.get_connection_or_insert(&("127.0.0.1:12345".parse().unwrap()));
 
         assert_eq!(connections.count(), 1);
 
-        /// Sleep a little longer than te polling interval.
+        // Sleep a little longer than te polling interval.
         thread::sleep(Duration::from_millis(TIMEOUT_POLL_INTERVAL * 1000 + 100));
 
-        /// We should have the timeout event by now.
+        // We should have the timeout event by now.
         match rx.try_recv() {
             Ok(event) => {
                 match event {
@@ -177,7 +176,7 @@ mod tests {
                     _ => panic!("Didn't expect any other events than TimedOut."),
                 };
             }
-            Err(e) => panic!("No events found!"),
+            Err(_) => panic!("No events found!"),
         };
 
         assert_eq!(connections.count(), 0);
@@ -188,7 +187,7 @@ mod tests {
         let mut connections = ConnectionPool::new(&Arc::new(NetworkConfig::default()));
 
         let addr = &("127.0.0.1:12345".parse().unwrap());
-        connections.get_connection_or_insert(addr);
+        let _result = connections.get_connection_or_insert(addr);
         assert!(connections.connections.read().unwrap().contains_key(addr));
     }
 }

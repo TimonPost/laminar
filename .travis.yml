@@ -5,6 +5,9 @@ rust:
   - beta
   - nightly
 
+before_script:
+  - rustup component add clippy-preview
+
 os:
 - linux
 - osx
@@ -25,4 +28,5 @@ matrix:
   fast_finish: true
 
 script:
+  - cargo clippy -- -D warnings
   - cargo test --verbose --all --all-features

@@ -17,10 +17,15 @@ pub enum PacketType
 /// Id to identify an certain packet type.
 pub enum PacketTypeId
 {
+    /// Full packet that is not fragmented
     Packet = 0,
+    /// Fragment of a full packet
     Fragment = 1,
+    /// Special packet that serves as a heartbeat
     HeartBeat = 2,
+    /// Special packet that disconnects
     Disconnect = 3,
+    /// Unknown packet type
     Unknown = 255,
 }
 

@@ -8,6 +8,7 @@ use std::io::Cursor;
 #[derive(Copy, Clone, Debug)]
 /// This header providing reliability information.
 pub struct AckedPacketHeader {
+    /// StandardHeader for the Acked Packet
     pub standard_header: StandardHeader,
     /// this is the sequence number so that we can know where in the sequence of packages this packet belongs.
     pub seq: u16,
@@ -87,7 +88,6 @@ impl HeaderReader for AckedPacketHeader {
 
 #[cfg(test)]
 mod tests {
-    use infrastructure::DeliveryMethod;
     use packet::header::{HeaderParser, HeaderReader, AckedPacketHeader, StandardHeader};
     use std::io::Cursor;
 
@@ -96,7 +96,7 @@ mod tests {
         let packet_header = AckedPacketHeader::new(StandardHeader::default(), 1, 1, 5421);
         let mut buffer = Vec::with_capacity((packet_header.size() + 1) as usize);
 
-        packet_header.parse(&mut buffer);
+        let _ = packet_header.parse(&mut buffer);
 
         let mut cursor = Cursor::new(buffer.as_slice());
 

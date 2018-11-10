@@ -83,7 +83,7 @@ mod tests {
         let packet_header = StandardHeader::default();
         let mut buffer = Vec::with_capacity((packet_header.size() + 1) as usize);
 
-        packet_header.parse(&mut buffer);
+        let _ = packet_header.parse(&mut buffer);
 
         let mut cursor = Cursor::new(buffer.as_slice());
         let packet_header = StandardHeader::read(&mut cursor).unwrap();

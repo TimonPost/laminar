@@ -2,6 +2,7 @@ use net::constants::{FRAGMENT_SIZE_DEFAULT, MAX_FRAGMENTS_DEFAULT};
 use std::default::Default;
 
 #[derive(Clone)]
+/// Struct that contains config values for various aspects of the network
 pub struct NetworkConfig {
     /// This is the maximal size a packet can get with all its fragments.
     ///

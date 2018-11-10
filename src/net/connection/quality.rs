@@ -6,7 +6,9 @@ use std::sync::Arc;
 
 /// Represents the quality of a network.
 pub enum NetworkQuality {
+    /// Connection is generally good, minimal packet loss or latency
     Good,
+    /// Connection is generally bad, having an impact on game performance
     Bad,
 }
 
@@ -17,6 +19,7 @@ pub struct RttMeasurer {
 }
 
 impl RttMeasurer {
+    /// Creates and returns a new RttMeasurer
     pub fn new(config: &Arc<NetworkConfig>) -> RttMeasurer {
         RttMeasurer { config: config.clone() }
     }
@@ -77,7 +80,6 @@ mod test {
     use std::sync::Arc;
 
     static TEST_HOST_IP: &'static str = "127.0.0.1";
-    static TEST_BAD_HOST_IP: &'static str = "800.0.0.1";
     static TEST_PORT: &'static str = "20000";
 
     #[test]

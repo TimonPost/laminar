@@ -2,10 +2,12 @@ mod external_ack;
 mod link_conditioner;
 mod local_ack;
 mod network_config;
-
 mod connection;
-pub mod constants;
 mod udp;
+
+/// Contains useful constants
+pub mod constants;
+
 
 pub use self::connection::{NetworkQuality, VirtualConnection, RttMeasurer};
 pub use self::external_ack::ExternalAcks;

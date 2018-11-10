@@ -17,7 +17,9 @@ use log::error;
 /// This connections also keeps track of network quality, processing packets, buffering data related to connection etc.
 pub struct VirtualConnection {
     // client information
+    /// Last time we received a packet from this client
     pub last_heard: Instant,
+    /// The address of the remote endpoint
     pub remote_address: SocketAddr,
 
     // reliability channels for processing packets.
@@ -138,17 +140,12 @@ impl fmt::Debug for VirtualConnection {
 mod tests {
     use net::NetworkConfig;
     use net::connection::VirtualConnection;
-    use packet::header::{AckedPacketHeader, StandardHeader, HeaderReader, HeaderParser};
-    use infrastructure::{DeliveryMethod, ReliableChannel, Channel};
-    use packet::PacketTypeId;
-    use net::constants::STANDARD_HEADER_SIZE;
+    use infrastructure::{DeliveryMethod};
     use std::sync::Arc;
 
     const SERVER_ADDR: &str = "127.0.0.1:12345";
-    const CLIENT_ADDR: &str = "127.0.0.1:12346";
 
     fn create_virtual_connection() -> VirtualConnection {
-        let config = NetworkConfig::default();
         VirtualConnection::new(SERVER_ADDR.parse().unwrap(), &Arc::new(NetworkConfig::default()))
     }
 
@@ -163,7 +160,7 @@ mod tests {
     fn process_unreliable_packet() {
         let mut connection = create_virtual_connection();
 
-        let mut buffer = vec![1; 500];
+        let buffer = vec![1; 500];
 
         let mut packet_data = connection.process_outgoing(&buffer, DeliveryMethod::UnreliableUnordered).unwrap();
         assert_eq!(packet_data.fragment_count(), 1);
@@ -176,7 +173,7 @@ mod tests {
         let mut connection = create_virtual_connection();
 
 
-        let mut buffer = vec![1; 500];
+        let buffer = vec![1; 500];
 
         let mut packet_data = connection.process_outgoing(&buffer, DeliveryMethod::ReliableUnordered).unwrap();
         assert_eq!(packet_data.fragment_count(), 1);
@@ -188,7 +185,7 @@ mod tests {
     fn process_fragmented_packet() {
         let mut connection = create_virtual_connection();
 
-        let mut buffer = vec![1; 4000];
+        let buffer = vec![1; 4000];
 
         let mut packet_data = connection.process_outgoing(&buffer, DeliveryMethod::ReliableUnordered).unwrap();
 

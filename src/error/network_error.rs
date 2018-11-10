@@ -12,20 +12,28 @@ use failure::{Fail, Backtrace, Context};
 pub enum NetworkErrorKind
 {
     #[fail(display = "Something went wrong with receiving/parsing fragments. Reason: {:?}.", _0)]
+    /// Error relating to receiving or parsing a fragment
     FragmentError(FragmentErrorKind),
     #[fail(display = "Something went wrong with receiving/parsing packets. Reason: {:?}.", _0)]
+    /// Error relating to receiving or parsing a packet
     PacketError(PacketErrorKind),
     #[fail(display = "Could not add a connection to the connection pool, because the connection lock is poisoned. Reason: {:?}.", _0)]
+    /// Failed to add a connection
     FailedToAddConnection(String),
-    #[fail(display = "Ans Io Error occurred. Reason: {:?}.", _0)]
+    #[fail(display = "An IO Error occurred. Reason: {:?}.", _0)]
+    /// Wrapper around a std io::Error
     IOError(io::Error),
     #[fail(display = "Something went wrong when setting non-blocking option.")]
+    /// Error setting nonblocking on a udp server
     UnableToSetNonblocking,
     #[fail(display = "Something went wrong when creating UDP SocketState structure.")]
+    /// Error when creating the UDP Socket State
     UDPSocketStateCreationFailed,
     #[fail(display = "The received data did not have any length.")]
+    /// Did not receive enough data
     ReceivedDataToShort,
     #[fail(display = "The protocol versions do not match.")]
+    /// Protocol versions did not match
     ProtocolVersionMismatch,
 }
 

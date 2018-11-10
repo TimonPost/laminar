@@ -8,11 +8,13 @@
 pub struct ExternalAcks {
     /// the last sequence number we have received from the other side.
     pub last_seq: u16,
+    /// We define "ack bitfield" such that each bit corresponds to acks of the 32 sequence numbers before "ack". So let’s say "ack" is 100. If the first bit of "ack bitfield" is set, then the packet also includes an ack for packet 99. If the second bit is set, then packet 98 is acked. This goes all the way down to the 32nd bit for packet 68.
     pub field: u32,
     initialized: bool,
 }
 
 impl ExternalAcks {
+    /// Acks a packet
     pub fn ack(&mut self, seq_num: u16) {
         if !self.initialized {
             self.last_seq = seq_num;

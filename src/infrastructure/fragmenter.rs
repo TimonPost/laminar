@@ -14,6 +14,7 @@ pub struct Fragmentation {
 }
 
 impl Fragmentation {
+    /// Creates and returns a new Fragmentation
     pub fn new(config: &Arc<NetworkConfig>) -> Fragmentation {
         Fragmentation { fragments: SequenceBuffer::with_capacity(config.fragment_reassembly_buffer_size), config: config.clone() }
     }
@@ -66,7 +67,7 @@ impl Fragmentation {
         }
 
         for fragment_id in 0..num_fragments {
-            let fragment = FragmentHeader::new(acked_header.standard_header, fragment_id, num_fragments, acked_header.clone());
+            let fragment = FragmentHeader::new(acked_header.standard_header, fragment_id, num_fragments, acked_header);
             let mut buffer = Vec::with_capacity(fragment.size() as usize);
             fragment.parse(&mut buffer)?;
 
@@ -125,7 +126,7 @@ impl Fragmentation {
             cursor.read_to_end(&mut payload)?;
 
             // add the payload from the fragment to the buffer whe have in cache
-            reassembly_data.buffer.write(payload.as_slice())?;
+            reassembly_data.buffer.write_all(payload.as_slice())?;
 
             num_fragments_received = reassembly_data.num_fragments_received;
             num_fragments_total = reassembly_data.num_fragments_total;
@@ -172,8 +173,6 @@ impl Fragmentation {
 #[cfg(test)]
 mod test {
     use super::Fragmentation;
-    use net::NetworkConfig;
-    use std::sync::Arc;
 
     #[test]
     pub fn total_fragments_needed_test() {
@@ -182,11 +181,5 @@ mod test {
 
         assert_eq!(fragment_number, 4);
         assert_eq!(fragment_number1, 1);
-    }
-
-    #[test]
-    pub fn handle_fragments() {
-        let fragmentation = Fragmentation::new(&Arc::new(NetworkConfig::default()));
-//        fragmentation.
     }
 }
