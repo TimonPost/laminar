@@ -162,8 +162,6 @@ mod tests {
     use infrastructure::DeliveryMethod;
     use net::connection::VirtualConnection;
     use net::NetworkConfig;
-    use packet::header::{SequencedPacketHeader, StandardHeader};
-    use packet::PacketTypeId;
     use std::sync::Arc;
 
     const SERVER_ADDR: &str = "127.0.0.1:12345";
@@ -252,19 +250,19 @@ mod tests {
         let buffer = vec![1; 500];
 
         // create some test sequenced packets.
-        let mut packet_data1 = connection
+        let packet_data1 = connection
             .process_outgoing(&buffer, DeliveryMethod::Sequenced)
             .unwrap()
             .parts()[0].to_vec();
-        let mut packet_data2 = connection
+        let packet_data2 = connection
             .process_outgoing(&buffer, DeliveryMethod::Sequenced)
             .unwrap()
             .parts()[0].to_vec();
-        let mut packet_data3 = connection
+        let packet_data3 = connection
             .process_outgoing(&buffer, DeliveryMethod::Sequenced)
             .unwrap()
             .parts()[0].to_vec();
-        let mut packet_data4 = connection
+        let packet_data4 = connection
             .process_outgoing(&buffer, DeliveryMethod::Sequenced)
             .unwrap()
             .parts()[0].to_vec();
