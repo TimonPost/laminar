@@ -1,6 +1,6 @@
 # Laminar
 
-[![Build Status][s2]][l2] [![Latest Version][s1]][l1] [![docs.rs][s4]][l4] [![Join us on Discord][s5]][l5] [![MIT/Apache][s3]][l3] ![Lines of Code][s6]
+[![Build Status][s2]][l2] [![Latest Version][s1]][l1] [![docs.rs][s4]][l4] [![Join us on Discord][s5]][l5] [![MIT/Apache][s3]][l3] ![Lines of Code][s6] ![Coverage][s7]
 
 [s1]: https://img.shields.io/crates/v/laminar.svg
 [l1]: https://crates.io/crates/laminar
@@ -13,7 +13,7 @@
 [s5]: https://img.shields.io/discord/425678876929163284.svg?logo=discord
 [l5]: https://discord.gg/GnP5Whs
 [s6]: https://tokei.rs/b1/github/amethyst/laminar?category=code
-
+[s7]: https://codecov.io/gh/amethyst/laminar/branch/master/graphs/badge.svg
 
 A UDP-based protocol that provides partial reliability. Coming soon!
 

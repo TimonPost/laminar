@@ -2,13 +2,14 @@ extern crate laminar;
 #[macro_use]
 extern crate criterion;
 
+use std::sync::Arc;
+
 use self::laminar::net::{NetworkConfig, VirtualConnection};
 use self::laminar::packet::header::{HeaderParser, HeaderReader, AckedPacketHeader, StandardHeader};
-use self::laminar::packet::{Packet, PacketTypeId};
+use self::laminar::packet::{PacketTypeId};
 use laminar::infrastructure::DeliveryMethod;
 
 use self::criterion::Criterion;
-use std::net::SocketAddr;
 
 const SERVER_ADDR: &str = "127.0.0.1:12345";
 const CLIENT_ADDR: &str = "127.0.0.1:12346";
@@ -21,7 +22,7 @@ fn process_packet_before_send(connection: &mut VirtualConnection, config: &Netwo
 
 fn send_unreliable_benchmark(c: &mut Criterion) {
     let config = NetworkConfig::default();
-    let mut connection = VirtualConnection::new(SERVER_ADDR.parse().unwrap(), NetworkConfig::default());
+    let mut connection = VirtualConnection::new(SERVER_ADDR.parse().unwrap(), &Arc::new(NetworkConfig::default()));
 
     c.bench_function("process unreliable before send", move |b| {
         b.iter(|| process_packet_before_send(&mut connection, &config, DeliveryMethod::UnreliableUnordered))
@@ -30,7 +31,7 @@ fn send_unreliable_benchmark(c: &mut Criterion) {
 
 fn send_reliable_benchmark(c: &mut Criterion) {
     let config = NetworkConfig::default();
-    let mut connection = VirtualConnection::new(SERVER_ADDR.parse().unwrap(), NetworkConfig::default());
+    let mut connection = VirtualConnection::new(SERVER_ADDR.parse().unwrap(), &Arc::new(NetworkConfig::default()));
 
     c.bench_function("process reliable before send", move |b| {
         b.iter(|| process_packet_before_send(&mut connection, &config, DeliveryMethod::ReliableUnordered))
@@ -48,7 +49,7 @@ fn process_packet_when_received(
 }
 
 fn receive_unreliable_benchmark(c: &mut Criterion) {
-    let mut connection = VirtualConnection::new(SERVER_ADDR.parse().unwrap(), NetworkConfig::default());
+    let mut connection = VirtualConnection::new(SERVER_ADDR.parse().unwrap(), &Arc::new(NetworkConfig::default()));
 
     // setup fake received bytes.
     let packet_header = StandardHeader::new(DeliveryMethod::UnreliableUnordered, PacketTypeId::Packet);
@@ -63,7 +64,7 @@ fn receive_unreliable_benchmark(c: &mut Criterion) {
 }
 
 fn receive_reliable_benchmark(c: &mut Criterion) {
-    let mut connection = VirtualConnection::new(SERVER_ADDR.parse().unwrap(), NetworkConfig::default());
+    let mut connection = VirtualConnection::new(SERVER_ADDR.parse().unwrap(), &Arc::new(NetworkConfig::default()));
 
     // setup fake received bytes.
     let packet_header = AckedPacketHeader::new(StandardHeader::new(DeliveryMethod::ReliableUnordered, PacketTypeId::Packet),0, 1, 2);
