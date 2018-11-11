@@ -1,8 +1,8 @@
 use super::Channel;
 
-use packet::PacketData;
-use infrastructure::DeliveryMethod;
 use error::NetworkResult;
+use infrastructure::DeliveryMethod;
+use packet::PacketData;
 
 /// This channel should be used for processing packets sequenced.
 ///
@@ -26,11 +26,15 @@ impl SequencedChannel {
 }
 
 impl Channel for SequencedChannel {
-    fn process_outgoing(&mut self, _payload: &[u8], _delivery_method: DeliveryMethod) -> NetworkResult<PacketData> {
+    fn process_outgoing(
+        &mut self,
+        _payload: &[u8],
+        _delivery_method: DeliveryMethod,
+    ) -> NetworkResult<PacketData> {
         unimplemented!()
     }
 
-    fn process_incoming<'d>(&mut self, _buffer: &'d[u8]) -> NetworkResult<&'d[u8]> {
+    fn process_incoming<'d>(&mut self, _buffer: &'d [u8]) -> NetworkResult<&'d [u8]> {
         unimplemented!()
     }
 }

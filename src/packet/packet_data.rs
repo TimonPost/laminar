@@ -1,5 +1,5 @@
-use std::io::Write;
 use error::NetworkResult;
+use std::io::Write;
 
 /// Contains the raw data this packet exists of. Note that a packet can be divided into separate fragments
 #[derive(Debug, Default)]
@@ -11,7 +11,7 @@ impl PacketData {
     /// Creates a new PacketData with a specified capacity
     pub fn with_capacity(size: usize) -> PacketData {
         PacketData {
-            parts: Vec::with_capacity(size)
+            parts: Vec::with_capacity(size),
         }
     }
 
@@ -31,20 +31,20 @@ impl PacketData {
 
     /// Return the parts this packet exists of.
     pub fn parts(&mut self) -> &Vec<Vec<u8>> {
-       &self.parts
+        &self.parts
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::PacketData;
-    use packet::header::{AckedPacketHeader, StandardHeader, HeaderParser, HeaderReader};
+    use packet::header::{AckedPacketHeader, HeaderParser, HeaderReader, StandardHeader};
 
     #[test]
     fn add_ang_get_parts() {
         let acked_header = AckedPacketHeader::new(StandardHeader::default(), 1, 1, 5421);
         let mut buffer = Vec::new();
-        let _ =  acked_header.parse(&mut buffer);
+        let _ = acked_header.parse(&mut buffer);
 
         let mut packet_data = PacketData::with_capacity(acked_header.size() as usize);
         let _ = packet_data.add_fragment(&buffer, &vec![1, 2, 3, 4, 5]);
@@ -54,8 +54,8 @@ mod tests {
         assert_eq!(packet_data.fragment_count(), 3);
 
         let _ = packet_data.parts().into_iter().map(|x| {
-            let _header = &x[0 .. acked_header.size() as usize];
-            let body = &x[acked_header.size() as usize .. buffer.len()];
+            let _header = &x[0..acked_header.size() as usize];
+            let body = &x[acked_header.size() as usize..buffer.len()];
             assert_eq!(body.to_vec(), vec![1, 2, 3, 4, 5]);
         });
     }

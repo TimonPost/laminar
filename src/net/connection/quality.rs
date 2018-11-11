@@ -1,8 +1,8 @@
 use net::NetworkConfig;
 use sequence_buffer::CongestionData;
 
-use std::time::Duration;
 use std::sync::Arc;
+use std::time::Duration;
 
 /// Represents the quality of a network.
 pub enum NetworkQuality {
@@ -21,15 +21,14 @@ pub struct RttMeasurer {
 impl RttMeasurer {
     /// Creates and returns a new RttMeasurer
     pub fn new(config: &Arc<NetworkConfig>) -> RttMeasurer {
-        RttMeasurer { config: config.clone() }
+        RttMeasurer {
+            config: config.clone(),
+        }
     }
 
     /// This will calculate the round trip time (rtt) from the given acknowledgement.
     /// Where after it updates the rtt from the given connection.
-    pub fn get_rtt(
-        &self,
-        congestion_data: Option<&mut CongestionData>
-    ) -> f32 {
+    pub fn get_rtt(&self, congestion_data: Option<&mut CongestionData>) -> f32 {
         self.get_smoothed_rtt(congestion_data)
     }
 
@@ -72,12 +71,12 @@ impl RttMeasurer {
 
 #[cfg(test)]
 mod test {
-    use net::connection::{VirtualConnection};
-    use net::NetworkConfig;
     use super::RttMeasurer;
+    use net::connection::VirtualConnection;
+    use net::NetworkConfig;
     use std::net::ToSocketAddrs;
-    use std::time::Duration;
     use std::sync::Arc;
+    use std::time::Duration;
 
     static TEST_HOST_IP: &'static str = "127.0.0.1";
     static TEST_PORT: &'static str = "20000";
@@ -87,7 +86,8 @@ mod test {
         let mut addr = format!("{}:{}", TEST_HOST_IP, TEST_PORT)
             .to_socket_addrs()
             .unwrap();
-        let _new_conn = VirtualConnection::new(addr.next().unwrap(), &Arc::new(NetworkConfig::default()));
+        let _new_conn =
+            VirtualConnection::new(addr.next().unwrap(), &Arc::new(NetworkConfig::default()));
     }
 
     #[test]

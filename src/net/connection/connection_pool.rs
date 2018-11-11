@@ -1,16 +1,16 @@
 use super::VirtualConnection;
-use error::{NetworkResult, NetworkError};
+use error::{NetworkError, NetworkResult};
 use events::Event;
 use net::NetworkConfig;
 
+use log::info;
 use std::collections::HashMap;
+use std::error::Error;
 use std::net::SocketAddr;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::Duration;
-use std::error::Error;
-use log::{info};
 
 pub type Connection = Arc<RwLock<VirtualConnection>>;
 pub type Connections = HashMap<SocketAddr, Connection>;
@@ -42,7 +42,7 @@ impl ConnectionPool {
             connections: Arc::new(RwLock::new(HashMap::new())),
             sleepy_time,
             poll_interval,
-            config: config.clone()
+            config: config.clone(),
         }
     }
 
@@ -64,8 +64,8 @@ impl ConnectionPool {
     #[allow(dead_code)]
     pub fn count(&self) -> usize {
         match self.connections.read() {
-            Ok(connections) => { connections.len() },
-            Err(_) => { 0 },
+            Ok(connections) => connections.len(),
+            Err(_) => 0,
         }
     }
 
@@ -86,7 +86,8 @@ impl ConnectionPool {
         Ok(thread::Builder::new()
             .name("check_for_timeouts".into())
             .spawn(move || loop {
-                let timed_out_clients = ConnectionPool::check_for_timeouts(&connections, poll_interval, &events_sender);
+                let timed_out_clients =
+                    ConnectionPool::check_for_timeouts(&connections, poll_interval, &events_sender);
 
                 if !timed_out_clients.is_empty() {
                     match connections.write() {
@@ -95,9 +96,7 @@ impl ConnectionPool {
                                 connections.remove(&timed_out_client);
                             }
                         }
-                        Err(e) => {
-                            panic!("Error when checking for timed out connections: {}", e)
-                        }
+                        Err(e) => panic!("Error when checking for timed out connections: {}", e),
                     }
                 }
 
@@ -130,9 +129,7 @@ impl ConnectionPool {
                     }
                 }
             }
-            Err(e) => {
-                panic!("Error when checking for timed out connections: {}", e)
-            }
+            Err(e) => panic!("Error when checking for timed out connections: {}", e),
         }
 
         timed_out_clients

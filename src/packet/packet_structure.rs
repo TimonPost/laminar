@@ -1,5 +1,5 @@
-use std::net::SocketAddr;
 use infrastructure::DeliveryMethod;
+use std::net::SocketAddr;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 /// This is a user friendly packet containing the payload from the packet and the endpoint from where it came.
@@ -32,7 +32,11 @@ impl Packet {
     ///
     /// Basically just bare UDP, free to be dropped, used for very unnecessary data, great for 'general' position updates.
     pub fn unreliable(addr: SocketAddr, payload: Vec<u8>) -> Packet {
-        Packet::new(addr,payload.into_boxed_slice(),DeliveryMethod::UnreliableUnordered)
+        Packet::new(
+            addr,
+            payload.into_boxed_slice(),
+            DeliveryMethod::UnreliableUnordered,
+        )
     }
 
     /// Reliable. All packets will be sent and received, but without order.
@@ -46,7 +50,11 @@ impl Packet {
     /// Basically this is almost TCP like without ordering of packets.
     /// Receive every packet and immediately give to application, order does not matter.
     pub fn reliable_unordered(addr: SocketAddr, payload: Vec<u8>) -> Packet {
-        Packet::new(addr,payload.into_boxed_slice(),DeliveryMethod::ReliableUnordered)
+        Packet::new(
+            addr,
+            payload.into_boxed_slice(),
+            DeliveryMethod::ReliableUnordered,
+        )
     }
 
     /// Get the payload (raw data) of this packet.

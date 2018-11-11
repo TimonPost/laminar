@@ -141,7 +141,7 @@ mod test {
     fn drops_old_packets() {
         let mut record: LocalAckRecord = Default::default();
         record.enqueue(0, &Vec::new());
-        record.enqueue(40,&Vec::new());
+        record.enqueue(40, &Vec::new());
         let dropped = record.ack(40, 0);
         assert_eq!(dropped, vec![(0, Vec::new().into_boxed_slice())]);
         assert!(record.is_empty());

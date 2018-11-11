@@ -1,23 +1,31 @@
 use super::{FragmentErrorKind, PacketErrorKind};
 
-use std::sync::PoisonError;
-use std::fmt::{self, Display,Formatter};
-use std::io;
 use std::error::Error;
+use std::fmt::{self, Display, Formatter};
+use std::io;
+use std::sync::PoisonError;
 
-use failure::{Fail, Backtrace, Context};
+use failure::{Backtrace, Context, Fail};
 
 #[derive(Fail, Debug)]
 /// Enum with all possible network errors that could occur.
-pub enum NetworkErrorKind
-{
-    #[fail(display = "Something went wrong with receiving/parsing fragments. Reason: {:?}.", _0)]
+pub enum NetworkErrorKind {
+    #[fail(
+        display = "Something went wrong with receiving/parsing fragments. Reason: {:?}.",
+        _0
+    )]
     /// Error relating to receiving or parsing a fragment
     FragmentError(FragmentErrorKind),
-    #[fail(display = "Something went wrong with receiving/parsing packets. Reason: {:?}.", _0)]
+    #[fail(
+        display = "Something went wrong with receiving/parsing packets. Reason: {:?}.",
+        _0
+    )]
     /// Error relating to receiving or parsing a packet
     PacketError(PacketErrorKind),
-    #[fail(display = "Could not add a connection to the connection pool, because the connection lock is poisoned. Reason: {:?}.", _0)]
+    #[fail(
+        display = "Could not add a connection to the connection pool, because the connection lock is poisoned. Reason: {:?}.",
+        _0
+    )]
     /// Failed to add a connection
     FailedToAddConnection(String),
     #[fail(display = "An IO Error occurred. Reason: {:?}.", _0)]
@@ -39,8 +47,7 @@ pub enum NetworkErrorKind
 
 #[derive(Debug)]
 /// An error that could occur during network operations.
-pub struct NetworkError
-{
+pub struct NetworkError {
     inner: Context<NetworkErrorKind>,
 }
 
@@ -75,7 +82,6 @@ impl Display for NetworkError {
     }
 }
 
-
 impl NetworkError {
     /// Get the error kind from the error. This is useful when you want to match on the error kind.
     pub fn kind(&self) -> &NetworkErrorKind {
@@ -90,7 +96,9 @@ impl NetworkError {
 
 impl From<NetworkErrorKind> for NetworkError {
     fn from(kind: NetworkErrorKind) -> NetworkError {
-        NetworkError { inner: Context::new(kind) }
+        NetworkError {
+            inner: Context::new(kind),
+        }
     }
 }
 
@@ -108,13 +116,13 @@ impl From<io::Error> for NetworkError {
 
 impl From<FragmentErrorKind> for NetworkError {
     fn from(inner: FragmentErrorKind) -> Self {
-        NetworkErrorKind::FragmentError (inner).into()
+        NetworkErrorKind::FragmentError(inner).into()
     }
 }
 
 impl From<PacketErrorKind> for NetworkError {
     fn from(inner: PacketErrorKind) -> Self {
-        NetworkErrorKind::PacketError (inner).into()
+        NetworkErrorKind::PacketError(inner).into()
     }
 }
 
