@@ -13,9 +13,7 @@ use std::time::{Duration, Instant};
 
 use clap::App;
 
-use laminar::infrastructure::DeliveryMethod;
-use laminar::net;
-use laminar::packet::Packet;
+use laminar::{net, DeliveryMethod, Packet};
 
 fn main() {
     let yaml = load_yaml!("cli.yml");
@@ -108,7 +106,9 @@ fn run_client(test_name: &str, destination: &str, endpoint: &str, pps: &str, tes
         }
     };
 
-    client.set_nonblocking(true);
+    client
+        .set_nonblocking(true)
+        .expect("Unable to set nonblocking");
 
     // See which test we want to run
     match test_name {
@@ -140,7 +140,9 @@ fn test_steady_stream(client: &mut net::UdpSocket, target: &str, pps: &str, test
     let start_time = Instant::now();
     let mut packets_sent = 0;
     loop {
-        client.send(&test_packet.clone());
+        client
+            .send(&test_packet.clone())
+            .expect("Unable to send a client packet");
         packets_sent += 1;
         let now = Instant::now();
         let d = now - start_time;

@@ -23,8 +23,7 @@
 //! ```rust
 //! extern crate laminar;
 //!
-//! use laminar::{UdpSocket, NetworkConfig};
-//! use laminar::Packet;
+//! use laminar::{Packet, net::{UdpSocket, NetworkConfig}};
 //!
 //! use std::net::Ipv4Addr;
 //!
@@ -48,26 +47,25 @@
 extern crate bincode;
 extern crate byteorder;
 extern crate crc;
-extern crate lazy_static;
-extern crate serde;
-extern crate log;
 extern crate failure;
 extern crate failure_derive;
+extern crate lazy_static;
+extern crate log;
 extern crate rand;
+extern crate serde;
 
-/// Contains network specific errors
-pub mod error;
-/// Contains events we feed back up to the application
-pub mod events;
-/// Contains code related to the piping needed for shuffling packets to and fro
-pub mod infrastructure;
-/// Network specific code and configuration
-pub mod net;
-/// Packet specific code and configuration
-pub mod packet;
-/// Protocol specific code and configuration
-pub mod protocol_version;
+mod events;
+mod infrastructure;
+mod packet;
+mod protocol_version;
 mod sequence_buffer;
 
-pub use net::{NetworkConfig, UdpSocket};
+/// All internal error handling logic
+pub mod error;
+/// Networking modules
+pub mod net;
+
+pub use events::Event;
+pub use infrastructure::DeliveryMethod;
 pub use packet::Packet;
+pub use protocol_version::ProtocolVersion;

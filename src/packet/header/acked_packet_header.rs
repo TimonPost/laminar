@@ -37,6 +37,7 @@ impl AckedPacketHeader {
     }
 
     /// Get the sequence number from this packet.
+    #[allow(dead_code)]
     pub fn sequence(&self) -> u16 {
         self.seq
     }
@@ -88,7 +89,7 @@ impl HeaderReader for AckedPacketHeader {
 
 #[cfg(test)]
 mod tests {
-    use packet::header::{HeaderParser, HeaderReader, AckedPacketHeader, StandardHeader};
+    use packet::header::{AckedPacketHeader, HeaderParser, HeaderReader, StandardHeader};
     use std::io::Cursor;
 
     #[test]
@@ -105,9 +106,8 @@ mod tests {
                 assert_eq!(packet_deserialized.seq, 1);
                 assert_eq!(packet_deserialized.ack_seq, 1);
                 assert_eq!(packet_deserialized.ack_field, 5421);
-            },
-            Err(e) => { println!("{:?}", e)},
+            }
+            Err(e) => println!("{:?}", e),
         }
-
     }
 }

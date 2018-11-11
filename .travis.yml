@@ -7,6 +7,8 @@ rust:
 
 before_script:
   - rustup component add clippy-preview
+  - export PATH=$PATH:/home/travis/.cargo/bin
+  - export RUSTFLAGS="-D warnings"
 
 os:
 - linux
@@ -39,7 +41,7 @@ addons:
       - libiberty-dev
 
 script:
-  - cargo clippy -- -D warnings
+  - cargo clippy --all --all-features -- -D warnings
   - cargo test --verbose --all --all-features
 
 after_success: |
