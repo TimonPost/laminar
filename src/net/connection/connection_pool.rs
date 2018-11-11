@@ -10,7 +10,7 @@ use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::Duration;
 use std::error::Error;
-use log::{info};
+use log::{info, error};
 
 pub type Connection = Arc<RwLock<VirtualConnection>>;
 pub type Connections = HashMap<SocketAddr, Connection>;
@@ -96,7 +96,7 @@ impl ConnectionPool {
                             }
                         }
                         Err(e) => {
-                            panic!("Error when checking for timed out connections: {}", e)
+                            error!("Error when checking for timed out connections: {}", e)
                         }
                     }
                 }
@@ -116,22 +116,28 @@ impl ConnectionPool {
         match connections.read() {
             Ok(ref connections) => {
                 for (key, value) in connections.iter() {
-                    if let Ok(connection) = value.read() {
-                        if connection.last_heard() >= sleepy_time {
+                    match value.read() {
+                        Ok(connection) => {
+                            if connection.last_heard() >= sleepy_time {
+                                timed_out_clients.push(key.clone());
+                                let event = Event::TimedOut(value.clone());
+
+                                events_sender
+                                    .send(event)
+                                    .expect("Unable to send disconnect event");
+
+                                info!("Client has timed out: {:?}", key);
+                            }
+                        }
+                        Err(e) => {
+                            error!("There was an error checking client {:#?} for timeout. Error was: {:#?}", key, e);
                             timed_out_clients.push(key.clone());
-                            let event = Event::TimedOut(value.clone());
-
-                            events_sender
-                                .send(event)
-                                .expect("Unable to send disconnect event");
-
-                            info!("Client has timed out: {:?}", key);
                         }
                     }
                 }
             }
             Err(e) => {
-                panic!("Error when checking for timed out connections: {}", e)
+                error!("There was an error when trying to check clients for timeouts: {:#?}", e);
             }
         }
 

@@ -79,6 +79,10 @@ impl UdpSocket {
 
         if let Some(link_conditioner) = &self.link_conditioner {
             if link_conditioner.should_send() {
+                for payload in lock.gather_dropped_packets() {
+                    bytes_sent += self.send_packet(&packet.addr(), &payload)?;
+                }
+
                 for payload in packet_data.parts() {
                     bytes_sent += self.send_packet(&packet.addr(), &payload)?;
                 }
