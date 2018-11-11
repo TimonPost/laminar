@@ -1,4 +1,4 @@
-use net::connection::ConnectionPool;
+use net::connection::{ConnectionPool, TimeoutThread};
 use std::net::{self, SocketAddr, ToSocketAddrs};
 
 use error::{NetworkError, NetworkErrorKind, NetworkResult};
@@ -10,7 +10,6 @@ use packet::Packet;
 use std::error::Error;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
-use std::thread;
 
 /// Represents an <ip>:<port> combination listening for UDP traffic
 pub struct UdpSocket {
@@ -18,9 +17,9 @@ pub struct UdpSocket {
     recv_buffer: Vec<u8>,
     _config: Arc<NetworkConfig>,
     link_conditioner: Option<LinkConditioner>,
-    _timeout_check_thread: thread::JoinHandle<()>,
+    timeout_error_channel: Receiver<NetworkError>,
     events: (Sender<Event>, Receiver<Event>),
-    connections: ConnectionPool,
+    connections: Arc<ConnectionPool>,
 }
 
 impl UdpSocket {
@@ -31,8 +30,10 @@ impl UdpSocket {
         let config = &Arc::new(config);
         let (tx, rx) = mpsc::channel();
 
-        let connection_pool = ConnectionPool::new(config);
-        let join_handle = connection_pool.start_time_out_loop(tx.clone())?;
+        let connection_pool = Arc::new(ConnectionPool::new(config));
+
+        let mut timeout_thread = TimeoutThread::new(tx.clone(), &connection_pool);
+        let timeout_error_channel = timeout_thread.start()?;
 
         Ok(UdpSocket {
             socket,
@@ -40,7 +41,7 @@ impl UdpSocket {
             _config: config.clone(),
             link_conditioner: None,
             connections: connection_pool,
-            _timeout_check_thread: join_handle,
+            timeout_error_channel,
             events: (tx, rx),
         })
     }
@@ -51,6 +52,11 @@ impl UdpSocket {
 
         if len > 0 {
             let packet = &self.recv_buffer[..len];
+
+            if let Ok(error) = self.timeout_error_channel.try_recv() {
+                // we could recover from error here.
+                return Err(error);
+            }
 
             let connection = self.connections.get_connection_or_insert(&addr)?;
             let mut lock = connection

@@ -1,53 +1,31 @@
-use super::VirtualConnection;
-use error::{NetworkError, NetworkResult};
+use super::{VirtualConnection, ConnectionsCollection, Connection};
+use error::{NetworkResult, NetworkErrorKind, NetworkError};
 use events::Event;
 use net::NetworkConfig;
-
-use log::info;
+use log::{error, info};
 use std::collections::HashMap;
-use std::error::Error;
 use std::net::SocketAddr;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, RwLock};
-use std::thread;
 use std::time::Duration;
+use std::error::Error;
 
-pub type Connection = Arc<RwLock<VirtualConnection>>;
-pub type Connections = HashMap<SocketAddr, Connection>;
-pub type ConnectionsCollection = Arc<RwLock<Connections>>;
-
-// Default time between checks of all clients for timeouts in seconds
-const TIMEOUT_POLL_INTERVAL: u64 = 1;
-const TIMEOUT_DEFAULT: u64 = 10;
 /// This is a pool of virtual connections (connected) over UDP.
 pub struct ConnectionPool {
-    /// All the connections we are aware of
     connections: ConnectionsCollection,
-    /// This is how long a connection is allowed to go unheard from before we mark it as disconnected
-    #[allow(dead_code)]
-    sleepy_time: Duration,
-    /// This is how frequently we check the connections for activity
-    poll_interval: Duration,
-    /// The network config in use by this pool
-    config: Arc<NetworkConfig>,
+    config: Arc<NetworkConfig>
 }
 
 impl ConnectionPool {
-    /// Creates and returns a new ConnectionPool
     pub fn new(config: &Arc<NetworkConfig>) -> ConnectionPool {
-        let sleepy_time = Duration::from_secs(TIMEOUT_DEFAULT);
-        let poll_interval = Duration::from_secs(TIMEOUT_POLL_INTERVAL);
-
         ConnectionPool {
             connections: Arc::new(RwLock::new(HashMap::new())),
-            sleepy_time,
-            poll_interval,
-            config: config.clone(),
+            config: config.clone()
         }
     }
 
-    /// Insert connection if it does not exists.
-    pub fn get_connection_or_insert(&mut self, addr: &SocketAddr) -> NetworkResult<Connection> {
+    /// Try getting connection by address if the connection does not exists it will be inserted.
+    pub fn get_connection_or_insert(&self, addr: &SocketAddr) -> NetworkResult<Connection> {
         let mut lock = self
             .connections
             .write()
@@ -60,59 +38,26 @@ impl ConnectionPool {
         Ok(connection.clone())
     }
 
-    // Get the number of connected clients.
-    #[allow(dead_code)]
-    pub fn count(&self) -> usize {
-        match self.connections.read() {
-            Ok(connections) => connections.len(),
-            Err(_) => 0,
-        }
-    }
+    /// Removes the connection from connection pool by socket address.
+    pub fn remove_connection(&self, addr: &SocketAddr) -> NetworkResult<Option<(SocketAddr, Arc<RwLock<VirtualConnection>>)>> {
+        let mut lock = self
+            .connections
+            .write()
+            .map_err(|error| NetworkError::poisoned_connection_error(error.description()))?;
 
-    /// Start loop that detects when a connection has timed out.
-    ///
-    /// This function starts a background thread that does the following:
-    /// 1. Gets a read lock on the HashMap containing all the connections
-    /// 2. Iterate through each one
-    /// 3. Check if the last time we have heard from them (received a packet from them) is greater than the amount of time considered to be a timeout
-    /// 4. If they have timed out, send a notification up the stack
-    pub fn start_time_out_loop(
-        &self,
-        events_sender: Sender<Event>,
-    ) -> NetworkResult<thread::JoinHandle<()>> {
-        let connections = self.connections.clone();
-        let poll_interval = self.poll_interval;
-
-        Ok(thread::Builder::new()
-            .name("check_for_timeouts".into())
-            .spawn(move || loop {
-                let timed_out_clients =
-                    ConnectionPool::check_for_timeouts(&connections, poll_interval, &events_sender);
-
-                if !timed_out_clients.is_empty() {
-                    match connections.write() {
-                        Ok(ref mut connections) => {
-                            for timed_out_client in timed_out_clients {
-                                connections.remove(&timed_out_client);
-                            }
-                        }
-                        Err(e) => panic!("Error when checking for timed out connections: {}", e),
-                    }
-                }
-
-                thread::sleep(poll_interval);
-            })?)
+        Ok(lock.remove_entry(addr))
     }
 
     /// Check if there are any connections that have not been active for the given Duration.
-    fn check_for_timeouts(
-        connections: &ConnectionsCollection,
+    /// And returns a vector of clients been idling for to long.
+    pub fn check_for_timeouts(
+        &self,
         sleepy_time: Duration,
         events_sender: &Sender<Event>,
-    ) -> Vec<SocketAddr> {
+    ) -> NetworkResult<Vec<SocketAddr>> {
         let mut timed_out_clients: Vec<SocketAddr> = Vec::new();
 
-        match connections.read() {
+        match self.connections.read() {
             Ok(ref connections) => {
                 for (key, value) in connections.iter() {
                     if let Ok(connection) = value.read() {
@@ -122,17 +67,28 @@ impl ConnectionPool {
 
                             events_sender
                                 .send(event)
-                                .expect("Unable to send disconnect event");
+                                .map_err(|e| NetworkErrorKind::PoisonedLock(format!("Error when trying to send timeout event over channel. Reason: {}", e)))?;
 
                             info!("Client has timed out: {:?}", key);
                         }
                     }
                 }
             }
-            Err(e) => panic!("Error when checking for timed out connections: {}", e),
+            Err(e) => {
+                error!("Error when checking for timed out connections: {:?}", e);
+                return Err(NetworkErrorKind::PoisonedLock(format!("Error when checking for timed out connections: {:?}", e)).into());
+            }
         }
 
-        timed_out_clients
+        Ok(timed_out_clients)
+    }
+
+    /// Get the number of connected clients.
+    /// This function could fail because it needs to acquire a read lock before it can know the size.
+    #[allow(dead_code)]
+    pub fn count(&self) -> NetworkResult<usize> {
+        let connections = self.connections.read()?;
+        Ok(connections.len())
     }
 }
 
@@ -142,49 +98,60 @@ mod tests {
     use std::thread;
     use std::time::Duration;
 
-    use super::{Arc, ConnectionPool, TIMEOUT_POLL_INTERVAL};
+    use super::{Arc, ConnectionPool};
     use events::Event;
     use net::NetworkConfig;
 
     #[test]
     fn connection_timed_out() {
+
+        let connections = Arc::new(ConnectionPool::new(&Arc::new(NetworkConfig::default())));
         let (tx, rx) = channel();
 
-        let mut connections = ConnectionPool::new(&Arc::new(NetworkConfig::default()));
-        let _handle = connections.start_time_out_loop(tx.clone()).unwrap();
+        // add 10 clients
+        for i in 0..10 {
+            connections.get_connection_or_insert(&(format!("127.0.0.1:123{}",i).parse().unwrap())).unwrap();
+        }
 
-        let _result = connections.get_connection_or_insert(&("127.0.0.1:12345".parse().unwrap()));
-
-        assert_eq!(connections.count(), 1);
+        assert_eq!(connections.count().unwrap(), 10);
 
         // Sleep a little longer than te polling interval.
-        thread::sleep(Duration::from_millis(TIMEOUT_POLL_INTERVAL * 1000 + 100));
+        thread::sleep(Duration::from_millis(700));
 
-        // We should have the timeout event by now.
-        match rx.try_recv() {
-            Ok(event) => {
-                match event {
-                    Event::TimedOut(client) => {
-                        assert_eq!(
-                            client.read().unwrap().remote_address,
-                            "127.0.0.1:12345".parse().unwrap()
-                        );
-                    }
-                    _ => panic!("Didn't expect any other events than TimedOut."),
-                };
+        let timed_out_connections = connections.check_for_timeouts(Duration::from_millis(500), &tx).unwrap();
+
+        // We should have received 10 timeouts event by now.
+        let mut events_received = 0;
+        while let Ok(event) = rx.try_recv() {
+            match event {
+                Event::TimedOut(_) => {
+                    events_received += 1;
+                },
+                _ => {}
             }
-            Err(_) => panic!("No events found!"),
-        };
+        }
 
-        assert_eq!(connections.count(), 0);
+        assert_eq!(timed_out_connections.len(), 10);
+        assert_eq!(events_received, 10);
     }
 
     #[test]
     fn insert_connection() {
-        let mut connections = ConnectionPool::new(&Arc::new(NetworkConfig::default()));
+        let connections = ConnectionPool::new(&Arc::new(NetworkConfig::default()));
 
         let addr = &("127.0.0.1:12345".parse().unwrap());
-        let _result = connections.get_connection_or_insert(addr);
+        connections.get_connection_or_insert(addr).unwrap();
         assert!(connections.connections.read().unwrap().contains_key(addr));
+    }
+
+    #[test]
+    fn removes_connection() {
+        let connections = ConnectionPool::new(&Arc::new(NetworkConfig::default()));
+
+        let addr = &("127.0.0.1:12345".parse().unwrap());
+        connections.get_connection_or_insert(addr).unwrap();
+        assert!(connections.connections.read().unwrap().contains_key(addr));
+        connections.remove_connection(addr).unwrap();
+        assert!(!connections.connections.read().unwrap().contains_key(addr));
     }
 }

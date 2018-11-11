@@ -43,6 +43,15 @@ pub enum NetworkErrorKind {
     #[fail(display = "The protocol versions do not match.")]
     /// Protocol versions did not match
     ProtocolVersionMismatch,
+    #[fail(display = "Something went wrong with connection timeout thread. Reason: {:?}", _0)]
+    /// Error occurred in connection pool.
+    ConnectionPoolError(String),
+    #[fail(display = "Joining thread failed.")]
+    /// Error occurred when joining thread.
+    JoiningThreadFailed,
+    #[fail(display = "There was an unexpected error caused by an poisoned lock.")]
+    /// There was an unexpected error caused by an poisoned lock.
+    PoisonedLock(String),
 }
 
 #[derive(Debug)]
