@@ -1,22 +1,25 @@
-use packet::header::{FragmentHeader, AckedPacketHeader, HeaderReader, HeaderParser};
-use sequence_buffer::{ReassemblyData, SequenceBuffer};
 use error::{FragmentErrorKind, NetworkResult};
 use net::NetworkConfig;
+use packet::header::{AckedPacketHeader, FragmentHeader, HeaderParser, HeaderReader};
 use packet::PacketData;
+use sequence_buffer::{ReassemblyData, SequenceBuffer};
 
-use std::sync::Arc;
 use std::io::{Cursor, Read, Write};
+use std::sync::Arc;
 
 /// Type that will manage fragmentation of packets.
 pub struct Fragmentation {
     fragments: SequenceBuffer<ReassemblyData>,
-    config: Arc<NetworkConfig>
+    config: Arc<NetworkConfig>,
 }
 
 impl Fragmentation {
     /// Creates and returns a new Fragmentation
     pub fn new(config: &Arc<NetworkConfig>) -> Fragmentation {
-        Fragmentation { fragments: SequenceBuffer::with_capacity(config.fragment_reassembly_buffer_size), config: config.clone() }
+        Fragmentation {
+            fragments: SequenceBuffer::with_capacity(config.fragment_reassembly_buffer_size),
+            config: config.clone(),
+        }
     }
 
     /// This functions checks how many times a number fits into another number and will round up.
@@ -58,16 +61,27 @@ impl Fragmentation {
     }
 
     /// Split the given payload into fragments and write those fragments to the passed packet data.
-    pub fn spit_into_fragments<'d>(payload: &'d[u8], acked_header: AckedPacketHeader, packet_data: &mut PacketData, config: &Arc<NetworkConfig>) -> NetworkResult<()> {
+    pub fn spit_into_fragments<'d>(
+        payload: &'d [u8],
+        acked_header: AckedPacketHeader,
+        packet_data: &mut PacketData,
+        config: &Arc<NetworkConfig>,
+    ) -> NetworkResult<()> {
         let payload_length = payload.len() as u16;
-        let num_fragments = Fragmentation::total_fragments_needed(payload_length, config.fragment_size) as u8; /* safe cast max fragments is u8 */
+        let num_fragments =
+            Fragmentation::total_fragments_needed(payload_length, config.fragment_size) as u8; /* safe cast max fragments is u8 */
 
         if num_fragments > config.max_fragments {
             Err(FragmentErrorKind::ExceededMaxFragments)?;
         }
 
         for fragment_id in 0..num_fragments {
-            let fragment = FragmentHeader::new(acked_header.standard_header, fragment_id, num_fragments, acked_header);
+            let fragment = FragmentHeader::new(
+                acked_header.standard_header,
+                fragment_id,
+                num_fragments,
+                acked_header,
+            );
             let mut buffer = Vec::with_capacity(fragment.size() as usize);
             fragment.parse(&mut buffer)?;
 
@@ -90,7 +104,10 @@ impl Fragmentation {
     }
 
     /// This will read fragment data and returns the complete packet data when all fragments are received.
-    pub fn handle_fragment(&mut self, cursor: &mut Cursor<&[u8]>) -> NetworkResult<Option<Vec<u8>>> {
+    pub fn handle_fragment(
+        &mut self,
+        cursor: &mut Cursor<&[u8]>,
+    ) -> NetworkResult<Option<Vec<u8>>> {
         // read fragment packet
         let fragment_header = FragmentHeader::read(cursor)?;
 
@@ -146,7 +163,10 @@ impl Fragmentation {
     }
 
     /// If fragment does not exist we need to insert a new entry.
-    fn create_fragment_if_not_exists(&mut self, fragment_header: &FragmentHeader) -> NetworkResult<()> {
+    fn create_fragment_if_not_exists(
+        &mut self,
+        fragment_header: &FragmentHeader,
+    ) -> NetworkResult<()> {
         if !self.fragments.exists(fragment_header.sequence()) {
             if fragment_header.id() == 0 {
                 match fragment_header.packet_header() {
@@ -157,7 +177,8 @@ impl Fragmentation {
                             (9 + self.config.fragment_size) as usize,
                         );
 
-                        self.fragments.insert(reassembly_data.clone(), fragment_header.sequence());
+                        self.fragments
+                            .insert(reassembly_data.clone(), fragment_header.sequence());
                     }
                     None => Err(FragmentErrorKind::PacketHeaderNotFound)?,
                 }

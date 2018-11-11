@@ -31,7 +31,7 @@ pub fn fragment_packet_integration_test() {
         Duration::from_millis(0),
         CLIENT_ADDR.parse().unwrap(),
         TOTAL_PACKETS_TO_SEND,
-        DeliveryMethod::ReliableUnordered
+        DeliveryMethod::ReliableUnordered,
     );
 
     let stopwatch = Instant::now();

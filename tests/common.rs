@@ -49,16 +49,14 @@ impl ServerMoq {
                         udp_socket.send(&packet).unwrap();
                     }
                     Ok(None) => {}
-                    Err(_e) => {
-                        match cancellation_channel.try_recv() {
-                            Ok(val) => {
-                                if val == true {
-                                    return packets_total_received;
-                                }
+                    Err(_e) => match cancellation_channel.try_recv() {
+                        Ok(val) => {
+                            if val == true {
+                                return packets_total_received;
                             }
-                            Err(_e) => {}
                         }
-                    }
+                        Err(_e) => {}
+                    },
                 }
 
                 if second_counter.elapsed().as_secs() >= 1 {
@@ -90,12 +88,15 @@ impl ServerMoq {
                         assert_eq!(packet.payload(), data_to_send.as_slice());
                         assert_eq!(packet.addr(), host);
                     }
-                    Ok(None) => { }
+                    Ok(None) => {}
                     Err(_) => {}
                 }
 
-                let send_result =
-                    client.send(&Packet::new(host, data_to_send.clone().into_boxed_slice(), client_stub.packet_delivery));
+                let send_result = client.send(&Packet::new(
+                    host,
+                    data_to_send.clone().into_boxed_slice(),
+                    client_stub.packet_delivery,
+                ));
 
                 if len <= config.fragment_size as usize {
                     send_result.is_ok();
@@ -114,7 +115,7 @@ pub struct ClientStub {
     timeout_sending: Duration,
     endpoint: SocketAddr,
     packets_to_send: u32,
-    packet_delivery: DeliveryMethod
+    packet_delivery: DeliveryMethod,
 }
 
 impl ClientStub {
@@ -122,13 +123,13 @@ impl ClientStub {
         timeout_sending: Duration,
         endpoint: SocketAddr,
         packets_to_send: u32,
-        packet_delivery: DeliveryMethod
+        packet_delivery: DeliveryMethod,
     ) -> ClientStub {
         ClientStub {
             timeout_sending,
             endpoint,
             packets_to_send,
-            packet_delivery
+            packet_delivery,
         }
     }
 }

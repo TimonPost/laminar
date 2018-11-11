@@ -1,16 +1,16 @@
 use super::Channel;
 
-use net::{LocalAckRecord, ExternalAcks, NetworkConfig, NetworkQuality, RttMeasurer};
-use packet::header::{HeaderParser, HeaderReader, AckedPacketHeader, StandardHeader};
-use sequence_buffer::{SequenceBuffer, CongestionData};
+use error::{NetworkResult, PacketErrorKind};
 use infrastructure::{DeliveryMethod, Fragmentation};
-use error::{PacketErrorKind,NetworkResult};
-use packet::{PacketData,PacketTypeId};
+use net::{ExternalAcks, LocalAckRecord, NetworkConfig, NetworkQuality, RttMeasurer};
+use packet::header::{AckedPacketHeader, HeaderParser, HeaderReader, StandardHeader};
+use packet::{PacketData, PacketTypeId};
+use sequence_buffer::{CongestionData, SequenceBuffer};
 
-use std::io::{Cursor};
-use std::time::Instant;
-use std::sync::Arc;
 use log::error;
+use std::io::Cursor;
+use std::sync::Arc;
+use std::time::Instant;
 
 /// This channel should be used for processing packets reliable. All packets will be sent and received, ordering depends on given 'ordering' parameter.
 ///
@@ -98,7 +98,11 @@ impl Channel for ReliableChannel {
     /// 1. Add congestion data entry so that it can be monitored.
     /// 2. Queue new packet in acknowledgement system.
     /// 3. Fragmentation of the payload.
-    fn process_outgoing(&mut self, payload: &[u8], delivery_method: DeliveryMethod) -> NetworkResult<PacketData> {
+    fn process_outgoing(
+        &mut self,
+        payload: &[u8],
+        delivery_method: DeliveryMethod,
+    ) -> NetworkResult<PacketData> {
         if payload.len() > self.config.max_packet_size {
             error!(
                 "Packet too large: Attempting to send {}, max={}",
@@ -120,7 +124,8 @@ impl Channel for ReliableChannel {
         // calculate size for our packet data.
         // safe cast because max packet size is u16
         let payload_length = payload.len() as u16;
-        let packet_data_size = Fragmentation::total_fragments_needed(payload_length, self.config.fragment_size);
+        let packet_data_size =
+            Fragmentation::total_fragments_needed(payload_length, self.config.fragment_size);
         let mut packet_data = PacketData::with_capacity(packet_data_size as usize);
 
         let packet_type = if packet_data_size > 1 {
@@ -130,7 +135,12 @@ impl Channel for ReliableChannel {
         };
 
         // create our reliable header and write it to an buffer.
-        let header = AckedPacketHeader::new(StandardHeader::new(delivery_method, packet_type), self.seq_num, self.their_acks.last_seq, self.their_acks.field);
+        let header = AckedPacketHeader::new(
+            StandardHeader::new(delivery_method, packet_type),
+            self.seq_num,
+            self.their_acks.last_seq,
+            self.their_acks.field,
+        );
         let mut buffer = Vec::with_capacity(header.size() as usize);
         header.parse(&mut buffer)?;
 
@@ -153,8 +163,7 @@ impl Channel for ReliableChannel {
     /// 2. Update acknowledgement data.
     /// 3. Calculate RTT time.
     /// 4. Update dropped packets.
-    fn process_incoming<'d>(&mut self, buffer: &'d[u8]) -> NetworkResult<&'d[u8]> {
-
+    fn process_incoming<'d>(&mut self, buffer: &'d [u8]) -> NetworkResult<&'d [u8]> {
         let mut cursor = Cursor::new(buffer);
         let acked_header = AckedPacketHeader::read(&mut cursor)?;
 
@@ -171,6 +180,6 @@ impl Channel for ReliableChannel {
 
         self.dropped_packets = dropped_packets.into_iter().map(|(_, p)| p).collect();
 
-        Ok(&buffer[acked_header.size() as usize .. buffer.len()])
+        Ok(&buffer[acked_header.size() as usize..buffer.len()])
     }
 }

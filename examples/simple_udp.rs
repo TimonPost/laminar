@@ -157,7 +157,7 @@ impl Client {
         let mut udp_socket = UdpSocket::bind(client_address(), config).unwrap();
 
         // next we could specify if or socket should block the current thread when receiving data or not (default = false)
-        
+
         udp_socket.set_nonblocking(false);
 
         Client { udp_socket }
@@ -169,7 +169,8 @@ impl Client {
 
         match serialized {
             Ok(raw_data) => {
-            self.udp_socket.send(&Packet::reliable_unordered(server_address(), raw_data));
+                self.udp_socket
+                    .send(&Packet::reliable_unordered(server_address(), raw_data));
             }
             Err(e) => println!("Some error occurred: {:?}", e),
         }

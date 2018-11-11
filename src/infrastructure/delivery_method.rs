@@ -24,9 +24,8 @@
 /// You could say for example I want the guarantee for my packets to arrive, however they don't need to be in order.
 ///
 /// Laminar provides different kind of reliabilities contained within this enum.
-#[derive(Copy, Clone, Debug,PartialOrd, PartialEq, Eq)]
-pub enum DeliveryMethod
-{
+#[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Eq)]
+pub enum DeliveryMethod {
     /// Unreliable. Packets can be dropped, duplicated or arrive without order.
     ///
     /// **Details**
@@ -79,7 +78,7 @@ pub enum DeliveryMethod
     ///
     /// Toss away any packets that are older than the most recent (like a position update, you don't care about older ones),
     /// packets may be dropped, just the application may not receive older ones if a newer one came in first.
-   Sequenced,
+    Sequenced,
 }
 
 impl DeliveryMethod {
@@ -96,7 +95,7 @@ impl DeliveryMethod {
             2 => DeliveryMethod::ReliableUnordered,
             3 => DeliveryMethod::ReliableOrdered,
             4 => DeliveryMethod::Sequenced,
-            _ => DeliveryMethod::UnreliableUnordered
+            _ => DeliveryMethod::UnreliableUnordered,
         }
     }
 }

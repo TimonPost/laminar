@@ -31,7 +31,7 @@ pub fn normal_packet_integration_test() {
         Duration::from_millis(0),
         CLIENT_ADDR.parse().unwrap(),
         TOTAL_PACKETS_TO_SEND,
-        DeliveryMethod::UnreliableUnordered
+        DeliveryMethod::UnreliableUnordered,
     );
 
     let stopwatch = Instant::now();

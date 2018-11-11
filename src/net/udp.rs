@@ -1,5 +1,5 @@
-use std::net::{self, ToSocketAddrs, SocketAddr};
 use net::connection::ConnectionPool;
+use std::net::{self, SocketAddr, ToSocketAddrs};
 
 use error::{NetworkError, NetworkErrorKind, NetworkResult};
 use events::Event;
@@ -7,10 +7,10 @@ use net::link_conditioner::LinkConditioner;
 use net::NetworkConfig;
 use packet::Packet;
 
+use std::error::Error;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
 use std::thread;
-use std::error::Error;
 
 /// Represents an <ip>:<port> combination listening for UDP traffic
 pub struct UdpSocket {
@@ -20,7 +20,7 @@ pub struct UdpSocket {
     link_conditioner: Option<LinkConditioner>,
     _timeout_check_thread: thread::JoinHandle<()>,
     events: (Sender<Event>, Receiver<Event>),
-    connections: ConnectionPool
+    connections: ConnectionPool,
 }
 
 impl UdpSocket {
@@ -36,7 +36,7 @@ impl UdpSocket {
 
         Ok(UdpSocket {
             socket,
-            recv_buffer: vec![0;config.receive_buffer_max_size],
+            recv_buffer: vec![0; config.receive_buffer_max_size],
             _config: config.clone(),
             link_conditioner: None,
             connections: connection_pool,
@@ -47,9 +47,7 @@ impl UdpSocket {
 
     /// Receives a single datagram message on the socket. On success, returns the packet containing origin and data.
     pub fn recv(&mut self) -> NetworkResult<Option<Packet>> {
-        let (len, addr) = self
-            .socket
-            .recv_from(&mut self.recv_buffer)?;
+        let (len, addr) = self.socket.recv_from(&mut self.recv_buffer)?;
 
         if len > 0 {
             let packet = &self.recv_buffer[..len];
@@ -60,7 +58,6 @@ impl UdpSocket {
                 .map_err(|error| NetworkError::poisoned_connection_error(error.description()))?;
 
             lock.process_incoming(&packet)
-
         } else {
             Err(NetworkErrorKind::ReceivedDataToShort)?
         }
@@ -97,7 +94,7 @@ impl UdpSocket {
     }
 
     /// Send a single packet over the udp socket.
-    fn send_packet(&self, addr: &SocketAddr, payload: &[u8]) -> NetworkResult<usize>  {
+    fn send_packet(&self, addr: &SocketAddr, payload: &[u8]) -> NetworkResult<usize> {
         let mut bytes_sent = 0;
 
         bytes_sent += self

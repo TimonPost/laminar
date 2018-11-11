@@ -1,10 +1,10 @@
 use super::{HeaderParser, HeaderReader};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use error::NetworkResult;
+use infrastructure::DeliveryMethod;
 use net::constants::STANDARD_HEADER_SIZE;
 use packet::PacketTypeId;
 use protocol_version::ProtocolVersion;
-use infrastructure::DeliveryMethod;
 use std::io::Cursor;
 
 #[derive(Copy, Clone, Debug)]
@@ -87,9 +87,13 @@ mod tests {
 
         let mut cursor = Cursor::new(buffer.as_slice());
         let packet_header = StandardHeader::read(&mut cursor).unwrap();
-        assert!(ProtocolVersion::valid_version(packet_header.protocol_version));
+        assert!(ProtocolVersion::valid_version(
+            packet_header.protocol_version
+        ));
         assert_eq!(packet_header.packet_type_id, PacketTypeId::Packet);
-        assert_eq!(packet_header.delivery_method, DeliveryMethod::UnreliableUnordered);
+        assert_eq!(
+            packet_header.delivery_method,
+            DeliveryMethod::UnreliableUnordered
+        );
     }
 }
-

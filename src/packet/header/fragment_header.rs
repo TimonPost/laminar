@@ -1,9 +1,9 @@
-use super::{HeaderParser, HeaderReader, AckedPacketHeader, StandardHeader};
-use net::constants::FRAGMENT_HEADER_SIZE;
+use super::{AckedPacketHeader, HeaderParser, HeaderReader, StandardHeader};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use error::{NetworkResult, FragmentErrorKind};
-use std::io::Cursor;
+use error::{FragmentErrorKind, NetworkResult};
 use log::error;
+use net::constants::FRAGMENT_HEADER_SIZE;
+use std::io::Cursor;
 
 #[derive(Copy, Clone, Debug)]
 /// This header represents a fragmented packet header.
@@ -17,7 +17,12 @@ pub struct FragmentHeader {
 
 impl FragmentHeader {
     /// Create new fragment with the given packet header
-    pub fn new(standard_header: StandardHeader, id: u8, num_fragments: u8, packet_header: AckedPacketHeader) -> Self {
+    pub fn new(
+        standard_header: StandardHeader,
+        id: u8,
+        num_fragments: u8,
+        packet_header: AckedPacketHeader,
+    ) -> Self {
         FragmentHeader {
             standard_header,
             id,
@@ -114,21 +119,24 @@ impl HeaderReader for FragmentHeader {
 
 #[cfg(test)]
 mod tests {
-    use packet::header::{FragmentHeader, HeaderParser, HeaderReader, AckedPacketHeader, StandardHeader};
     use infrastructure::DeliveryMethod;
+    use packet::header::{
+        AckedPacketHeader, FragmentHeader, HeaderParser, HeaderReader, StandardHeader,
+    };
     use packet::PacketTypeId;
     use std::io::Cursor;
 
     #[test]
     pub fn serializes_deserialize_fragment_header_test() {
         // create default header
-        let standard_header = StandardHeader::new(DeliveryMethod::UnreliableUnordered, PacketTypeId::Fragment);
+        let standard_header =
+            StandardHeader::new(DeliveryMethod::UnreliableUnordered, PacketTypeId::Fragment);
 
         let packet_header = AckedPacketHeader::new(standard_header.clone(), 1, 1, 5421);
 
         // create fragment header with the default header and acked header.
         let fragment = FragmentHeader::new(standard_header.clone(), 0, 1, packet_header.clone());
-        let mut fragment_buffer= Vec::with_capacity((fragment.size() + 1) as usize);
+        let mut fragment_buffer = Vec::with_capacity((fragment.size() + 1) as usize);
         fragment.parse(&mut fragment_buffer).unwrap();
 
         let mut cursor: Cursor<&[u8]> = Cursor::new(fragment_buffer.as_slice());

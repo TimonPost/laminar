@@ -48,12 +48,12 @@
 extern crate bincode;
 extern crate byteorder;
 extern crate crc;
-extern crate lazy_static;
-extern crate serde;
-extern crate log;
 extern crate failure;
 extern crate failure_derive;
+extern crate lazy_static;
+extern crate log;
 extern crate rand;
+extern crate serde;
 
 /// Contains network specific errors
 pub mod error;

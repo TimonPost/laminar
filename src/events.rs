@@ -25,7 +25,7 @@ pub enum Event {
 #[cfg(test)]
 mod test {
     use super::Event;
-    use net::{VirtualConnection, NetworkConfig};
+    use net::{NetworkConfig, VirtualConnection};
     use std::net::ToSocketAddrs;
     use std::sync::{Arc, RwLock};
 
@@ -37,7 +37,10 @@ mod test {
         let addr = format!("{}:{}", TEST_HOST_IP, TEST_PORT).to_socket_addrs();
         let mut addr = addr.unwrap();
 
-        let test_conn = Arc::new(RwLock::new(VirtualConnection::new(addr.next().unwrap(), &Arc::new(NetworkConfig::default()))));
+        let test_conn = Arc::new(RwLock::new(VirtualConnection::new(
+            addr.next().unwrap(),
+            &Arc::new(NetworkConfig::default()),
+        )));
         let _ = Event::Connected(test_conn);
     }
 }

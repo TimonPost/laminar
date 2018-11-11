@@ -2,11 +2,11 @@
 mod error_kinds;
 mod network_error;
 
-pub use self::network_error::{NetworkErrorKind, NetworkError};
-pub use self::error_kinds::{PacketErrorKind, FragmentErrorKind};
+pub use self::error_kinds::{FragmentErrorKind, PacketErrorKind};
+pub use self::network_error::{NetworkError, NetworkErrorKind};
 
-use std::result;
 use failure::Error;
+use std::result;
 
 /// Convenience alias for a standard result
 pub type Result<T> = result::Result<T, Error>;
@@ -35,5 +35,3 @@ pub type Result<T> = result::Result<T, Error>;
 ///  }
 /// ```
 pub type NetworkResult<T> = result::Result<T, NetworkError>;
-
-

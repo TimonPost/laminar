@@ -1,12 +1,18 @@
 use std::clone::Clone;
 
 /// Collection to store data of any kind.
-pub struct SequenceBuffer<T>  where T: Default + Clone + Send + Sync  {
+pub struct SequenceBuffer<T>
+where
+    T: Default + Clone + Send + Sync,
+{
     entries: Vec<T>,
     entry_sequences: Vec<u16>,
 }
 
-impl<T> SequenceBuffer<T> where T: Default + Clone + Send + Sync {
+impl<T> SequenceBuffer<T>
+where
+    T: Default + Clone + Send + Sync,
+{
     /// Create collection with a specific capacity.
     pub fn with_capacity(size: usize) -> Self {
         let mut entries = Vec::with_capacity(size);
@@ -80,8 +86,7 @@ mod tests {
     struct DataStub;
 
     #[test]
-    fn insert_into_fragment_buffer_test()
-    {
+    fn insert_into_fragment_buffer_test() {
         let mut fragment_buffer = SequenceBuffer::with_capacity(2);
         fragment_buffer.insert(DataStub, 1);
         assert!(fragment_buffer.exists(1));
