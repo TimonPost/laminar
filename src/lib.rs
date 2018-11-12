@@ -69,3 +69,4 @@ pub use events::Event;
 pub use infrastructure::DeliveryMethod;
 pub use packet::Packet;
 pub use protocol_version::ProtocolVersion;
+pub use config::NetworkConfig;
