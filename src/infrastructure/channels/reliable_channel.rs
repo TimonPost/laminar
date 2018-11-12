@@ -164,7 +164,7 @@ impl Channel for ReliableChannel {
     /// 2. Update acknowledgement data.
     /// 3. Calculate RTT time.
     /// 4. Update dropped packets.
-    fn process_incoming<'d>(&mut self, buffer: &'d [u8]) -> NetworkResult<&'d [u8]> {
+    fn process_incoming<'d>(&mut self, buffer: &'d [u8]) -> NetworkResult<Option<&'d [u8]>> {
         let mut cursor = Cursor::new(buffer);
         let acked_header = AckedPacketHeader::read(&mut cursor)?;
 
@@ -181,6 +181,6 @@ impl Channel for ReliableChannel {
 
         self.dropped_packets = dropped_packets.into_iter().map(|(_, p)| p).collect();
 
-        Ok(&buffer[acked_header.size() as usize..buffer.len()])
+        Ok(Some(&buffer[acked_header.size() as usize..buffer.len()]))
     }
 }

@@ -122,11 +122,16 @@ impl VirtualConnection {
 
         let payload = channel.process_incoming(received_data)?;
 
-        Ok(Some(Packet::new(
-            self.remote_address,
-            Box::from(payload),
-            header.delivery_method,
-        )))
+        match payload {
+            None => { Ok(None) },
+            Some(payload) => {
+                Ok(Some(Packet::new(
+                    self.remote_address,
+                    Box::from(payload),
+                    header.delivery_method,
+                )))
+            },
+        }
     }
 
     /// This will gather dropped packets from the reliable channels.
@@ -157,6 +162,8 @@ mod tests {
     use infrastructure::DeliveryMethod;
     use net::connection::VirtualConnection;
     use net::NetworkConfig;
+    use packet::header::{SequencedPacketHeader, StandardHeader};
+    use packet::PacketTypeId;
     use std::sync::Arc;
 
     const SERVER_ADDR: &str = "127.0.0.1:12345";
@@ -236,5 +243,46 @@ mod tests {
                 },
             }
         }
+    }
+
+    #[test]
+    fn process_sequenced_packet() {
+        let mut connection = create_virtual_connection();
+
+        let buffer = vec![1; 500];
+
+        // create some test sequenced packets.
+        let mut packet_data1 = connection
+            .process_outgoing(&buffer, DeliveryMethod::Sequenced)
+            .unwrap()
+            .parts()[0].to_vec();
+        let mut packet_data2 = connection
+            .process_outgoing(&buffer, DeliveryMethod::Sequenced)
+            .unwrap()
+            .parts()[0].to_vec();
+        let mut packet_data3 = connection
+            .process_outgoing(&buffer, DeliveryMethod::Sequenced)
+            .unwrap()
+            .parts()[0].to_vec();
+        let mut packet_data4 = connection
+            .process_outgoing(&buffer, DeliveryMethod::Sequenced)
+            .unwrap()
+            .parts()[0].to_vec();
+
+        // simulate some incoming packets, with sequenced only newest packets should be processed an returned back to client.
+        // first packet is newest so it should be processed, we got some
+        assert!(connection.process_incoming(&packet_data1).unwrap().is_some());
+        // third packet is newest so it should be processed, we got some
+        assert!(connection.process_incoming(&packet_data3).unwrap().is_some());
+        // second packet is older so it could be ignored, we get none
+        assert!(connection.process_incoming(&packet_data2).unwrap().is_none());
+        // first packet is duplicated so it should not be processed, we got none
+        assert!(connection.process_incoming(&packet_data1).unwrap().is_none());
+        // second packet is duplicated so it should not be processed, we got none
+        assert!(connection.process_incoming(&packet_data2).unwrap().is_none());
+        // first packet is duplicated so it should not be processed, we got none
+        assert!(connection.process_incoming(&packet_data1).unwrap().is_none());
+        // fourth packet is newest so it should be processed, we got some
+        assert!(connection.process_incoming(&packet_data4).unwrap().is_some());
     }
 }

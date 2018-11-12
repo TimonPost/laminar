@@ -22,5 +22,5 @@ pub trait Channel {
     ) -> NetworkResult<PacketData>;
 
     /// Progress an packet on receive and receive the processed data.
-    fn process_incoming<'d>(&mut self, buffer: &'d [u8]) -> NetworkResult<&'d [u8]>;
+    fn process_incoming<'d>(&mut self, buffer: &'d [u8]) -> NetworkResult<Option<&'d [u8]>>;
 }

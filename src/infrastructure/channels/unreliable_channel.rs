@@ -56,7 +56,7 @@ impl Channel for UnreliableChannel {
     /// Process a packet on receive.
     ///
     /// This will not do anything it will only return the bytes as they are received.
-    fn process_incoming<'d>(&mut self, buffer: &'d [u8]) -> NetworkResult<&'d [u8]> {
-        Ok(&buffer[STANDARD_HEADER_SIZE as usize..buffer.len()])
+    fn process_incoming<'d>(&mut self, buffer: &'d [u8]) ->  NetworkResult<Option<&'d [u8]>> {
+        Ok(Some(&buffer[STANDARD_HEADER_SIZE as usize..buffer.len()]))
     }
 }

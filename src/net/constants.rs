@@ -2,6 +2,8 @@
 pub const FRAGMENT_HEADER_SIZE: u8 = 4 + STANDARD_HEADER_SIZE;
 /// Acked packet header size
 pub const ACKED_PACKET_HEADER: u8 = 8 + STANDARD_HEADER_SIZE;
+/// Sequenced packet header size
+pub const SEQUENCED_PACKET_HEADER: u8 = 2 + STANDARD_HEADER_SIZE;
 /// Standard header size
 pub const STANDARD_HEADER_SIZE: u8 = 6;
 /// Heartbeat header size
