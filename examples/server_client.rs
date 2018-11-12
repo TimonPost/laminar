@@ -8,7 +8,8 @@ use std::io::stdin;
 
 use laminar::{
     error::Result,
-    net::{NetworkConfig, UdpSocket},
+    config::NetworkConfig,
+    net::UdpSocket,
     Packet,
 };
 

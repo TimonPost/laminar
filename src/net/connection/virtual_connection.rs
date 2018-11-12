@@ -2,7 +2,7 @@ use error::{NetworkErrorKind, NetworkResult};
 use infrastructure::{
     Channel, DeliveryMethod, Fragmentation, ReliableChannel, SequencedChannel, UnreliableChannel,
 };
-use net::NetworkConfig;
+use config::NetworkConfig;
 use packet::header::HeaderReader;
 use packet::header::StandardHeader;
 use packet::{Packet, PacketData, PacketTypeId};
@@ -156,7 +156,7 @@ impl fmt::Debug for VirtualConnection {
 mod tests {
     use infrastructure::DeliveryMethod;
     use net::connection::VirtualConnection;
-    use net::NetworkConfig;
+    use config::NetworkConfig;
     use std::sync::Arc;
 
     const SERVER_ADDR: &str = "127.0.0.1:12345";

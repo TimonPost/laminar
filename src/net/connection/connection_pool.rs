@@ -1,7 +1,7 @@
 use super::{VirtualConnection, ConnectionsCollection, Connection};
 use error::{NetworkResult, NetworkErrorKind, NetworkError};
 use events::Event;
-use net::NetworkConfig;
+use config::NetworkConfig;
 use log::{error, info};
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -100,7 +100,7 @@ mod tests {
 
     use super::{Arc, ConnectionPool};
     use events::Event;
-    use net::NetworkConfig;
+    use config::NetworkConfig;
 
     #[test]
     fn connection_timed_out() {

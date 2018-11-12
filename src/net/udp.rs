@@ -4,7 +4,7 @@ use std::net::{self, SocketAddr, ToSocketAddrs};
 use error::{NetworkError, NetworkErrorKind, NetworkResult};
 use events::Event;
 use net::link_conditioner::LinkConditioner;
-use net::NetworkConfig;
+use config::NetworkConfig;
 use packet::Packet;
 
 use std::error::Error;

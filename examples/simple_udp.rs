@@ -9,8 +9,9 @@ extern crate serde;
 extern crate serde_derive;
 
 use bincode::{deserialize, serialize};
+use laminar::config::NetworkConfig;
 use laminar::{
-    net::{NetworkConfig, UdpSocket},
+    net::UdpSocket,
     Packet,
 };
 use serde_derive::{Deserialize, Serialize};

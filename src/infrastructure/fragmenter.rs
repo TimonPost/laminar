@@ -1,5 +1,5 @@
 use error::{FragmentErrorKind, NetworkResult};
-use net::NetworkConfig;
+use config::NetworkConfig;
 use packet::header::{AckedPacketHeader, FragmentHeader, HeaderParser, HeaderReader};
 use packet::PacketData;
 use sequence_buffer::{ReassemblyData, SequenceBuffer};

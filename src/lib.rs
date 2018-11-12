@@ -23,7 +23,8 @@
 //! ```rust
 //! extern crate laminar;
 //!
-//! use laminar::{Packet, net::{UdpSocket, NetworkConfig}};
+//! use laminar::{Packet, net::UdpSocket};
+//! use laminar::config::NetworkConfig;
 //!
 //! use std::net::Ipv4Addr;
 //!
@@ -60,10 +61,12 @@ mod packet;
 mod protocol_version;
 mod sequence_buffer;
 
+
 /// All internal error handling logic
 pub mod error;
 /// Networking modules
 pub mod net;
+pub mod config;
 
 pub use events::Event;
 pub use infrastructure::DeliveryMethod;

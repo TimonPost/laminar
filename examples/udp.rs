@@ -6,7 +6,8 @@
 extern crate laminar;
 
 use laminar::{
-    net::{NetworkConfig, UdpSocket},
+    net::UdpSocket,
+    config::NetworkConfig,
     Packet,
 };
 

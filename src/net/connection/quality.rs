@@ -1,4 +1,4 @@
-use net::NetworkConfig;
+use config::NetworkConfig;
 use sequence_buffer::CongestionData;
 
 use std::sync::Arc;
@@ -73,7 +73,7 @@ impl RttMeasurer {
 mod test {
     use super::RttMeasurer;
     use net::connection::VirtualConnection;
-    use net::NetworkConfig;
+    use config::NetworkConfig;
     use std::net::ToSocketAddrs;
     use std::sync::Arc;
     use std::time::Duration;

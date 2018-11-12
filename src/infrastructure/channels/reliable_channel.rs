@@ -2,7 +2,8 @@ use super::Channel;
 
 use error::{NetworkResult, PacketErrorKind};
 use infrastructure::{DeliveryMethod, Fragmentation};
-use net::{ExternalAcks, LocalAckRecord, NetworkConfig, NetworkQuality, RttMeasurer};
+use net::{ExternalAcks, LocalAckRecord, NetworkQuality, RttMeasurer};
+use config::NetworkConfig;
 use packet::header::{AckedPacketHeader, HeaderParser, HeaderReader, StandardHeader};
 use packet::{PacketData, PacketTypeId};
 use sequence_buffer::{CongestionData, SequenceBuffer};
