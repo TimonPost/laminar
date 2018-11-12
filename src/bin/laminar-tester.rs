@@ -13,7 +13,7 @@ use std::time::{Duration, Instant};
 
 use clap::App;
 
-use laminar::{net, DeliveryMethod, Packet};
+use laminar::{net, DeliveryMethod, Packet, config};
 
 fn main() {
     let yaml = load_yaml!("cli.yml");
@@ -70,7 +70,7 @@ fn process_client_subcommand(m: &clap::ArgMatches<'_>) {
 }
 
 fn run_server(socket_addr: &str) {
-    let network_config = net::NetworkConfig::default();
+    let network_config = config::NetworkConfig::default();
     let mut udp_server = net::UdpSocket::bind(socket_addr, network_config).unwrap();
     let mut packet_throughput = 0;
     let mut packets_total_received = 0;
@@ -97,7 +97,7 @@ fn run_server(socket_addr: &str) {
 }
 
 fn run_client(test_name: &str, destination: &str, endpoint: &str, pps: &str, test_duration: &str) {
-    let network_config = net::NetworkConfig::default();
+    let network_config = config::NetworkConfig::default();
     let mut client = match net::UdpSocket::bind(endpoint, network_config.clone()) {
         Ok(c) => c,
         Err(e) => {
