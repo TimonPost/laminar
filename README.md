@@ -15,70 +15,80 @@
 [s6]: https://tokei.rs/b1/github/amethyst/laminar?category=code
 [s7]: https://codecov.io/gh/amethyst/laminar/branch/master/graphs/badge.svg
 
-A UDP-based protocol that provides partial reliability. Coming soon!
+This library implements some TCP-like features on top of an UDP-socket. 
+It will provide a lightweight message-based interface with certain guarantees like reliability, fragmentation congestion monitoring.
 
-## Note
+Laminar was designed to be used in the [Amethyst][amethyst] game engine and is loosely based on articles from [gaffer on games](https://gafferongames.com/).
 
-This library is not yet stable. It is experimental and things may change frequently.
+[amethyst]: https://github.com/amethyst/amethyst
 
 ## Table of contents:
-- [Useful links](https://github.com/amethyst/laminar#useful-links)
-- [Features](https://github.com/amethyst/laminar#features)
-- [Examples](https://github.com/amethyst/laminar#examples)
-    - [Udp](https://github.com/amethyst/laminar#udp)
-- [Notice](https://github.com/amethyst/laminar#notice)
-- [Contributing](https://github.com/amethyst/laminar#contributing)
-- [Authors](https://github.com/amethyst/laminar/#authors)
+- [Useful links](#useful-links)
+- [Features](#features)
+- [Getting Started](#getting-stated)
+- [Examples](#examples)
+- [Notice](#notice)
+- [Contributing](#contribution)
+- [Authors](#authors)
 - [License](#license)
 
+## Features
+These are the features this crate provides:
+
+- UDP-based protocol
+- Connection tracking
+- Automatic Fragmentation
+- Unreliable and Reliable packets
+- Protocol versioning
+- RTT estimation
+- Link conditioner to simulate packet loss and latency
+- Well tested by integration tests and unit tests
+- Good error handling
+- Benchmarks
+
+## Getting Stated
 Add the laminar package to your `Cargo.toml` file.
 
 ```toml
 [dependencies]
-laminar = "0.0.0"
-```
-And import the laminar modules you want to use.
-
-```rust
-extern crate laminar;
-
-// this module contains all socket related logic.
-use laminar::net::{UdpSocket, SocketAddr, NetworkConfig, Connection, Quality};
-// this module contains packet related logic.
-use laminar::packet::{Packet};
+laminar = "0.1"
 ```
 
-## Useful Links
+### Useful Links
 
 - [Documentation](https://docs.rs/laminar/).
-- [Cargo Page](https://crates.io/crates/laminar)
+- [Crates.io](https://crates.io/crates/laminar)
 - [Examples](https://github.com/amethyst/laminar/tree/master/examples)
-
-## Features
-These are the features from this crate:
-
-- Semi-reliable UDP
-- Fragmentation
-- RTT estimation
-- Virtual connection management.
+- [Contributing](https://github.com/amethyst/laminar/blob/master/docs/CONTRIBUTING)
 
 ## Examples
-These are some basic examples demonstrating how to use this crate. See [examples](https://github.com/amethyst/laminar/tree/master/examples) for more.
+These are some basic examples demonstrating how to use this crate. 
+Please checkout our [examples](https://github.com/amethyst/laminar/tree/master/examples) for more.
 
-### Udp API | [see more](https://github.com/amethyst/laminar/blob/master/examples/udp.rs)
+### UDP API | [see more](https://github.com/amethyst/laminar/blob/master/examples/udp.rs)
 This is an example of how to use the UDP API.
 
 _Send packets_
 
 ```rust
+use laminar::{DeliveryMethod, Packet};
+use laminar::net::{UdpSocket, NetworkConfig};
+
 // Create the necessarily config, you can edit it or just use the default.
 let config = NetworkConfig::default();
 
 // Setup an udp socket and bind it to the client address.
 let mut udp_socket = UdpSocket::bind("127.0.0.1:12346", config).unwrap();
 
+// our data
+let bytes = vec![...];
+
 // Create a packet that can be send with the given destination and raw data.
-let packet = Packet::new(destination, vec![1,2,3]);
+let packet = Packet::new(destination, bytes, DeliveryMethod::Unreliable);
+
+// Or we could also use the function syntax for more clarity:
+let packet = Packet::unreliable(destination, bytes);
+let packet = Packet::reliable_unordered(destination, bytes);
 
 // Send the packet to the endpoint we earlier placed into the packet.
 udp_socket.send(packet);
@@ -87,13 +97,15 @@ udp_socket.send(packet);
 _Receive Packets_
 
 ```rust
+use laminar::net::{UdpSocket, NetworkConfig};
+use std::net::SocketAddr;
 // Create the necessarily config, you can edit it or just use the default.
 let config = NetworkConfig::default();
 
 // Setup an udp socket and bind it to the client address.
 let mut udp_socket = UdpSocket::bind("127.0.0.1:12345", config).unwrap();
 
-// Start receiving (blocks the current thread)
+// Start receiving (blocks the current thread), use `udp_socket.set_nonblocking()` for not blocking the current thread.
 let result = udp_socket.recv();
 
 match result {
@@ -123,6 +135,12 @@ match result {
 - [Timon Post](https://github.com/TimonPost)
 
 We want to give credit to [gaffer on games](https://gafferongames.com/) as we have used his guide to building a game networking protocol to build this library. 
+
+## Note
+
+This library is not fully stable yet. 
+Although version 0.1.0 is released we might have to change some of the existing API.  
+Laminar is used in [Amethyst-Network](https://github.com/amethyst/amethyst/tree/master/amethyst_network), you could give that a look if you want to see some more advanced use-cases.
 
 ## Contribution
 

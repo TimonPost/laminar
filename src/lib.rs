@@ -1,5 +1,5 @@
 //! Laminar semi-reliable UDP protocol for multiplayer games. This library implements wraps around a UDP
-//! and provides light weight stream based interface that provides certain guarentees like reliablity.
+//! and provides light weight stream based interface that provides certain guarantees like reliability.
 //!
 //! Laminar was designed to be used within the [Amethyst][amethyst] game engine.
 //!
