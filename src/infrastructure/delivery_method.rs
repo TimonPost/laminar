@@ -74,7 +74,7 @@ pub enum DeliveryMethod {
     ///
     /// |   Packet Drop   | Packet Duplication | Packet Order     | Packet Fragmentation | Packet Delivery |
     /// | :-------------: | :-------------:    | :-------------:  | :-------------:      | :-------------: |
-    /// |       Yes       |      No            |      Yes         |      Yes             |       No        |
+    /// |       Yes       |      No            |      Yes         |      No             |       No        |
     ///
     /// Toss away any packets that are older than the most recent (like a position update, you don't care about older ones),
     /// packets may be dropped, just the application may not receive older ones if a newer one came in first.

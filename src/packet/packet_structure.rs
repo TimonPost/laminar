@@ -22,7 +22,7 @@ impl Packet {
         }
     }
 
-    /// Unreliable. Packets can be dropped, duplicated or arrive without order.
+    /// Unreliable. Packet  can be dropped, duplicated or arrive without order.
     ///
     /// **Details**
     ///
@@ -39,7 +39,7 @@ impl Packet {
         )
     }
 
-    /// Reliable. All packets will be sent and received, but without order.
+    /// Reliable. Packet will be sent and received, but without order.
     ///
     /// *Details*
     ///
@@ -54,6 +54,24 @@ impl Packet {
             addr,
             payload.into_boxed_slice(),
             DeliveryMethod::ReliableUnordered,
+        )
+    }
+
+    /// Unreliable. Packet can be dropped, but never duplicated and arrive in order.
+    ///
+    /// *Details*
+    ///
+    /// |   Packet Drop   | Packet Duplication | Packet Order     | Packet Fragmentation | Packet Delivery |
+    /// | :-------------: | :-------------:    | :-------------:  | :-------------:      | :-------------: |
+    /// |       Yes       |      No            |      Yes         |      No             |       No        |
+    ///
+    /// Sequence means toss away any packets that are older than the most recent (like a position update, you don't care about older ones),
+    /// packets may be dropped, just the application may not receive older ones if a newer one came in first.
+    pub fn sequenced(addr: SocketAddr, payload: Vec<u8>) -> Packet {
+        Packet::new(
+            addr,
+            payload.into_boxed_slice(),
+            DeliveryMethod::Sequenced,
         )
     }
 
