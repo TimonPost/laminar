@@ -66,6 +66,7 @@ mod sequence_buffer;
 pub mod error;
 /// Networking modules
 pub mod net;
+/// Contains networking related configuration
 pub mod config;
 
 pub use events::Event;
