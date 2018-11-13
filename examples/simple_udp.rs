@@ -10,10 +10,7 @@ extern crate serde_derive;
 
 use bincode::{deserialize, serialize};
 use laminar::config::NetworkConfig;
-use laminar::{
-    net::UdpSocket,
-    Packet,
-};
+use laminar::{net::UdpSocket, Packet};
 use serde_derive::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::{thread, time};

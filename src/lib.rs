@@ -61,16 +61,15 @@ mod packet;
 mod protocol_version;
 mod sequence_buffer;
 
-
+/// Contains networking related configuration
+pub mod config;
 /// All internal error handling logic
 pub mod error;
 /// Networking modules
 pub mod net;
-/// Contains networking related configuration
-pub mod config;
 
+pub use config::NetworkConfig;
 pub use events::Event;
 pub use infrastructure::DeliveryMethod;
 pub use packet::Packet;
 pub use protocol_version::ProtocolVersion;
-pub use config::NetworkConfig;

@@ -2,8 +2,8 @@ extern crate laminar;
 
 mod common;
 
-use laminar::DeliveryMethod;
 use laminar::config::NetworkConfig;
+use laminar::DeliveryMethod;
 use std::{
     sync::mpsc,
     time::{Duration, Instant},

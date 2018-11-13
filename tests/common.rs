@@ -1,10 +1,6 @@
 extern crate laminar;
 
-use laminar::{
-    net::UdpSocket,
-    config::NetworkConfig,
-    DeliveryMethod, Packet,
-};
+use laminar::{config::NetworkConfig, net::UdpSocket, DeliveryMethod, Packet};
 use std::{
     net::SocketAddr,
     sync::mpsc::Receiver,

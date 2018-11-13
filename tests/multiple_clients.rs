@@ -5,8 +5,8 @@ mod common;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
-use laminar::DeliveryMethod;
 use laminar::config::NetworkConfig;
+use laminar::DeliveryMethod;
 
 use common::{ClientStub, ServerMoq};
 

@@ -13,7 +13,7 @@ use std::time::{Duration, Instant};
 
 use clap::App;
 
-use laminar::{net, DeliveryMethod, Packet, config};
+use laminar::{config, net, DeliveryMethod, Packet};
 
 fn main() {
     let yaml = load_yaml!("cli.yml");
