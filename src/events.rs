@@ -25,8 +25,8 @@ pub enum Event {
 #[cfg(test)]
 mod test {
     use super::Event;
-    use net::VirtualConnection;
     use config::NetworkConfig;
+    use net::VirtualConnection;
     use std::net::ToSocketAddrs;
     use std::sync::{Arc, RwLock};
 

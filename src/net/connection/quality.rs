@@ -72,8 +72,8 @@ impl RttMeasurer {
 #[cfg(test)]
 mod test {
     use super::RttMeasurer;
-    use net::connection::VirtualConnection;
     use config::NetworkConfig;
+    use net::connection::VirtualConnection;
     use std::net::ToSocketAddrs;
     use std::sync::Arc;
     use std::time::Duration;

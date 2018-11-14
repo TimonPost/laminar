@@ -6,12 +6,7 @@ extern crate laminar;
 
 use std::io::stdin;
 
-use laminar::{
-    error::Result,
-    config::NetworkConfig,
-    net::UdpSocket,
-    Packet,
-};
+use laminar::{config::NetworkConfig, error::Result, net::UdpSocket, Packet};
 
 const SERVER: &str = "localhost:12351";
 

@@ -1,26 +1,26 @@
-use super::{VirtualConnection, ConnectionsCollection, Connection};
-use error::{NetworkResult, NetworkErrorKind, NetworkError};
-use events::Event;
+use super::{Connection, ConnectionsCollection, VirtualConnection};
 use config::NetworkConfig;
+use error::{NetworkError, NetworkErrorKind, NetworkResult};
+use events::Event;
 use log::{error, info};
 use std::collections::HashMap;
+use std::error::Error;
 use std::net::SocketAddr;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
-use std::error::Error;
 
 /// This is a pool of virtual connections (connected) over UDP.
 pub struct ConnectionPool {
     connections: ConnectionsCollection,
-    config: Arc<NetworkConfig>
+    config: Arc<NetworkConfig>,
 }
 
 impl ConnectionPool {
     pub fn new(config: &Arc<NetworkConfig>) -> ConnectionPool {
         ConnectionPool {
             connections: Arc::new(RwLock::new(HashMap::new())),
-            config: config.clone()
+            config: config.clone(),
         }
     }
 
@@ -39,7 +39,10 @@ impl ConnectionPool {
     }
 
     /// Removes the connection from connection pool by socket address.
-    pub fn remove_connection(&self, addr: &SocketAddr) -> NetworkResult<Option<(SocketAddr, Arc<RwLock<VirtualConnection>>)>> {
+    pub fn remove_connection(
+        &self,
+        addr: &SocketAddr,
+    ) -> NetworkResult<Option<(SocketAddr, Arc<RwLock<VirtualConnection>>)>> {
         let mut lock = self
             .connections
             .write()
@@ -76,7 +79,10 @@ impl ConnectionPool {
             }
             Err(e) => {
                 error!("Error when checking for timed out connections: {:?}", e);
-                return Err(NetworkErrorKind::PoisonedLock(format!("Error when checking for timed out connections: {:?}", e)).into());
+                return Err(NetworkErrorKind::PoisonedLock(format!(
+                    "Error when checking for timed out connections: {:?}",
+                    e
+                )).into());
             }
         }
 
@@ -99,18 +105,19 @@ mod tests {
     use std::time::Duration;
 
     use super::{Arc, ConnectionPool};
-    use events::Event;
     use config::NetworkConfig;
+    use events::Event;
 
     #[test]
     fn connection_timed_out() {
-
         let connections = Arc::new(ConnectionPool::new(&Arc::new(NetworkConfig::default())));
         let (tx, rx) = channel();
 
         // add 10 clients
         for i in 0..10 {
-            connections.get_connection_or_insert(&(format!("127.0.0.1:123{}",i).parse().unwrap())).unwrap();
+            connections
+                .get_connection_or_insert(&(format!("127.0.0.1:123{}", i).parse().unwrap()))
+                .unwrap();
         }
 
         assert_eq!(connections.count().unwrap(), 10);
@@ -118,7 +125,9 @@ mod tests {
         // Sleep a little longer than te polling interval.
         thread::sleep(Duration::from_millis(700));
 
-        let timed_out_connections = connections.check_for_timeouts(Duration::from_millis(500), &tx).unwrap();
+        let timed_out_connections = connections
+            .check_for_timeouts(Duration::from_millis(500), &tx)
+            .unwrap();
 
         // We should have received 10 timeouts event by now.
         let mut events_received = 0;
@@ -126,7 +135,7 @@ mod tests {
             match event {
                 Event::TimedOut(_) => {
                     events_received += 1;
-                },
+                }
                 _ => {}
             }
         }

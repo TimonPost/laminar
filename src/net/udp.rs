@@ -1,10 +1,10 @@
 use net::connection::{ConnectionPool, TimeoutThread};
 use std::net::{self, SocketAddr, ToSocketAddrs};
 
+use config::NetworkConfig;
 use error::{NetworkError, NetworkErrorKind, NetworkResult};
 use events::Event;
 use net::link_conditioner::LinkConditioner;
-use config::NetworkConfig;
 use packet::Packet;
 
 use std::error::Error;
