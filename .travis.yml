@@ -26,8 +26,12 @@ branches:
 matrix:
   allow_failures:
     - rust: nightly
-    - rust: beta
   fast_finish: true
+  include:
+    - rust: stable
+      script:
+        - rustup component add rustfmt-preview
+        - cargo fmt -- --check
 
 addons:
   apt:
