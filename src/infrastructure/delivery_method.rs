@@ -1,9 +1,10 @@
-/// This enum defines on how an packet would be delivered to the other side.
+/// This enum defines different ways in which packets can be delivered.
 ///
-/// This is a very important concept which could be at first sight difficult but which will be very handy later on.
+/// This is a very important concept which could at first be difficult to grasp, but which will be very handy later on.
 ///
-/// As you know we have two opposites, TCP on one hand and UDP on the other.
-/// TCP has a lot of feature UDP does not have, like shown below.
+/// 
+/// When dealing with networking for games, the two protocols that see the most use are TCP and UDP.
+/// UDP is considered to be more unreliable than TCP because it lacks certain features TCP has, as shown below.
 ///
 /// _TCP_
 /// - Guarantee of delivery.
@@ -13,15 +14,17 @@
 /// - Automatic fragmentation
 ///
 /// _UDP_
-/// - Unreliable.
 /// - No guarantee for delivery.
 /// - No guarantee for order.
 /// - No way of getting dropped packet.
 /// - Duplication possible.
 /// - No fragmentation
+//
+/// TCP's features can be very useful, but they also come with some overhead.
+/// This can be problematic if you only care about some of them.
 ///
-/// So handy would be if you somehow could specify which features you want on top of UDP.
-/// You could say for example I want the guarantee for my packets to arrive, however they don't need to be in order.
+/// That is why it would be quite handy if you could somehow specify which features you want on top of UDP.
+/// You could say, for example, "I want the guarantee for my packets to arrive, however they don't need to be in order".
 ///
 /// Laminar provides different kind of reliabilities contained within this enum.
 #[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Eq)]
