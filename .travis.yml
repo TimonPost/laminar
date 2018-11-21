@@ -28,10 +28,10 @@ matrix:
     - rust: nightly
   fast_finish: true
   include:
-    - rust: rustfmt
+    - rust: stable
       script:
         - rustup component add rustfmt-preview
-        - cargo fmt -- --write-mode=diff
+        - cargo fmt -- --check
 
 addons:
   apt:
