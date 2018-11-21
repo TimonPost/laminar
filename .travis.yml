@@ -31,7 +31,7 @@ matrix:
     - rust: rustfmt
       script:
         - rustup component add rustfmt-preview
-        - cargo +stable fmt -- --write-mode=diff
+        - cargo fmt -- --write-mode=diff
 
 addons:
   apt:
