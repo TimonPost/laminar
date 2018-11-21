@@ -2,7 +2,6 @@
 ///
 /// This is a very important concept which could at first be difficult to grasp, but which will be very handy later on.
 ///
-/// 
 /// When dealing with networking for games, the two protocols that see the most use are TCP and UDP.
 /// UDP is considered to be more unreliable than TCP because it lacks certain features TCP has, as shown below.
 ///
