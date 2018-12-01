@@ -28,7 +28,7 @@ pub fn send_data() {
     let config = NetworkConfig::default();
 
     // setup an udp socket and bind it to the client address.
-    let mut udp_socket = UdpSocket::bind(client_address(), config).unwrap();
+    let udp_socket = UdpSocket::bind(client_address(), config).unwrap();
 
     let packet = construct_packet();
 
