@@ -70,7 +70,7 @@ impl UdpSocket {
     }
 
     /// Sends data on the socket to the given address. On success, returns the number of bytes written.
-    pub fn send(&mut self, packet: &Packet) -> NetworkResult<usize> {
+    pub fn send(&self, packet: &Packet) -> NetworkResult<usize> {
         let connection = self.connections.get_connection_or_insert(&packet.addr())?;
         let mut lock = connection
             .write()
