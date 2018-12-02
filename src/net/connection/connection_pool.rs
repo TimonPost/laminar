@@ -26,16 +26,32 @@ impl ConnectionPool {
 
     /// Try getting connection by address if the connection does not exists it will be inserted.
     pub fn get_connection_or_insert(&self, addr: &SocketAddr) -> NetworkResult<Connection> {
-        let mut lock = self
+        let lock = self
             .connections
-            .write()
+            .read()
             .map_err(|error| NetworkError::poisoned_connection_error(error.description()))?;
 
-        let connection = lock
-            .entry(*addr)
-            .or_insert_with(|| Arc::new(RwLock::new(VirtualConnection::new(*addr, &self.config))));
+        if lock.contains_key(addr) {
+            match lock.get(addr) {
+                Some(connection) => Ok(connection.clone()),
+                None => Err(NetworkErrorKind::ConnectionPoolError(String::from(
+                    "Could not get connection from connection pool",
+                )).into()),
+            }
+        } else {
+            drop(lock);
 
-        Ok(connection.clone())
+            let mut lock = self
+                .connections
+                .write()
+                .map_err(|error| NetworkError::poisoned_connection_error(error.description()))?;
+
+            let connection = lock.entry(*addr).or_insert_with(|| {
+                Arc::new(RwLock::new(VirtualConnection::new(*addr, &self.config)))
+            });
+
+            Ok(connection.clone())
+        }
     }
 
     /// Removes the connection from connection pool by socket address.
@@ -154,12 +170,32 @@ mod tests {
     }
 
     #[test]
+    fn insert_existing_connection() {
+        let connections = ConnectionPool::new(&Arc::new(NetworkConfig::default()));
+
+        let addr = &("127.0.0.1:12345".parse().unwrap());
+        connections.get_connection_or_insert(addr).unwrap();
+        assert!(connections.connections.read().unwrap().contains_key(addr));
+        connections.get_connection_or_insert(addr).unwrap();
+        assert!(connections.connections.read().unwrap().contains_key(addr));
+    }
+
+    #[test]
     fn removes_connection() {
         let connections = ConnectionPool::new(&Arc::new(NetworkConfig::default()));
 
         let addr = &("127.0.0.1:12345".parse().unwrap());
         connections.get_connection_or_insert(addr).unwrap();
         assert!(connections.connections.read().unwrap().contains_key(addr));
+        connections.remove_connection(addr).unwrap();
+        assert!(!connections.connections.read().unwrap().contains_key(addr));
+    }
+
+    #[test]
+    fn remove_not_existing_connection() {
+        let connections = ConnectionPool::new(&Arc::new(NetworkConfig::default()));
+
+        let addr = &("127.0.0.1:12345".parse().unwrap());
         connections.remove_connection(addr).unwrap();
         assert!(!connections.connections.read().unwrap().contains_key(addr));
     }
