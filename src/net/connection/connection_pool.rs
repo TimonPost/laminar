@@ -36,7 +36,8 @@ impl ConnectionPool {
                 Some(connection) => Ok(connection.clone()),
                 None => Err(NetworkErrorKind::ConnectionPoolError(String::from(
                     "Could not get connection from connection pool",
-                )).into()),
+                ))
+                .into()),
             }
         } else {
             drop(lock);
@@ -98,7 +99,8 @@ impl ConnectionPool {
                 return Err(NetworkErrorKind::PoisonedLock(format!(
                     "Error when checking for timed out connections: {:?}",
                     e
-                )).into());
+                ))
+                .into());
             }
         }
 

@@ -226,14 +226,18 @@ mod tests {
             // take note index 3 will contain the fragment data because the bytes of the fragmented packet will be returned when all fragments are processed.
             // that is why the last packet (index 3) can be asserted on.
             match option {
-                None => if index < 3 {
-                    assert!(true)
-                } else {
-                    assert!(false)
-                },
-                Some(packet) => if index == 3 {
-                    assert_eq!(buffer, packet.payload());
-                },
+                None => {
+                    if index < 3 {
+                        assert!(true)
+                    } else {
+                        assert!(false)
+                    }
+                }
+                Some(packet) => {
+                    if index == 3 {
+                        assert_eq!(buffer, packet.payload());
+                    }
+                }
             }
         }
     }
