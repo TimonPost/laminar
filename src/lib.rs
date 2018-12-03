@@ -45,7 +45,6 @@
 
 #![warn(missing_docs)]
 
-extern crate bincode;
 extern crate byteorder;
 extern crate crc;
 extern crate failure;
@@ -53,7 +52,6 @@ extern crate failure_derive;
 extern crate lazy_static;
 extern crate log;
 extern crate rand;
-extern crate serde;
 
 mod events;
 mod infrastructure;
