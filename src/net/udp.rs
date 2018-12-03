@@ -17,6 +17,7 @@ pub struct UdpSocket {
     recv_buffer: Vec<u8>,
     _config: Arc<NetworkConfig>,
     link_conditioner: Option<LinkConditioner>,
+    _timeout_thread: TimeoutThread,
     timeout_error_channel: Receiver<NetworkError>,
     events: (Sender<Event>, Receiver<Event>),
     connections: Arc<ConnectionPool>,
@@ -41,6 +42,7 @@ impl UdpSocket {
             _config: config.clone(),
             link_conditioner: None,
             connections: connection_pool,
+            _timeout_thread: timeout_thread,
             timeout_error_channel,
             events: (tx, rx),
         })
