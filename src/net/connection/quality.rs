@@ -20,10 +20,8 @@ pub struct RttMeasurer {
 
 impl RttMeasurer {
     /// Creates and returns a new RttMeasurer
-    pub fn new(config: &Arc<NetworkConfig>) -> RttMeasurer {
-        RttMeasurer {
-            config: config.clone(),
-        }
+    pub fn new(config: Arc<NetworkConfig>) -> RttMeasurer {
+        RttMeasurer { config }
     }
 
     /// This will calculate the round trip time (rtt) from the given acknowledgement.
@@ -87,12 +85,12 @@ mod test {
             .to_socket_addrs()
             .unwrap();
         let _new_conn =
-            VirtualConnection::new(addr.next().unwrap(), &Arc::new(NetworkConfig::default()));
+            VirtualConnection::new(addr.next().unwrap(), Arc::new(NetworkConfig::default()));
     }
 
     #[test]
     fn convert_duration_to_milliseconds_test() {
-        let network_quality = RttMeasurer::new(&Arc::new(NetworkConfig::default()));
+        let network_quality = RttMeasurer::new(Arc::new(NetworkConfig::default()));
         let milliseconds1 = network_quality.as_milliseconds(Duration::from_secs(1));
         let milliseconds2 = network_quality.as_milliseconds(Duration::from_millis(1500));
         let milliseconds3 = network_quality.as_milliseconds(Duration::from_millis(1671));
@@ -109,7 +107,7 @@ mod test {
         config.rtt_smoothing_factor = 0.10;
         config.rtt_max_value = 250;
 
-        let network_quality = RttMeasurer::new(&Arc::new(config));
+        let network_quality = RttMeasurer::new(Arc::new(config));
         let smoothed_rtt = network_quality.smooth_out_rtt(300);
 
         // 300ms has exceeded 50ms over the max allowed rtt. So we check if or smoothing factor is now 10% from 50.

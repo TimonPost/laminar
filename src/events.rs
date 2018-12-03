@@ -40,7 +40,7 @@ mod test {
 
         let test_conn = Arc::new(RwLock::new(VirtualConnection::new(
             addr.next().unwrap(),
-            &Arc::new(NetworkConfig::default()),
+            Arc::new(NetworkConfig::default()),
         )));
         let _ = Event::Connected(test_conn);
     }

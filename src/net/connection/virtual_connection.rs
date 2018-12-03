@@ -35,7 +35,7 @@ pub struct VirtualConnection {
 
 impl VirtualConnection {
     /// Creates and returns a new Connection that wraps the provided socket address
-    pub fn new(addr: SocketAddr, config: &Arc<NetworkConfig>) -> VirtualConnection {
+    pub fn new(addr: SocketAddr, config: Arc<NetworkConfig>) -> VirtualConnection {
         VirtualConnection {
             // client information
             last_heard: Instant::now(),
@@ -43,10 +43,10 @@ impl VirtualConnection {
 
             // reliability channels for processing packets.
             unreliable_unordered_channel: UnreliableChannel::new(true),
-            reliable_unordered_channel: ReliableChannel::new(false, &config),
+            reliable_unordered_channel: ReliableChannel::new(false, config.clone()),
             sequenced_channel: SequencedChannel::new(),
 
-            fragmentation: Fragmentation::new(&config),
+            fragmentation: Fragmentation::new(config),
         }
     }
 
@@ -164,7 +164,7 @@ mod tests {
     fn create_virtual_connection() -> VirtualConnection {
         VirtualConnection::new(
             SERVER_ADDR.parse().unwrap(),
-            &Arc::new(NetworkConfig::default()),
+            Arc::new(NetworkConfig::default()),
         )
     }
 
@@ -226,14 +226,18 @@ mod tests {
             // take note index 3 will contain the fragment data because the bytes of the fragmented packet will be returned when all fragments are processed.
             // that is why the last packet (index 3) can be asserted on.
             match option {
-                None => if index < 3 {
-                    assert!(true)
-                } else {
-                    assert!(false)
-                },
-                Some(packet) => if index == 3 {
-                    assert_eq!(buffer, packet.payload());
-                },
+                None => {
+                    if index < 3 {
+                        assert!(true)
+                    } else {
+                        assert!(false)
+                    }
+                }
+                Some(packet) => {
+                    if index == 3 {
+                        assert_eq!(buffer, packet.payload());
+                    }
+                }
             }
         }
     }

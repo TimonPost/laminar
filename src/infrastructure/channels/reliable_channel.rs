@@ -43,7 +43,7 @@ pub struct ReliableChannel {
 
 impl ReliableChannel {
     /// Creates a new instance of the reliable channel by specifying if channel needs to order incoming packets.
-    pub fn new(ordered: bool, config: &Arc<NetworkConfig>) -> ReliableChannel {
+    pub fn new(ordered: bool, config: Arc<NetworkConfig>) -> ReliableChannel {
         ReliableChannel {
             // settings
             ordered,
