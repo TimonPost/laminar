@@ -65,7 +65,7 @@ impl Fragmentation {
         payload: &[u8],
         acked_header: AckedPacketHeader,
         packet_data: &mut PacketData,
-        config: Arc<NetworkConfig>,
+        config: &Arc<NetworkConfig>,
     ) -> NetworkResult<()> {
         let payload_length = payload.len() as u16;
         let num_fragments =

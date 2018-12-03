@@ -150,12 +150,7 @@ impl Channel for ReliableChannel {
         if payload_length <= self.config.fragment_size {
             packet_data.add_fragment(&buffer, payload)?;
         } else {
-            Fragmentation::spit_into_fragments(
-                payload,
-                header,
-                &mut packet_data,
-                self.config.clone(),
-            )?;
+            Fragmentation::spit_into_fragments(payload, header, &mut packet_data, &self.config)?;
         }
 
         // increase local sequence number.
