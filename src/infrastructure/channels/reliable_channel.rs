@@ -43,7 +43,7 @@ pub struct ReliableChannel {
 
 impl ReliableChannel {
     /// Creates a new instance of the reliable channel by specifying if channel needs to order incoming packets.
-    pub fn new(ordered: bool, config: &Arc<NetworkConfig>) -> ReliableChannel {
+    pub fn new(ordered: bool, config: Arc<NetworkConfig>) -> ReliableChannel {
         ReliableChannel {
             // settings
             ordered,
@@ -150,7 +150,12 @@ impl Channel for ReliableChannel {
         if payload_length <= self.config.fragment_size {
             packet_data.add_fragment(&buffer, payload)?;
         } else {
-            Fragmentation::spit_into_fragments(payload, header, &mut packet_data, &self.config)?;
+            Fragmentation::spit_into_fragments(
+                payload,
+                header,
+                &mut packet_data,
+                self.config.clone(),
+            )?;
         }
 
         // increase local sequence number.

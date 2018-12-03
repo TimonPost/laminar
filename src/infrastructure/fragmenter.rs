@@ -15,10 +15,10 @@ pub struct Fragmentation {
 
 impl Fragmentation {
     /// Creates and returns a new Fragmentation
-    pub fn new(config: &Arc<NetworkConfig>) -> Fragmentation {
+    pub fn new(config: Arc<NetworkConfig>) -> Fragmentation {
         Fragmentation {
             fragments: SequenceBuffer::with_capacity(config.fragment_reassembly_buffer_size),
-            config: config.clone(),
+            config,
         }
     }
 
@@ -61,11 +61,11 @@ impl Fragmentation {
     }
 
     /// Split the given payload into fragments and write those fragments to the passed packet data.
-    pub fn spit_into_fragments<'d>(
-        payload: &'d [u8],
+    pub fn spit_into_fragments(
+        payload: &[u8],
         acked_header: AckedPacketHeader,
         packet_data: &mut PacketData,
-        config: &Arc<NetworkConfig>,
+        config: Arc<NetworkConfig>,
     ) -> NetworkResult<()> {
         let payload_length = payload.len() as u16;
         let num_fragments =

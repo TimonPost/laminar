@@ -28,18 +28,18 @@ impl UdpSocket {
     pub fn bind<A: ToSocketAddrs>(addr: A, config: NetworkConfig) -> NetworkResult<Self> {
         let socket = net::UdpSocket::bind(addr)?;
 
-        let config = &Arc::new(config);
+        let config = Arc::new(config);
         let (tx, rx) = mpsc::channel();
 
-        let connection_pool = Arc::new(ConnectionPool::new(config));
+        let connection_pool = Arc::new(ConnectionPool::new(config.clone()));
 
-        let mut timeout_thread = TimeoutThread::new(tx.clone(), &connection_pool);
+        let mut timeout_thread = TimeoutThread::new(tx.clone(), connection_pool.clone());
         let timeout_error_channel = timeout_thread.start()?;
 
         Ok(UdpSocket {
             socket,
             recv_buffer: vec![0; config.receive_buffer_max_size],
-            _config: config.clone(),
+            _config: config,
             link_conditioner: None,
             connections: connection_pool,
             _timeout_thread: timeout_thread,

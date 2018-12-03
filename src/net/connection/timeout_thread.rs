@@ -31,7 +31,7 @@ pub struct TimeoutThread {
 impl TimeoutThread {
     pub fn new(
         events_sender: Sender<Event>,
-        connection_pool: &Arc<ConnectionPool>,
+        connection_pool: Arc<ConnectionPool>,
     ) -> TimeoutThread {
         let poll_interval = Duration::from_secs(TIMEOUT_POLL_INTERVAL);
 
@@ -40,7 +40,7 @@ impl TimeoutThread {
             poll_interval,
             timeout_check_thread: None,
             sender: events_sender,
-            connection_pool: connection_pool.clone(),
+            connection_pool,
         }
     }
 
