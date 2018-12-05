@@ -1,15 +1,13 @@
+extern crate byteorder;
 extern crate laminar;
 #[macro_use]
 extern crate criterion;
 
 use std::sync::Arc;
 
-use self::laminar::net::{NetworkConfig, VirtualConnection};
-use self::laminar::packet::header::{
-    AckedPacketHeader, HeaderParser, HeaderReader, StandardHeader,
-};
-use self::laminar::packet::PacketTypeId;
-use laminar::infrastructure::DeliveryMethod;
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+
+use laminar::{net::VirtualConnection, DeliveryMethod, NetworkConfig, ProtocolVersion};
 
 use self::criterion::Criterion;
 
@@ -60,8 +58,34 @@ fn send_reliable_benchmark(c: &mut Criterion) {
     });
 }
 
-fn process_packet_when_received(connection: &mut VirtualConnection, data: &Vec<u8>) {
-    let packet = connection.process_incoming(&data).unwrap().unwrap();
+fn process_packet_when_received(connection: &mut VirtualConnection, data: &[u8]) {
+    connection.process_incoming(&data).unwrap().unwrap();
+}
+
+/// This is mimicking the `HeaderParser for StandardHeader` implementation which is no longer
+/// visible externally
+fn standard_header_bytes(delivery_method: DeliveryMethod) -> Vec<u8> {
+    let mut buffer = Vec::new();
+    buffer.write_u32::<BigEndian>(ProtocolVersion::get_crc32());
+    // Represents a standard `Packet`
+    buffer.write_u8(0);
+    buffer.write_u8(delivery_method as u8);
+    buffer
+}
+
+/// This is mimicking the `HeaderParser for AckedPacketHeader` implementation which is no longer
+/// visible externally
+fn acked_header_bytes(
+    delivery_method: DeliveryMethod,
+    seq: u16,
+    ack_seq: u16,
+    ack_field: u32,
+) -> Vec<u8> {
+    let mut buffer = standard_header_bytes(delivery_method);
+    buffer.write_u16::<BigEndian>(seq);
+    buffer.write_u16::<BigEndian>(ack_seq);
+    buffer.write_u32::<BigEndian>(ack_field);
+    buffer
 }
 
 fn receive_unreliable_benchmark(c: &mut Criterion) {
@@ -71,11 +95,7 @@ fn receive_unreliable_benchmark(c: &mut Criterion) {
     );
 
     // setup fake received bytes.
-    let packet_header =
-        StandardHeader::new(DeliveryMethod::UnreliableUnordered, PacketTypeId::Packet);
-
-    let mut buffer = Vec::with_capacity(packet_header.size() as usize);
-    packet_header.parse(&mut buffer).unwrap();
+    let mut buffer = standard_header_bytes(DeliveryMethod::UnreliableUnordered);
     buffer.append(&mut vec![1; 500]);
 
     c.bench_function("process unreliable packet on receive", move |b| {
@@ -90,15 +110,7 @@ fn receive_reliable_benchmark(c: &mut Criterion) {
     );
 
     // setup fake received bytes.
-    let packet_header = AckedPacketHeader::new(
-        StandardHeader::new(DeliveryMethod::ReliableUnordered, PacketTypeId::Packet),
-        0,
-        1,
-        2,
-    );
-
-    let mut buffer = Vec::with_capacity(packet_header.size() as usize);
-    packet_header.parse(&mut buffer).unwrap();
+    let mut buffer = acked_header_bytes(DeliveryMethod::ReliableUnordered, 0, 1, 2);
     buffer.append(&mut vec![1; 500]);
 
     c.bench_function("process reliable packet on receive", move |b| {
@@ -110,7 +122,7 @@ criterion_group!(
     benches,
     send_reliable_benchmark,
     send_unreliable_benchmark,
-    receive_reliable_benchmark,
-    receive_unreliable_benchmark
+    receive_unreliable_benchmark,
+    receive_reliable_benchmark
 );
 criterion_main!(benches);
