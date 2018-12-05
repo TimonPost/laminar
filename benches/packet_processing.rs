@@ -30,7 +30,7 @@ fn send_unreliable_benchmark(c: &mut Criterion) {
     let config = NetworkConfig::default();
     let mut connection = VirtualConnection::new(
         SERVER_ADDR.parse().unwrap(),
-        &Arc::new(NetworkConfig::default()),
+        Arc::new(NetworkConfig::default()),
     );
 
     c.bench_function("process unreliable before send", move |b| {
@@ -48,7 +48,7 @@ fn send_reliable_benchmark(c: &mut Criterion) {
     let config = NetworkConfig::default();
     let mut connection = VirtualConnection::new(
         SERVER_ADDR.parse().unwrap(),
-        &Arc::new(NetworkConfig::default()),
+        Arc::new(NetworkConfig::default()),
     );
 
     c.bench_function("process reliable before send", move |b| {
@@ -91,7 +91,7 @@ fn acked_header_bytes(
 fn receive_unreliable_benchmark(c: &mut Criterion) {
     let mut connection = VirtualConnection::new(
         SERVER_ADDR.parse().unwrap(),
-        &Arc::new(NetworkConfig::default()),
+        Arc::new(NetworkConfig::default()),
     );
 
     // setup fake received bytes.
@@ -106,7 +106,7 @@ fn receive_unreliable_benchmark(c: &mut Criterion) {
 fn receive_reliable_benchmark(c: &mut Criterion) {
     let mut connection = VirtualConnection::new(
         SERVER_ADDR.parse().unwrap(),
-        &Arc::new(NetworkConfig::default()),
+        Arc::new(NetworkConfig::default()),
     );
 
     // setup fake received bytes.
