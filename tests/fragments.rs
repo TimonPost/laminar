@@ -1,5 +1,3 @@
-extern crate laminar;
-
 mod common;
 
 use laminar::config::NetworkConfig;
@@ -9,7 +7,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use common::{ClientStub, ServerMoq};
+use crate::common::{ClientStub, ServerMoq};
 
 const TOTAL_PACKETS_TO_SEND: u32 = 10_000;
 const CLIENT_ADDR: &str = "127.0.0.1:12346";

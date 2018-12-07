@@ -1,19 +1,12 @@
-#[macro_use]
-extern crate log;
-extern crate env_logger;
-#[macro_use]
-extern crate clap;
-extern crate laminar;
-extern crate rand;
-
 use std::net::SocketAddr;
 use std::process::exit;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use clap::App;
+use clap::{load_yaml, App};
 
 use laminar::{config, net, DeliveryMethod, Packet};
+use log::{debug, error, info};
 
 fn main() {
     let yaml = load_yaml!("cli.yml");

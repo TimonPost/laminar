@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use net::{NetworkQuality, VirtualConnection};
+use crate::net::{NetworkQuality, VirtualConnection};
 
 /// Events that are generated in response to a change in state of the connected client
 pub enum Event {
@@ -25,8 +25,8 @@ pub enum Event {
 #[cfg(test)]
 mod test {
     use super::Event;
-    use config::NetworkConfig;
-    use net::VirtualConnection;
+    use crate::config::NetworkConfig;
+    use crate::net::VirtualConnection;
     use std::net::ToSocketAddrs;
     use std::sync::{Arc, RwLock};
 

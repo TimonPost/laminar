@@ -1,4 +1,4 @@
-use net::constants::{FRAGMENT_SIZE_DEFAULT, MAX_FRAGMENTS_DEFAULT};
+use crate::net::constants::{FRAGMENT_SIZE_DEFAULT, MAX_FRAGMENTS_DEFAULT};
 use std::default::Default;
 
 #[derive(Clone)]

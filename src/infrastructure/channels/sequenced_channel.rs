@@ -1,8 +1,8 @@
 use super::Channel;
 
-use error::NetworkResult;
-use infrastructure::DeliveryMethod;
-use packet::PacketData;
+use crate::error::NetworkResult;
+use crate::infrastructure::DeliveryMethod;
+use crate::packet::PacketData;
 
 /// This channel should be used for processing packets sequenced.
 ///

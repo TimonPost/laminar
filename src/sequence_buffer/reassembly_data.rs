@@ -1,4 +1,4 @@
-use net::constants::MAX_FRAGMENTS_DEFAULT;
+use crate::net::constants::MAX_FRAGMENTS_DEFAULT;
 
 #[derive(Clone)]
 /// This contains the information required to reassemble fragments.

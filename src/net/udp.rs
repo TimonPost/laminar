@@ -1,13 +1,12 @@
-use net::connection::{ConnectionPool, TimeoutThread};
-use std::net::{self, SocketAddr, ToSocketAddrs};
-
-use config::NetworkConfig;
-use error::{NetworkError, NetworkErrorKind, NetworkResult};
-use events::Event;
-use net::link_conditioner::LinkConditioner;
-use packet::Packet;
+use crate::config::NetworkConfig;
+use crate::error::{NetworkError, NetworkErrorKind, NetworkResult};
+use crate::events::Event;
+use crate::net::connection::{ConnectionPool, TimeoutThread};
+use crate::net::link_conditioner::LinkConditioner;
+use crate::packet::Packet;
 
 use std::error::Error;
+use std::net::{self, SocketAddr, ToSocketAddrs};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
 

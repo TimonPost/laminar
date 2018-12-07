@@ -1,7 +1,7 @@
 use super::{Connection, ConnectionsCollection, VirtualConnection};
-use config::NetworkConfig;
-use error::{NetworkError, NetworkErrorKind, NetworkResult};
-use events::Event;
+use crate::config::NetworkConfig;
+use crate::error::{NetworkError, NetworkErrorKind, NetworkResult};
+use crate::events::Event;
 use log::{error, info};
 use std::collections::HashMap;
 use std::error::Error;
@@ -36,7 +36,8 @@ impl ConnectionPool {
                 Some(connection) => Ok(connection.clone()),
                 None => Err(NetworkErrorKind::ConnectionPoolError(String::from(
                     "Could not get connection from connection pool",
-                )).into()),
+                ))
+                .into()),
             }
         } else {
             drop(lock);
@@ -101,7 +102,8 @@ impl ConnectionPool {
                 return Err(NetworkErrorKind::PoisonedLock(format!(
                     "Error when checking for timed out connections: {:?}",
                     e
-                )).into());
+                ))
+                .into());
             }
         }
 
@@ -124,8 +126,8 @@ mod tests {
     use std::time::Duration;
 
     use super::{Arc, ConnectionPool};
-    use config::NetworkConfig;
-    use events::Event;
+    use crate::config::NetworkConfig;
+    use crate::events::Event;
 
     #[test]
     fn connection_timed_out() {

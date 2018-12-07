@@ -2,9 +2,6 @@
 //! 1. sending data
 //! 2. receiving data
 //! 3. constructing the packet for sending.
-
-extern crate laminar;
-
 use laminar::{config::NetworkConfig, net::UdpSocket, Packet};
 
 use std::net::SocketAddr;

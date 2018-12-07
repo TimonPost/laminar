@@ -21,8 +21,6 @@
 //! # Example
 //!
 //! ```rust
-//! extern crate laminar;
-//!
 //! use laminar::{Packet, net::UdpSocket};
 //! use laminar::config::NetworkConfig;
 //!
@@ -45,14 +43,6 @@
 
 #![warn(missing_docs)]
 
-extern crate byteorder;
-extern crate crc;
-extern crate failure;
-extern crate failure_derive;
-extern crate lazy_static;
-extern crate log;
-extern crate rand;
-
 mod events;
 mod infrastructure;
 mod packet;
@@ -66,8 +56,8 @@ pub mod error;
 /// Networking modules
 pub mod net;
 
-pub use config::NetworkConfig;
-pub use events::Event;
-pub use infrastructure::DeliveryMethod;
-pub use packet::Packet;
-pub use protocol_version::ProtocolVersion;
+pub use self::config::NetworkConfig;
+pub use self::events::Event;
+pub use self::infrastructure::DeliveryMethod;
+pub use self::packet::Packet;
+pub use self::protocol_version::ProtocolVersion;

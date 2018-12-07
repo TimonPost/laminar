@@ -2,12 +2,6 @@
 //! 1. setting up server to receive data.
 //! 2. setting up client to send data.
 //! 3. serialize data to send and deserialize when received.
-
-extern crate bincode;
-extern crate laminar;
-extern crate serde;
-extern crate serde_derive;
-
 use bincode::{deserialize, serialize};
 use laminar::config::NetworkConfig;
 use laminar::{net::UdpSocket, Packet};

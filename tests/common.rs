@@ -1,5 +1,3 @@
-extern crate laminar;
-
 use laminar::{config::NetworkConfig, net::UdpSocket, DeliveryMethod, Packet};
 use std::{
     net::SocketAddr,

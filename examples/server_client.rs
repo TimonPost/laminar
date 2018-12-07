@@ -1,9 +1,6 @@
 //! Note that the terms "client" and "server" here are purely what we logically associate with them.
 //! Technically, they both work the same.
 //! Note that in practice you don't want to implement a chat client using UDP.
-
-extern crate laminar;
-
 use std::io::stdin;
 
 use laminar::{config::NetworkConfig, error::Result, net::UdpSocket, Packet};
