@@ -51,7 +51,9 @@ impl UdpSocket {
 
     /// Receives a single datagram message on the socket. On success, returns the packet containing origin and data.
     pub fn recv(&self) -> NetworkResult<Option<Packet>> {
-        let (len, addr) = self.socket.recv_from(self.recv_buffer.borrow_mut().as_mut())?;
+        let (len, addr) = self
+            .socket
+            .recv_from(self.recv_buffer.borrow_mut().as_mut())?;
 
         if len > 0 {
             let packet = &self.recv_buffer.borrow()[..len];

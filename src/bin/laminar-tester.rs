@@ -71,7 +71,7 @@ fn process_client_subcommand(m: &clap::ArgMatches<'_>) {
 
 fn run_server(socket_addr: &str) {
     let network_config = config::NetworkConfig::default();
-    let mut udp_server = net::UdpSocket::bind(socket_addr, network_config).unwrap();
+    let udp_server = net::UdpSocket::bind(socket_addr, network_config).unwrap();
     let mut packet_throughput = 0;
     let mut packets_total_received = 0;
     let mut second_counter = Instant::now();
