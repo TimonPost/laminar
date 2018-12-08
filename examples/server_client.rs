@@ -11,7 +11,7 @@ use laminar::{config::NetworkConfig, error::Result, net::UdpSocket, Packet};
 const SERVER: &str = "localhost:12351";
 
 fn server() -> Result<()> {
-    let mut socket = UdpSocket::bind(SERVER, NetworkConfig::default())?;
+    let socket = UdpSocket::bind(SERVER, NetworkConfig::default())?;
 
     println!("Listening for connections to {}", SERVER);
 
@@ -42,7 +42,7 @@ fn server() -> Result<()> {
 }
 
 fn client() -> Result<()> {
-    let mut socket = UdpSocket::bind("localhost:12352", NetworkConfig::default())?;
+    let socket = UdpSocket::bind("localhost:12352", NetworkConfig::default())?;
 
     let server = SERVER.parse()?;
 

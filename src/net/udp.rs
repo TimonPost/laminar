@@ -7,6 +7,7 @@ use events::Event;
 use net::link_conditioner::LinkConditioner;
 use packet::Packet;
 
+use std::cell::RefCell;
 use std::error::Error;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
@@ -14,7 +15,7 @@ use std::sync::Arc;
 /// Represents an <ip>:<port> combination listening for UDP traffic
 pub struct UdpSocket {
     socket: net::UdpSocket,
-    recv_buffer: Vec<u8>,
+    recv_buffer: RefCell<Vec<u8>>,
     _config: Arc<NetworkConfig>,
     link_conditioner: Option<LinkConditioner>,
     _timeout_thread: TimeoutThread,
@@ -38,7 +39,7 @@ impl UdpSocket {
 
         Ok(UdpSocket {
             socket,
-            recv_buffer: vec![0; config.receive_buffer_max_size],
+            recv_buffer: RefCell::new(vec![0; config.receive_buffer_max_size]),
             _config: config,
             link_conditioner: None,
             connections: connection_pool,
@@ -49,11 +50,11 @@ impl UdpSocket {
     }
 
     /// Receives a single datagram message on the socket. On success, returns the packet containing origin and data.
-    pub fn recv(&mut self) -> NetworkResult<Option<Packet>> {
-        let (len, addr) = self.socket.recv_from(&mut self.recv_buffer)?;
+    pub fn recv(&self) -> NetworkResult<Option<Packet>> {
+        let (len, addr) = self.socket.recv_from(self.recv_buffer.borrow_mut().as_mut())?;
 
         if len > 0 {
-            let packet = &self.recv_buffer[..len];
+            let packet = &self.recv_buffer.borrow()[..len];
 
             if let Ok(error) = self.timeout_error_channel.try_recv() {
                 // we could recover from error here.
