@@ -6,7 +6,7 @@ rust:
   - nightly
 
 before_script:
-  - rustup component add clippy-preview
+  - rustup component add clippy
   - export PATH=$PATH:/home/travis/.cargo/bin
   - export RUSTFLAGS="-D warnings"
 
@@ -30,8 +30,25 @@ matrix:
   include:
     - rust: stable
       script:
-        - rustup component add rustfmt-preview
+        - rustup component add rustfmt
         - cargo fmt -- --check
+  include:
+    - rust: stable
+      script: |
+        wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
+        tar xzf master.tar.gz &&
+        cd kcov-master &&
+        mkdir build &&
+        cd build &&
+        cmake .. &&
+        make &&
+        make install DESTDIR=../../kcov-build &&
+        cd ../.. &&
+        rm -rf kcov-master &&
+        for file in target/debug/laminar-*[^\.d]; do mkdir -p "target/cov/$(basename $file)"; ./kcov-build/usr/local/bin/kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file"; done &&
+        bash <(curl -s https://codecov.io/bash) &&
+        echo "Uploaded code coverage"
+
 
 addons:
   apt:
@@ -47,19 +64,3 @@ addons:
 script:
   - cargo clippy --all --all-features -- -D warnings
   - cargo test --verbose --all --all-features
-
-after_success: |
-  wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
-  tar xzf master.tar.gz &&
-  cd kcov-master &&
-  mkdir build &&
-  cd build &&
-  cmake .. &&
-  make &&
-  make install DESTDIR=../../kcov-build &&
-  cd ../.. &&
-  rm -rf kcov-master &&
-  for file in target/debug/laminar-*[^\.d]; do mkdir -p "target/cov/$(basename $file)"; ./kcov-build/usr/local/bin/kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file"; done &&
-  bash <(curl -s https://codecov.io/bash) &&
-  echo "Uploaded code coverage"
-
