@@ -9,12 +9,12 @@ use packet::Packet;
 
 use std::error::Error;
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex};
 
 /// Represents an <ip>:<port> combination listening for UDP traffic
 pub struct UdpSocket {
     socket: net::UdpSocket,
-    recv_buffer: RwLock<Vec<u8>>,
+    recv_buffer: Mutex<Vec<u8>>,
     _config: Arc<NetworkConfig>,
     link_conditioner: Option<LinkConditioner>,
     _timeout_thread: TimeoutThread,
@@ -38,7 +38,7 @@ impl UdpSocket {
 
         Ok(UdpSocket {
             socket,
-            recv_buffer: RwLock::new(vec![0; config.receive_buffer_max_size]),
+            recv_buffer: Mutex::new(vec![0; config.receive_buffer_max_size]),
             _config: config,
             link_conditioner: None,
             connections: connection_pool,
@@ -50,18 +50,15 @@ impl UdpSocket {
 
     /// Receives a single datagram message on the socket. On success, returns the packet containing origin and data.
     pub fn recv(&self) -> NetworkResult<Option<Packet>> {
-        let (len, addr) = self.socket.recv_from(
-            self.recv_buffer
-                .write()
-                .as_mut()
-                .map_err(|error| NetworkError::poisoned_lock(error.description()))?,
-        )?;
+        let mut buffer = self
+            .recv_buffer
+            .lock()
+            .map_err(|error| NetworkError::poisoned_lock(error.description()))?;
+
+        let (len, addr) = self.socket.recv_from(&mut buffer)?;
 
         if len > 0 {
-            let packet = &self
-                .recv_buffer
-                .read()
-                .map_err(|error| NetworkError::poisoned_lock(error.description()))?[..len];
+            let packet = &buffer[..len];
 
             if let Ok(error) = self.timeout_error_channel.try_recv() {
                 // we could recover from error here.
