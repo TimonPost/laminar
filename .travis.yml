@@ -35,7 +35,7 @@ matrix:
   include:
     - rust: stable
       script:
-        - cargo build --all
+        - cargo test --verbose --all --all-features
         - ./ci/coverage.sh
 
 
