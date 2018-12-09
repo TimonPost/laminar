@@ -58,7 +58,10 @@ impl UdpSocket {
         )?;
 
         if len > 0 {
-            let packet = &self.recv_buffer.read()?[..len];
+            let packet = &self
+                .recv_buffer
+                .read()
+                .map_err(|error| NetworkError::poisoned_lock(error.description()))?[..len];
 
             if let Ok(error) = self.timeout_error_channel.try_recv() {
                 // we could recover from error here.
