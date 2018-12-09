@@ -100,7 +100,12 @@ impl NetworkError {
         self.inner.get_context()
     }
 
-    /// Generate an `NetworkErrorKind` for poisoned connection.
+    /// Generate a `NetworkErrorKind` for a poisoned lock on the receive buffer
+    pub fn poisoned_lock(msg: &str) -> NetworkErrorKind {
+        NetworkErrorKind::PoisonedLock(msg.to_owned())
+    }
+
+    /// Generate a `NetworkErrorKind` for poisoned connection.
     pub fn poisoned_connection_error(msg: &str) -> NetworkErrorKind {
         NetworkErrorKind::FailedToAddConnection(msg.to_owned())
     }
