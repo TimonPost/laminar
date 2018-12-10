@@ -21,21 +21,21 @@ autobenches = false
 travis-ci = { repository = "amethyst/laminar", branch = "master" }
 
 [dependencies]
-serde = "1.0"
-serde_derive = "1.0"
-bincode = "1.0"
-byteorder = "1.2.6"
-log = "0.4"
+byteorder = "1.2"
+crc = "1.8"
 failure = "0.1"
 failure_derive = "0.1"
-crc = "1.8"
-lazy_static = "1.1.0"
+lazy_static = "1.1"
+log = "0.4"
 rand = "0.5"
 clap = { version = "2.32", features = ["yaml"], optional = true }
-env_logger = { version = "0.5.13", optional = true }
+env_logger = { version = "0.5", optional = true }
 
 [dev-dependencies]
+bincode = "1.0"
 criterion = "0.2"
+serde = "1.0"
+serde_derive = "1.0"
 
 [features]
 tester = [
