@@ -1,7 +1,7 @@
 use crc::crc32;
 use lazy_static::lazy_static;
 
-pub use net::constants::PROTOCOL_VERSION;
+pub use crate::net::constants::PROTOCOL_VERSION;
 
 lazy_static! {
     // The CRC32 of the current protocol version.
@@ -34,7 +34,7 @@ impl ProtocolVersion {
 #[cfg(test)]
 mod test {
     use super::*;
-    use net::constants::PROTOCOL_VERSION;
+    use crate::net::constants::PROTOCOL_VERSION;
 
     #[test]
     fn valid_version() {

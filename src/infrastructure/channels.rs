@@ -4,9 +4,9 @@ mod reliable_channel;
 mod sequenced_channel;
 mod unreliable_channel;
 
-use error::NetworkResult;
-use infrastructure::DeliveryMethod;
-use packet::PacketData;
+use crate::error::NetworkResult;
+use crate::infrastructure::DeliveryMethod;
+use crate::packet::PacketData;
 
 pub use self::reliable_channel::ReliableChannel;
 pub use self::sequenced_channel::SequencedChannel;

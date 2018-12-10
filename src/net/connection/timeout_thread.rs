@@ -1,6 +1,6 @@
 use super::ConnectionPool;
-use error::{NetworkError, NetworkErrorKind, NetworkResult};
-use events::Event;
+use crate::error::{NetworkError, NetworkErrorKind, NetworkResult};
+use crate::events::Event;
 use log::error;
 
 use std::sync::atomic::{AtomicBool, Ordering};

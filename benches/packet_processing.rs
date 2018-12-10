@@ -1,27 +1,22 @@
-extern crate byteorder;
-extern crate laminar;
-#[macro_use]
-extern crate criterion;
-
 use std::sync::Arc;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 use laminar::{net::VirtualConnection, DeliveryMethod, NetworkConfig, ProtocolVersion};
 
-use self::criterion::Criterion;
+use criterion::{criterion_group, criterion_main, Criterion};
 
 const SERVER_ADDR: &str = "127.0.0.1:12345";
 const CLIENT_ADDR: &str = "127.0.0.1:12346";
 
 fn process_packet_before_send(
     connection: &mut VirtualConnection,
-    config: &NetworkConfig,
+    _config: &NetworkConfig,
     delivery_method: DeliveryMethod,
 ) {
     let payload = vec![1, 2, 3, 4, 5];
 
-    let packet_data = connection
+    let _packet_data = connection
         .process_outgoing(&payload, delivery_method)
         .unwrap();
 }

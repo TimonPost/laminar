@@ -1,9 +1,9 @@
 use super::{HeaderParser, HeaderReader};
+use crate::error::NetworkResult;
+use crate::net::constants::HEART_BEAT_HEADER_SIZE;
+use crate::packet::PacketTypeId;
+use crate::protocol_version::ProtocolVersion;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use error::NetworkResult;
-use net::constants::HEART_BEAT_HEADER_SIZE;
-use packet::PacketTypeId;
-use protocol_version::ProtocolVersion;
 use std::io::Cursor;
 
 #[derive(Copy, Clone, Debug)]

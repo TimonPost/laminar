@@ -1,10 +1,10 @@
 use super::{HeaderParser, HeaderReader};
+use crate::error::NetworkResult;
+use crate::infrastructure::DeliveryMethod;
+use crate::net::constants::STANDARD_HEADER_SIZE;
+use crate::packet::PacketTypeId;
+use crate::protocol_version::ProtocolVersion;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use error::NetworkResult;
-use infrastructure::DeliveryMethod;
-use net::constants::STANDARD_HEADER_SIZE;
-use packet::PacketTypeId;
-use protocol_version::ProtocolVersion;
 use std::io::Cursor;
 
 #[derive(Copy, Clone, Debug)]
@@ -72,10 +72,10 @@ impl HeaderReader for StandardHeader {
 
 #[cfg(test)]
 mod tests {
-    use infrastructure::DeliveryMethod;
-    use packet::header::{HeaderParser, HeaderReader, StandardHeader};
-    use packet::PacketTypeId;
-    use protocol_version::ProtocolVersion;
+    use crate::infrastructure::DeliveryMethod;
+    use crate::packet::header::{HeaderParser, HeaderReader, StandardHeader};
+    use crate::packet::PacketTypeId;
+    use crate::protocol_version::ProtocolVersion;
     use std::io::Cursor;
 
     #[test]

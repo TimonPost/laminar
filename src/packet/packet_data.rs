@@ -1,4 +1,4 @@
-use error::NetworkResult;
+use crate::error::NetworkResult;
 use std::io::Write;
 
 /// Contains the raw data this packet exists of. Note that a packet can be divided into separate fragments
@@ -38,7 +38,7 @@ impl PacketData {
 #[cfg(test)]
 mod tests {
     use super::PacketData;
-    use packet::header::{AckedPacketHeader, HeaderParser, HeaderReader, StandardHeader};
+    use crate::packet::header::{AckedPacketHeader, HeaderParser, HeaderReader, StandardHeader};
 
     #[test]
     fn add_ang_get_parts() {

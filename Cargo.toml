@@ -16,6 +16,7 @@ license = "MIT/Apache-2.0"
 
 repository = "https://github.com/amethyst/laminar"
 autobenches = false
+edition = "2018"
 
 [badges]
 travis-ci = { repository = "amethyst/laminar", branch = "master" }

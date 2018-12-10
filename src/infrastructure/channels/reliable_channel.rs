@@ -1,12 +1,12 @@
 use super::Channel;
 
-use config::NetworkConfig;
-use error::{NetworkResult, PacketErrorKind};
-use infrastructure::{DeliveryMethod, Fragmentation};
-use net::{ExternalAcks, LocalAckRecord, NetworkQuality, RttMeasurer};
-use packet::header::{AckedPacketHeader, HeaderParser, HeaderReader, StandardHeader};
-use packet::{PacketData, PacketTypeId};
-use sequence_buffer::{CongestionData, SequenceBuffer};
+use crate::config::NetworkConfig;
+use crate::error::{NetworkResult, PacketErrorKind};
+use crate::infrastructure::{DeliveryMethod, Fragmentation};
+use crate::net::{ExternalAcks, LocalAckRecord, NetworkQuality, RttMeasurer};
+use crate::packet::header::{AckedPacketHeader, HeaderParser, HeaderReader, StandardHeader};
+use crate::packet::{PacketData, PacketTypeId};
+use crate::sequence_buffer::{CongestionData, SequenceBuffer};
 
 use log::error;
 use std::io::Cursor;

@@ -1,8 +1,8 @@
-use config::NetworkConfig;
-use error::{FragmentErrorKind, NetworkResult};
-use packet::header::{AckedPacketHeader, FragmentHeader, HeaderParser, HeaderReader};
-use packet::PacketData;
-use sequence_buffer::{ReassemblyData, SequenceBuffer};
+use crate::config::NetworkConfig;
+use crate::error::{FragmentErrorKind, NetworkResult};
+use crate::packet::header::{AckedPacketHeader, FragmentHeader, HeaderParser, HeaderReader};
+use crate::packet::PacketData;
+use crate::sequence_buffer::{ReassemblyData, SequenceBuffer};
 
 use std::io::{Cursor, Read, Write};
 use std::sync::Arc;

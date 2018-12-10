@@ -1,5 +1,3 @@
-extern crate laminar;
-
 mod common;
 
 use std::sync::mpsc;
@@ -8,7 +6,7 @@ use std::time::{Duration, Instant};
 use laminar::config::NetworkConfig;
 use laminar::DeliveryMethod;
 
-use common::{ClientStub, ServerMoq};
+use crate::common::{ClientStub, ServerMoq};
 
 const TOTAL_PACKETS_TO_SEND: u32 = 500;
 const SERVER_ADDR: &str = "127.0.0.1:12345";

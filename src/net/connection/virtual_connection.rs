@@ -1,12 +1,12 @@
-use config::NetworkConfig;
-use error::{NetworkErrorKind, NetworkResult};
-use infrastructure::{
+use crate::config::NetworkConfig;
+use crate::error::{NetworkErrorKind, NetworkResult};
+use crate::infrastructure::{
     Channel, DeliveryMethod, Fragmentation, ReliableChannel, SequencedChannel, UnreliableChannel,
 };
-use packet::header::HeaderReader;
-use packet::header::StandardHeader;
-use packet::{Packet, PacketData, PacketTypeId};
-use protocol_version::ProtocolVersion;
+use crate::packet::header::HeaderReader;
+use crate::packet::header::StandardHeader;
+use crate::packet::{Packet, PacketData, PacketTypeId};
+use crate::protocol_version::ProtocolVersion;
 
 use log::error;
 use std::fmt;
@@ -154,9 +154,9 @@ impl fmt::Debug for VirtualConnection {
 
 #[cfg(test)]
 mod tests {
-    use config::NetworkConfig;
-    use infrastructure::DeliveryMethod;
-    use net::connection::VirtualConnection;
+    use crate::config::NetworkConfig;
+    use crate::infrastructure::DeliveryMethod;
+    use crate::net::connection::VirtualConnection;
     use std::sync::Arc;
 
     const SERVER_ADDR: &str = "127.0.0.1:12345";

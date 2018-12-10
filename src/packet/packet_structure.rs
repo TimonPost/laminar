@@ -1,4 +1,4 @@
-use infrastructure::DeliveryMethod;
+use crate::infrastructure::DeliveryMethod;
 use std::net::SocketAddr;
 
 #[derive(Clone, PartialEq, Eq, Debug)]

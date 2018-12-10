@@ -1,10 +1,10 @@
 use super::Channel;
 
-use error::NetworkResult;
-use infrastructure::DeliveryMethod;
-use net::constants::STANDARD_HEADER_SIZE;
-use packet::header::{HeaderParser, HeaderReader, StandardHeader};
-use packet::{PacketData, PacketTypeId};
+use crate::error::NetworkResult;
+use crate::infrastructure::DeliveryMethod;
+use crate::net::constants::STANDARD_HEADER_SIZE;
+use crate::packet::header::{HeaderParser, HeaderReader, StandardHeader};
+use crate::packet::{PacketData, PacketTypeId};
 
 /// This channel should be used for unreliable processing of packets.
 ///

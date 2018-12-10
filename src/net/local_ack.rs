@@ -60,7 +60,7 @@ impl LocalAckRecord {
 
 #[cfg(test)]
 mod test {
-    use net::LocalAckRecord;
+    use crate::net::LocalAckRecord;
 
     #[test]
     fn acking_single_packet() {

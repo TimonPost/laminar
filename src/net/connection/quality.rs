@@ -1,5 +1,5 @@
-use config::NetworkConfig;
-use sequence_buffer::CongestionData;
+use crate::config::NetworkConfig;
+use crate::sequence_buffer::CongestionData;
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -70,8 +70,8 @@ impl RttMeasurer {
 #[cfg(test)]
 mod test {
     use super::RttMeasurer;
-    use config::NetworkConfig;
-    use net::connection::VirtualConnection;
+    use crate::config::NetworkConfig;
+    use crate::net::connection::VirtualConnection;
     use std::net::ToSocketAddrs;
     use std::sync::Arc;
     use std::time::Duration;

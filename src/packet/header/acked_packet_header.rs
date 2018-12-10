@@ -1,8 +1,8 @@
 use super::{HeaderParser, HeaderReader};
+use crate::error::NetworkResult;
+use crate::net::constants::ACKED_PACKET_HEADER;
+use crate::packet::header::StandardHeader;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use error::NetworkResult;
-use net::constants::ACKED_PACKET_HEADER;
-use packet::header::StandardHeader;
 use std::io::Cursor;
 
 #[derive(Copy, Clone, Debug)]
@@ -89,7 +89,7 @@ impl HeaderReader for AckedPacketHeader {
 
 #[cfg(test)]
 mod tests {
-    use packet::header::{AckedPacketHeader, HeaderParser, HeaderReader, StandardHeader};
+    use crate::packet::header::{AckedPacketHeader, HeaderParser, HeaderReader, StandardHeader};
     use std::io::Cursor;
 
     #[test]
