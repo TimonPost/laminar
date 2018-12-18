@@ -19,8 +19,9 @@ Some of the most helpful ones have been:
 - You must provide comments for public API
 - No hard-coded values
 - No panics nor unwraps in non-test code
-- `rustfmt` stable release must be used
-- `rustfmt` should be done as its own PR, to avoid generating giant PRs that are impossible to review
+- `rustfmt` stable release must be used when a PR is merged. If `rustfmt` complains it can not be merged.
+- `clippy`  will be used when merging a PR if clippy complains it can not be merged.
+- All tests must pass, with failing test the PR can not be merged.
 - We make use of the [forking workflow](https://nl.atlassian.com/git/tutorials/comparing-workflows/forking-workflow)
 
 ## Code style
