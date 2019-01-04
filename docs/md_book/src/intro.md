@@ -24,5 +24,5 @@ We are always happy to welcome new contributors!
 
 If you want to contribute, or have questions, let us know either on [GitHub][db], or on [Discord][di].
 
-[di]: https://discord.gg/GnP5Whs
+[di]: https://discord.gg/amethyst
 [db]: https://github.com/amethyst/laminar/
