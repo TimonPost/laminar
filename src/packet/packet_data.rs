@@ -38,7 +38,7 @@ impl PacketData {
 #[cfg(test)]
 mod tests {
     use super::PacketData;
-    use crate::packet::header::{AckedPacketHeader, HeaderParser, HeaderReader, StandardHeader};
+    use crate::packet::header::{AckedPacketHeader, HeaderWriter, HeaderReader, StandardHeader};
 
     #[test]
     fn add_ang_get_parts() {

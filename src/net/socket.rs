@@ -11,7 +11,7 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
 
 /// Represents an <ip>:<port> combination listening for UDP traffic
-pub struct UdpSocket {
+pub struct LaminarSocket {
     socket: net::UdpSocket,
     recv_buffer: Vec<u8>,
     _config: Arc<NetworkConfig>,
@@ -22,7 +22,7 @@ pub struct UdpSocket {
     connections: Arc<ConnectionPool>,
 }
 
-impl UdpSocket {
+impl LaminarSocket {
     /// Binds to the socket and then sets up the SocketState to manage the connections. Because UDP connections are not persistent, we can only infer the status of the remote endpoint by looking to see if they are sending packets or not
     pub fn bind<A: ToSocketAddrs>(addr: A, config: NetworkConfig) -> NetworkResult<Self> {
         let socket = net::UdpSocket::bind(addr)?;
@@ -35,7 +35,7 @@ impl UdpSocket {
         let mut timeout_thread = TimeoutThread::new(tx.clone(), connection_pool.clone());
         let timeout_error_channel = timeout_thread.start()?;
 
-        Ok(UdpSocket {
+        Ok(LaminarSocket {
             socket,
             recv_buffer: vec![0; config.receive_buffer_max_size],
             _config: config,

@@ -2,7 +2,7 @@
 //! 1. sending data
 //! 2. receiving data
 //! 3. constructing the packet for sending.
-use laminar::{config::NetworkConfig, net::UdpSocket, Packet};
+use laminar::{config::NetworkConfig, net::LaminarSocket, Packet};
 
 use std::net::SocketAddr;
 
@@ -25,7 +25,7 @@ pub fn send_data() {
     let config = NetworkConfig::default();
 
     // setup an udp socket and bind it to the client address.
-    let udp_socket = UdpSocket::bind(client_address(), config).unwrap();
+    let udp_socket = LaminarSocket::bind(client_address(), config).unwrap();
 
     let packet = construct_packet();
 
@@ -39,7 +39,7 @@ pub fn receive_data_with_blocking() {
     let config = NetworkConfig::default();
 
     // setup an udp socket and bind it to the client address.
-    let mut udp_socket: UdpSocket = UdpSocket::bind(server_address(), config).unwrap();
+    let mut udp_socket: LaminarSocket = LaminarSocket::bind(server_address(), config).unwrap();
 
     // next we could specify if or socket should block the current thread when receiving data or not (default = false)
     udp_socket.set_nonblocking(false).unwrap();
@@ -75,7 +75,7 @@ pub fn receive_data_without_blocking() {
     let config = NetworkConfig::default();
 
     // setup an udp socket and bind it to the client address.
-    let mut udp_socket: UdpSocket = UdpSocket::bind(client_address(), config).unwrap();
+    let mut udp_socket: LaminarSocket = LaminarSocket::bind(client_address(), config).unwrap();
 
     // next we could specify if or socket should block the current thread when receiving data or not (default = false)
     udp_socket.set_nonblocking(false).unwrap();

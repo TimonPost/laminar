@@ -1,4 +1,4 @@
-use super::{HeaderParser, HeaderReader};
+use super::{HeaderWriter, HeaderReader};
 use crate::error::NetworkResult;
 use crate::infrastructure::DeliveryMethod;
 use crate::net::constants::STANDARD_HEADER_SIZE;
@@ -35,10 +35,10 @@ impl Default for StandardHeader {
     }
 }
 
-impl HeaderParser for StandardHeader {
+impl HeaderWriter for StandardHeader {
     type Output = NetworkResult<()>;
 
-    fn parse(&self, buffer: &mut Vec<u8>) -> <Self as HeaderParser>::Output {
+    fn parse(&self, buffer: &mut Vec<u8>) -> <Self as HeaderWriter>::Output {
         buffer.write_u32::<BigEndian>(self.protocol_version)?;
         buffer.write_u8(PacketTypeId::get_id(self.packet_type_id))?;
         buffer.write_u8(DeliveryMethod::get_delivery_method_id(self.delivery_method))?;
@@ -73,7 +73,7 @@ impl HeaderReader for StandardHeader {
 #[cfg(test)]
 mod tests {
     use crate::infrastructure::DeliveryMethod;
-    use crate::packet::header::{HeaderParser, HeaderReader, StandardHeader};
+    use crate::packet::header::{HeaderWriter, HeaderReader, StandardHeader};
     use crate::packet::PacketTypeId;
     use crate::protocol_version::ProtocolVersion;
     use std::io::Cursor;

@@ -1,5 +1,5 @@
-/// Trait for parsing a header
-pub trait HeaderParser {
+/// Trait for writing a header
+pub trait HeaderWriter {
     /// Associated type since we parse the header into an Output
     type Output;
 

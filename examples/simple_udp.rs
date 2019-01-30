@@ -4,7 +4,7 @@
 //! 3. serialize data to send and deserialize when received.
 use bincode::{deserialize, serialize};
 use laminar::config::NetworkConfig;
-use laminar::{net::UdpSocket, Packet};
+use laminar::{net::LaminarSocket, Packet};
 use serde_derive::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::{thread, time};
@@ -73,7 +73,7 @@ enum DataType {
 
 /// This is an test server we use to receive data from clients.
 struct Server {
-    udp_socket: UdpSocket,
+    udp_socket: LaminarSocket,
 }
 
 impl Server {
@@ -83,7 +83,7 @@ impl Server {
         let config = NetworkConfig::default();
 
         // setup an udp socket and bind it to the client address.
-        let mut udp_socket: UdpSocket = UdpSocket::bind(server_address(), config).unwrap();
+        let mut udp_socket: LaminarSocket = LaminarSocket::bind(server_address(), config).unwrap();
 
         // next we could specify if or socket should block the current thread when receiving data or not (default = false)
         udp_socket.set_nonblocking(false);
@@ -136,7 +136,7 @@ impl Server {
 
 /// This is an test client to send data to the server.
 struct Client {
-    udp_socket: UdpSocket,
+    udp_socket: LaminarSocket,
 }
 
 impl Client {
@@ -146,7 +146,7 @@ impl Client {
         let config = NetworkConfig::default();
 
         // setup an udp socket and bind it to the client address.
-        let mut udp_socket = UdpSocket::bind(client_address(), config).unwrap();
+        let mut udp_socket = LaminarSocket::bind(client_address(), config).unwrap();
 
         // next we could specify if or socket should block the current thread when receiving data or not (default = false)
 

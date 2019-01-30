@@ -3,12 +3,12 @@
 //! Note that in practice you don't want to implement a chat client using UDP.
 use std::io::stdin;
 
-use laminar::{config::NetworkConfig, error::Result, net::UdpSocket, Packet};
+use laminar::{config::NetworkConfig, error::Result, net::LaminarSocket, Packet};
 
 const SERVER: &str = "localhost:12351";
 
 fn server() -> Result<()> {
-    let mut socket = UdpSocket::bind(SERVER, NetworkConfig::default())?;
+    let mut socket = LaminarSocket::bind(SERVER, NetworkConfig::default())?;
 
     println!("Listening for connections to {}", SERVER);
 
@@ -39,7 +39,7 @@ fn server() -> Result<()> {
 }
 
 fn client() -> Result<()> {
-    let mut socket = UdpSocket::bind("localhost:12352", NetworkConfig::default())?;
+    let mut socket = LaminarSocket::bind("localhost:12352", NetworkConfig::default())?;
 
     let server = SERVER.parse()?;
 

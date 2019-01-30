@@ -4,7 +4,7 @@ use crate::config::NetworkConfig;
 use crate::error::{NetworkResult, PacketErrorKind};
 use crate::infrastructure::{DeliveryMethod, Fragmentation};
 use crate::net::{ExternalAcks, LocalAckRecord, NetworkQuality, RttMeasurer};
-use crate::packet::header::{AckedPacketHeader, HeaderParser, HeaderReader, StandardHeader};
+use crate::packet::header::{AckedPacketHeader, HeaderWriter, HeaderReader, StandardHeader};
 use crate::packet::{PacketData, PacketTypeId};
 use crate::sequence_buffer::{CongestionData, SequenceBuffer};
 

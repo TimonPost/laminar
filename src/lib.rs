@@ -21,7 +21,7 @@
 //! # Example
 //!
 //! ```rust
-//! use laminar::{Packet, net::UdpSocket};
+//! use laminar::{Packet, net::LaminarSocket};
 //! use laminar::config::NetworkConfig;
 //!
 //! use std::net::Ipv4Addr;
@@ -29,7 +29,7 @@
 //! fn main() {
 //!   let addr = "127.0.0.1:12345".parse().unwrap();
 //!
-//!   let mut socket = UdpSocket::bind(addr, NetworkConfig::default()).unwrap();
+//!   let mut socket = LaminarSocket::bind(addr, NetworkConfig::default()).unwrap();
 //!
 //!   let data = "example data".as_bytes();
 //!   let packet: Packet = Packet::reliable_unordered(addr, data.to_vec());

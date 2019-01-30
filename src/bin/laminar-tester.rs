@@ -69,7 +69,7 @@ fn process_client_subcommand(m: &clap::ArgMatches<'_>) {
 
 fn run_server(socket_addr: &str) {
     let network_config = config::NetworkConfig::default();
-    let mut udp_server = net::UdpSocket::bind(socket_addr, network_config).unwrap();
+    let mut udp_server = net::LaminarSocket::bind(socket_addr, network_config).unwrap();
     let mut packet_throughput = 0;
     let mut packets_total_received = 0;
     let mut second_counter = Instant::now();
@@ -96,7 +96,7 @@ fn run_server(socket_addr: &str) {
 
 fn run_client(test_name: &str, destination: &str, endpoint: &str, pps: &str, test_duration: &str) {
     let network_config = config::NetworkConfig::default();
-    let mut client = match net::UdpSocket::bind(endpoint, network_config.clone()) {
+    let mut client = match net::LaminarSocket::bind(endpoint, network_config.clone()) {
         Ok(c) => c,
         Err(e) => {
             error!("Error binding was: {:?}", e);
@@ -122,7 +122,7 @@ fn run_client(test_name: &str, destination: &str, endpoint: &str, pps: &str, tes
 }
 
 // Basic test where the client sends packets at a steady rate to the server
-fn test_steady_stream(client: &mut net::UdpSocket, target: &str, pps: &str, test_duration: &str) {
+fn test_steady_stream(client: &mut net::LaminarSocket, target: &str, pps: &str, test_duration: &str) {
     info!("Beginning steady-state test");
     let data_to_send = String::from("steady-state test packet");
     let server_addr: SocketAddr = target.to_socket_addrs().unwrap().next().unwrap();

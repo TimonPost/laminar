@@ -1,4 +1,4 @@
-use laminar::{config::NetworkConfig, net::UdpSocket, DeliveryMethod, Packet};
+use laminar::{config::NetworkConfig, net::LaminarSocket, DeliveryMethod, Packet};
 use std::{
     net::SocketAddr,
     sync::mpsc::Receiver,
@@ -27,7 +27,7 @@ impl ServerMoq {
         cancellation_channel: Receiver<bool>,
         expected_payload: Vec<u8>,
     ) -> JoinHandle<u32> {
-        let mut udp_socket: UdpSocket = UdpSocket::bind(self.host, self.config.clone()).unwrap();
+        let mut udp_socket: LaminarSocket = LaminarSocket::bind(self.host, self.config.clone()).unwrap();
         udp_socket.set_nonblocking(self.non_blocking).unwrap();
 
         let mut packet_throughput = 0;
@@ -73,7 +73,7 @@ impl ServerMoq {
         let data_to_send = data;
         let config = self.config.clone();
         thread::spawn(move || {
-            let mut client = UdpSocket::bind(client_stub.endpoint, config.clone()).unwrap();
+            let mut client = LaminarSocket::bind(client_stub.endpoint, config.clone()).unwrap();
             let _result = client.set_nonblocking(true);
 
             let len = data_to_send.len();
