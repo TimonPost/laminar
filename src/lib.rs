@@ -47,7 +47,6 @@
 
 #![warn(missing_docs)]
 
-mod events;
 mod infrastructure;
 mod packet;
 mod protocol_version;
@@ -61,7 +60,7 @@ pub mod error;
 pub mod net;
 
 pub use self::config::NetworkConfig;
-pub use self::net::SocketEvent;
 pub use self::infrastructure::DeliveryMethod;
+pub use self::net::SocketEvent;
 pub use self::packet::Packet;
 pub use self::protocol_version::ProtocolVersion;

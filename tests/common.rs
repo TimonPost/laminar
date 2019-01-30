@@ -14,10 +14,7 @@ pub struct ServerMoq {
 
 impl ServerMoq {
     pub fn new(config: NetworkConfig, host: SocketAddr) -> Self {
-        ServerMoq {
-            config,
-            host,
-        }
+        ServerMoq { config, host }
     }
 
     pub fn start_receiving(
@@ -74,7 +71,7 @@ impl ServerMoq {
         let data_to_send = data;
         let config = self.config.clone();
         thread::spawn(move || {
-            let (mut client, packet_sender, event_receiver) =
+            let (mut client, packet_sender, _event_receiver) =
                 LaminarSocket::bind(client_stub.endpoint, config.clone()).unwrap();
             let _thread = thread::spawn(move || client.start_polling());
 
