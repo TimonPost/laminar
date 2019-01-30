@@ -12,3 +12,4 @@ pub use self::connection::{NetworkQuality, RttMeasurer, VirtualConnection};
 pub use self::external_ack::ExternalAcks;
 pub use self::local_ack::LocalAckRecord;
 pub use self::socket::LaminarSocket;
+pub use self::events::SocketEvent;

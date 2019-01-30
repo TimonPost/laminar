@@ -23,7 +23,7 @@ pub fn fragment_packet_integration_test() {
 
     let test_data = vec![1; 4000];
 
-    let mut server = ServerMoq::new(NetworkConfig::default(), true, SERVER_ADDR.parse().unwrap());
+    let mut server = ServerMoq::new(NetworkConfig::default(), SERVER_ADDR.parse().unwrap());
     let server_thread = server.start_receiving(rx, test_data.clone());
 
     let client = ClientStub::new(

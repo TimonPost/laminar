@@ -1,4 +1,4 @@
-use super::{HeaderWriter, HeaderReader};
+use super::{HeaderReader, HeaderWriter};
 use crate::error::NetworkResult;
 use crate::infrastructure::DeliveryMethod;
 use crate::net::constants::STANDARD_HEADER_SIZE;
@@ -73,7 +73,7 @@ impl HeaderReader for StandardHeader {
 #[cfg(test)]
 mod tests {
     use crate::infrastructure::DeliveryMethod;
-    use crate::packet::header::{HeaderWriter, HeaderReader, StandardHeader};
+    use crate::packet::header::{HeaderReader, HeaderWriter, StandardHeader};
     use crate::packet::PacketTypeId;
     use crate::protocol_version::ProtocolVersion;
     use std::io::Cursor;

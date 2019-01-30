@@ -1,4 +1,4 @@
-use super::{AckedPacketHeader, HeaderWriter, HeaderReader, StandardHeader};
+use super::{AckedPacketHeader, HeaderReader, HeaderWriter, StandardHeader};
 use crate::error::{FragmentErrorKind, NetworkResult};
 use crate::net::constants::FRAGMENT_HEADER_SIZE;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
@@ -121,7 +121,7 @@ impl HeaderReader for FragmentHeader {
 mod tests {
     use crate::infrastructure::DeliveryMethod;
     use crate::packet::header::{
-        AckedPacketHeader, FragmentHeader, HeaderWriter, HeaderReader, StandardHeader,
+        AckedPacketHeader, FragmentHeader, HeaderReader, HeaderWriter, StandardHeader,
     };
     use crate::packet::PacketTypeId;
     use std::io::Cursor;

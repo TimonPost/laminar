@@ -1,9 +1,11 @@
 use crate::net::constants::{FRAGMENT_SIZE_DEFAULT, MAX_FRAGMENTS_DEFAULT};
-use std::default::Default;
+use std::{default::Default, time::Duration};
 
 #[derive(Clone)]
 /// Struct that contains config values for various aspects of the network
 pub struct NetworkConfig {
+    /// The maximal amount of time to keep `VirtualConnection`s around before cleaning them up.
+    pub idle_connection_timeout: Duration,
     /// This is the maximal size a packet can get with all its fragments.
     ///
     /// Recommended value: 16384
@@ -35,11 +37,16 @@ pub struct NetworkConfig {
     /// Recommend value: 250 ms
     /// Value is represented in milliseconds.
     pub rtt_max_value: u16,
+    /// This is the size of the event buffer we read socket events (from `mio::Poll`) into.
+    pub socket_event_buffer_size: usize,
+    /// Optional duration specifying how long we should block polling for socket events.
+    pub socket_polling_timeout: Option<Duration>,
 }
 
 impl Default for NetworkConfig {
     fn default() -> Self {
         Self {
+            idle_connection_timeout: Duration::from_secs(5),
             max_packet_size: (MAX_FRAGMENTS_DEFAULT * FRAGMENT_SIZE_DEFAULT) as usize,
             max_fragments: MAX_FRAGMENTS_DEFAULT as u8,
             fragment_size: FRAGMENT_SIZE_DEFAULT,
@@ -47,6 +54,8 @@ impl Default for NetworkConfig {
             receive_buffer_max_size: 1500,
             rtt_smoothing_factor: 0.10,
             rtt_max_value: 250,
+            socket_event_buffer_size: 1024,
+            socket_polling_timeout: Some(Duration::from_millis(100)),
         }
     }
 }

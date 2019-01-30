@@ -24,19 +24,23 @@
 //! use laminar::{Packet, net::LaminarSocket};
 //! use laminar::config::NetworkConfig;
 //!
-//! use std::net::Ipv4Addr;
+//! use std::{
+//!     net::Ipv4Addr,
+//!     thread
+//! };
 //!
 //! fn main() {
 //!   let addr = "127.0.0.1:12345".parse().unwrap();
 //!
-//!   let mut socket = LaminarSocket::bind(addr, NetworkConfig::default()).unwrap();
+//!   let (mut socket, packet_sender, event_receiver) = LaminarSocket::bind(addr, NetworkConfig::default()).unwrap();
+//!   let _thread = thread::spawn(move || socket.start_polling());
 //!
 //!   let data = "example data".as_bytes();
 //!   let packet: Packet = Packet::reliable_unordered(addr, data.to_vec());
 //!
-//!   socket.send(&packet).unwrap();
+//!   packet_sender.send(packet).unwrap();
 //!
-//!   let data = socket.recv().unwrap();
+//!   let data = event_receiver.recv().unwrap();
 //!   println!("{:?}", data);
 //! }
 //! ```
@@ -57,7 +61,7 @@ pub mod error;
 pub mod net;
 
 pub use self::config::NetworkConfig;
-pub use self::events::Event;
+pub use self::net::SocketEvent;
 pub use self::infrastructure::DeliveryMethod;
 pub use self::packet::Packet;
 pub use self::protocol_version::ProtocolVersion;

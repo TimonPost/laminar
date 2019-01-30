@@ -23,7 +23,7 @@ pub fn normal_packet_integration_test() {
 
     let test_data = "Test Data".as_bytes();
 
-    let mut server = ServerMoq::new(NetworkConfig::default(), true, SERVER_ADDR.parse().unwrap());
+    let mut server = ServerMoq::new(NetworkConfig::default(), SERVER_ADDR.parse().unwrap());
     let server_thread = server.start_receiving(rx, test_data.to_vec());
 
     let client = ClientStub::new(

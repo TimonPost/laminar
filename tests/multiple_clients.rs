@@ -23,7 +23,7 @@ pub fn multiple_client_integration_test() {
     let test_data = "Test Data!".as_bytes();
 
     // setup the server and start receiving.
-    let mut server = ServerMoq::new(NetworkConfig::default(), true, SERVER_ADDR.parse().unwrap());
+    let mut server = ServerMoq::new(NetworkConfig::default(), SERVER_ADDR.parse().unwrap());
     let server_thread = server.start_receiving(rx, test_data.to_vec());
 
     // the packet rate at which clients send data.

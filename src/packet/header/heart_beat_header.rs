@@ -1,4 +1,4 @@
-use super::{HeaderWriter, HeaderReader};
+use super::{HeaderReader, HeaderWriter};
 use crate::error::NetworkResult;
 use crate::net::constants::HEART_BEAT_HEADER_SIZE;
 use crate::packet::PacketTypeId;

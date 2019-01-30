@@ -1,4 +1,4 @@
-use laminar::{config::NetworkConfig, net::LaminarSocket, DeliveryMethod, Packet};
+use laminar::{config::NetworkConfig, net::LaminarSocket, DeliveryMethod, Packet, SocketEvent};
 use std::{
     net::SocketAddr,
     sync::mpsc::Receiver,
@@ -10,15 +10,13 @@ use std::{
 pub struct ServerMoq {
     config: NetworkConfig,
     host: SocketAddr,
-    non_blocking: bool,
 }
 
 impl ServerMoq {
-    pub fn new(config: NetworkConfig, non_blocking: bool, host: SocketAddr) -> Self {
+    pub fn new(config: NetworkConfig, host: SocketAddr) -> Self {
         ServerMoq {
             config,
             host,
-            non_blocking,
         }
     }
 
@@ -27,34 +25,37 @@ impl ServerMoq {
         cancellation_channel: Receiver<bool>,
         expected_payload: Vec<u8>,
     ) -> JoinHandle<u32> {
-        let mut udp_socket: LaminarSocket = LaminarSocket::bind(self.host, self.config.clone()).unwrap();
-        udp_socket.set_nonblocking(self.non_blocking).unwrap();
+        let (mut socket, packet_sender, event_receiver) =
+            LaminarSocket::bind(self.host, self.config.clone()).unwrap();
 
         let mut packet_throughput = 0;
         let mut packets_total_received = 0;
         let mut second_counter = Instant::now();
 
         thread::spawn(move || {
+            let _polling_thread = thread::spawn(move || socket.start_polling());
+
             loop {
-                let result = udp_socket.recv();
+                let result = event_receiver.recv();
 
                 match result {
-                    Ok(Some(packet)) => {
+                    Ok(SocketEvent::Packet(packet)) => {
                         assert_eq!(packet.payload(), expected_payload.as_slice());
                         packets_total_received += 1;
                         packet_throughput += 1;
 
-                        udp_socket.send(&packet).unwrap();
+                        packet_sender.send(packet).unwrap();
                     }
-                    Ok(None) => {}
-                    Err(_e) => match cancellation_channel.try_recv() {
-                        Ok(val) => {
-                            if val == true {
-                                return packets_total_received;
-                            }
+                    _ => {}
+                }
+
+                match cancellation_channel.try_recv() {
+                    Ok(cancelled) => {
+                        if cancelled {
+                            return packets_total_received;
                         }
-                        Err(_e) => {}
-                    },
+                    }
+                    Err(_e) => {}
                 }
 
                 if second_counter.elapsed().as_secs() >= 1 {
@@ -73,24 +74,14 @@ impl ServerMoq {
         let data_to_send = data;
         let config = self.config.clone();
         thread::spawn(move || {
-            let mut client = LaminarSocket::bind(client_stub.endpoint, config.clone()).unwrap();
-            let _result = client.set_nonblocking(true);
+            let (mut client, packet_sender, event_receiver) =
+                LaminarSocket::bind(client_stub.endpoint, config.clone()).unwrap();
+            let _thread = thread::spawn(move || client.start_polling());
 
             let len = data_to_send.len();
 
             for _ in 0..packets_to_send {
-                let result = client.recv();
-
-                match result {
-                    Ok(Some(packet)) => {
-                        assert_eq!(packet.payload(), data_to_send.as_slice());
-                        assert_eq!(packet.addr(), host);
-                    }
-                    Ok(None) => {}
-                    Err(_) => {}
-                }
-
-                let send_result = client.send(&Packet::new(
+                let send_result = packet_sender.send(Packet::new(
                     host,
                     data_to_send.clone().into_boxed_slice(),
                     client_stub.packet_delivery,

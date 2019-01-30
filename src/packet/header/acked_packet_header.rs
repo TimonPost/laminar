@@ -1,4 +1,4 @@
-use super::{HeaderWriter, HeaderReader};
+use super::{HeaderReader, HeaderWriter};
 use crate::error::NetworkResult;
 use crate::net::constants::ACKED_PACKET_HEADER;
 use crate::packet::header::StandardHeader;
@@ -89,7 +89,7 @@ impl HeaderReader for AckedPacketHeader {
 
 #[cfg(test)]
 mod tests {
-    use crate::packet::header::{AckedPacketHeader, HeaderWriter, HeaderReader, StandardHeader};
+    use crate::packet::header::{AckedPacketHeader, HeaderReader, HeaderWriter, StandardHeader};
     use std::io::Cursor;
 
     #[test]
