@@ -49,7 +49,7 @@ impl ActiveConnections {
         self.connections
             .iter()
             .filter(|(_, connection)| connection.last_heard() >= max_idle_time)
-            .map(|(address, _)| address.clone())
+            .map(|(address, _)| *address)
             .collect()
     }
 

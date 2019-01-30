@@ -149,7 +149,7 @@ impl LaminarSocket {
     /// Receives a single message from the socket. On success, returns the packet containing origin and data.
     fn recv_from(&mut self) -> NetworkResult<Option<Packet>> {
         let (recv_len, address) = self.socket.recv_from(&mut self.recv_buffer)?;
-        if recv_len <= 0 {
+        if recv_len == 0 {
             return Err(NetworkErrorKind::ReceivedDataToShort)?;
         }
 
