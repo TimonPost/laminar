@@ -1,4 +1,4 @@
-use laminar::{config::NetworkConfig, net::LaminarSocket, DeliveryMethod, Packet, SocketEvent};
+use laminar::{Config, DeliveryMethod, Packet, Socket, SocketEvent};
 use std::{
     net::SocketAddr,
     sync::mpsc::Receiver,
@@ -8,12 +8,12 @@ use std::{
 
 /// This is an test server we use to receive data from clients.
 pub struct ServerMoq {
-    config: NetworkConfig,
+    config: Config,
     host: SocketAddr,
 }
 
 impl ServerMoq {
-    pub fn new(config: NetworkConfig, host: SocketAddr) -> Self {
+    pub fn new(config: Config, host: SocketAddr) -> Self {
         ServerMoq { config, host }
     }
 
@@ -23,7 +23,7 @@ impl ServerMoq {
         expected_payload: Vec<u8>,
     ) -> JoinHandle<u32> {
         let (mut socket, packet_sender, event_receiver) =
-            LaminarSocket::bind(self.host, self.config.clone()).unwrap();
+            Socket::bind(self.host, self.config.clone()).unwrap();
 
         let mut packet_throughput = 0;
         let mut packets_total_received = 0;
@@ -72,7 +72,7 @@ impl ServerMoq {
         let config = self.config.clone();
         thread::spawn(move || {
             let (mut client, packet_sender, _event_receiver) =
-                LaminarSocket::bind(client_stub.endpoint, config.clone()).unwrap();
+                Socket::bind(client_stub.endpoint, config.clone()).unwrap();
             let _thread = thread::spawn(move || client.start_polling());
 
             let len = data_to_send.len();

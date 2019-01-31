@@ -2,7 +2,7 @@
 //! 1. sending data
 //! 2. receiving data
 //! 3. constructing the packet for sending.
-use laminar::{config::NetworkConfig, net::LaminarSocket, Packet, SocketEvent};
+use laminar::{Config, Packet, Socket, SocketEvent};
 
 use std::net::SocketAddr;
 use std::thread;
@@ -23,11 +23,11 @@ fn server_address() -> SocketAddr {
 /// This is an example of how to send data to an specific address.
 pub fn send_data() {
     // you can change the config but if you want just go for the default.
-    let config = NetworkConfig::default();
+    let config = Config::default();
 
     // setup an udp socket and bind it to the client address.
     let (mut socket, packet_sender, _event_receiver) =
-        LaminarSocket::bind(client_address(), config).unwrap();
+        Socket::bind(client_address(), config).unwrap();
     let _thread = thread::spawn(move || socket.start_polling());
 
     let packet = construct_packet();
@@ -39,11 +39,11 @@ pub fn send_data() {
 /// This is an example of how to receive data over udp on an specific socket address.
 pub fn receive_data() {
     // you can change the config but if you want just go for the default.
-    let config = NetworkConfig::default();
+    let config = Config::default();
 
     // setup an udp socket and bind it to the client address.
     let (mut socket, _packet_sender, event_receiver) =
-        LaminarSocket::bind(server_address(), config).unwrap();
+        Socket::bind(server_address(), config).unwrap();
     let _thread = thread::spawn(move || socket.start_polling());
 
     // Next start receiving.

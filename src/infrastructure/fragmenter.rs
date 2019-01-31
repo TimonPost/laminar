@@ -1,4 +1,4 @@
-use crate::config::NetworkConfig;
+use crate::config::Config;
 use crate::error::{FragmentErrorKind, NetworkResult};
 use crate::packet::header::{AckedPacketHeader, FragmentHeader, HeaderReader, HeaderWriter};
 use crate::packet::PacketData;
@@ -10,12 +10,12 @@ use std::sync::Arc;
 /// Type that will manage fragmentation of packets.
 pub struct Fragmentation {
     fragments: SequenceBuffer<ReassemblyData>,
-    config: Arc<NetworkConfig>,
+    config: Arc<Config>,
 }
 
 impl Fragmentation {
     /// Creates and returns a new Fragmentation
-    pub fn new(config: Arc<NetworkConfig>) -> Fragmentation {
+    pub fn new(config: Arc<Config>) -> Fragmentation {
         Fragmentation {
             fragments: SequenceBuffer::with_capacity(config.fragment_reassembly_buffer_size),
             config,
@@ -65,7 +65,7 @@ impl Fragmentation {
         payload: &[u8],
         acked_header: AckedPacketHeader,
         packet_data: &mut PacketData,
-        config: &Arc<NetworkConfig>,
+        config: &Arc<Config>,
     ) -> NetworkResult<()> {
         let payload_length = payload.len() as u16;
         let num_fragments =

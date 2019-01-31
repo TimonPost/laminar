@@ -1,4 +1,4 @@
-use crate::config::NetworkConfig;
+use crate::config::Config;
 use crate::error::{NetworkErrorKind, NetworkResult};
 use crate::infrastructure::{
     Channel, DeliveryMethod, Fragmentation, ReliableChannel, SequencedChannel, UnreliableChannel,
@@ -35,7 +35,7 @@ pub struct VirtualConnection {
 
 impl VirtualConnection {
     /// Creates and returns a new Connection that wraps the provided socket address
-    pub fn new(addr: SocketAddr, config: Arc<NetworkConfig>) -> VirtualConnection {
+    pub fn new(addr: SocketAddr, config: Arc<Config>) -> VirtualConnection {
         VirtualConnection {
             // client information
             last_heard: Instant::now(),
@@ -154,7 +154,7 @@ impl fmt::Debug for VirtualConnection {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::NetworkConfig;
+    use crate::config::Config;
     use crate::infrastructure::DeliveryMethod;
     use crate::net::connection::VirtualConnection;
     use std::sync::Arc;
@@ -162,10 +162,7 @@ mod tests {
     const SERVER_ADDR: &str = "127.0.0.1:12345";
 
     fn create_virtual_connection() -> VirtualConnection {
-        VirtualConnection::new(
-            SERVER_ADDR.parse().unwrap(),
-            Arc::new(NetworkConfig::default()),
-        )
+        VirtualConnection::new(SERVER_ADDR.parse().unwrap(), Arc::new(Config::default()))
     }
 
     fn assert_packet_payload(

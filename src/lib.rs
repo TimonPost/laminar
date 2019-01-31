@@ -21,8 +21,7 @@
 //! # Example
 //!
 //! ```rust
-//! use laminar::{Packet, net::LaminarSocket};
-//! use laminar::config::NetworkConfig;
+//! use laminar::{Config, Packet, Socket};
 //!
 //! use std::{
 //!     net::Ipv4Addr,
@@ -32,7 +31,7 @@
 //! fn main() {
 //!   let addr = "127.0.0.1:12345".parse().unwrap();
 //!
-//!   let (mut socket, packet_sender, event_receiver) = LaminarSocket::bind(addr, NetworkConfig::default()).unwrap();
+//!   let (mut socket, packet_sender, event_receiver) = Socket::bind(addr, Config::default()).unwrap();
 //!   let _thread = thread::spawn(move || socket.start_polling());
 //!
 //!   let data = "example data".as_bytes();
@@ -53,14 +52,16 @@ mod protocol_version;
 mod sequence_buffer;
 
 /// Contains networking related configuration
-pub mod config;
+mod config;
 /// All internal error handling logic
-pub mod error;
+mod error;
 /// Networking modules
-pub mod net;
+mod net;
 
-pub use self::config::NetworkConfig;
+pub use self::config::Config;
+pub use self::error::{NetworkError, NetworkResult};
 pub use self::infrastructure::DeliveryMethod;
+pub use self::net::Socket;
 pub use self::net::SocketEvent;
 pub use self::packet::Packet;
 pub use self::protocol_version::ProtocolVersion;

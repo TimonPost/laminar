@@ -13,11 +13,13 @@ pub struct LocalAckRecord {
 
 impl LocalAckRecord {
     /// Checks if there are packets in the queue to be acknowledged.
+    #[allow(dead_code)]
     pub fn is_empty(&self) -> bool {
         self.packets.is_empty()
     }
 
     /// Gets the total packages in the queue that could be acknowledged.
+    #[allow(dead_code)]
     pub fn len(&mut self) -> usize {
         self.packets.len()
     }

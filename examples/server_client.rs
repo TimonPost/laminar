@@ -3,19 +3,13 @@
 //! Note that in practice you don't want to implement a chat client using UDP.
 use std::io::stdin;
 
-use laminar::{
-    config::NetworkConfig,
-    error::NetworkError,
-    net::{LaminarSocket, SocketEvent},
-    Packet,
-};
+use laminar::{Config, NetworkError, Packet, Socket, SocketEvent};
 use std::thread;
 
 const SERVER: &str = "127.0.0.1:12351";
 
 fn server() -> Result<(), NetworkError> {
-    let (mut socket, packet_sender, event_receiver) =
-        LaminarSocket::bind(SERVER, NetworkConfig::default())?;
+    let (mut socket, packet_sender, event_receiver) = Socket::bind(SERVER, Config::default())?;
     let _thread = thread::spawn(move || socket.start_polling());
 
     println!("Listening for connections to {}", SERVER);
@@ -53,8 +47,7 @@ fn server() -> Result<(), NetworkError> {
 
 fn client() -> Result<(), NetworkError> {
     let addr = "127.0.0.1:12352";
-    let (mut socket, packet_sender, event_receiver) =
-        LaminarSocket::bind(addr, NetworkConfig::default())?;
+    let (mut socket, packet_sender, event_receiver) = Socket::bind(addr, Config::default())?;
     println!("Connected on {}", addr);
     let _thread = thread::spawn(move || socket.start_polling());
 

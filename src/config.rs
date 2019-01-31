@@ -3,7 +3,7 @@ use std::{default::Default, time::Duration};
 
 #[derive(Clone)]
 /// Struct that contains config values for various aspects of the network
-pub struct NetworkConfig {
+pub struct Config {
     /// The maximal amount of time to keep `VirtualConnection`s around before cleaning them up.
     pub idle_connection_timeout: Duration,
     /// This is the maximal size a packet can get with all its fragments.
@@ -37,13 +37,13 @@ pub struct NetworkConfig {
     /// Recommend value: 250 ms
     /// Value is represented in milliseconds.
     pub rtt_max_value: u16,
-    /// This is the size of the event buffer we read socket events (from `mio::Poll`) into.
+    /// This is the size of the event buffer we read socket events from `mio::Poll` into.
     pub socket_event_buffer_size: usize,
     /// Optional duration specifying how long we should block polling for socket events.
     pub socket_polling_timeout: Option<Duration>,
 }
 
-impl Default for NetworkConfig {
+impl Default for Config {
     fn default() -> Self {
         Self {
             idle_connection_timeout: Duration::from_secs(5),

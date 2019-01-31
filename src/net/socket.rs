@@ -1,21 +1,23 @@
-use crate::config::NetworkConfig;
-use crate::error::{NetworkError, NetworkErrorKind, NetworkResult};
-use crate::net::link_conditioner::LinkConditioner;
-use crate::net::{connection::ActiveConnections, events::SocketEvent};
-use crate::packet::Packet;
+use crate::{
+    config::Config,
+    error::{NetworkError, NetworkErrorKind, NetworkResult},
+    net::{connection::ActiveConnections, events::SocketEvent, link_conditioner::LinkConditioner},
+    packet::Packet,
+};
 use log::error;
 use mio::{Evented, Events, Poll, PollOpt, Ready, Token};
-use std::io;
-use std::mem;
-use std::net::{SocketAddr, ToSocketAddrs};
-use std::sync::{mpsc, Arc};
+use std::{
+    io, mem,
+    net::{SocketAddr, ToSocketAddrs},
+    sync::{mpsc, Arc},
+};
 
 const SOCKET: Token = Token(0);
 
 /// A reliable UDP socket implementation with configurable reliability and ordering guarantees.
-pub struct LaminarSocket {
+pub struct Socket {
     socket: mio::net::UdpSocket,
-    config: Arc<NetworkConfig>,
+    config: Arc<Config>,
     connections: ActiveConnections,
     recv_buffer: Vec<u8>,
     link_conditioner: Option<LinkConditioner>,
@@ -23,13 +25,13 @@ pub struct LaminarSocket {
     packet_receiver: mpsc::Receiver<Packet>,
 }
 
-impl LaminarSocket {
+impl Socket {
     /// Binds to the socket and then sets up `ActiveConnections` to manage the "connections".
     /// Because UDP connections are not persistent, we can only infer the status of the remote
     /// endpoint by looking to see if they are still sending packets or not
     pub fn bind<A: ToSocketAddrs>(
         addresses: A,
-        config: NetworkConfig,
+        config: Config,
     ) -> NetworkResult<(Self, mpsc::Sender<Packet>, mpsc::Receiver<SocketEvent>)> {
         let socket = std::net::UdpSocket::bind(addresses)?;
         let socket = mio::net::UdpSocket::from_socket(socket)?;
@@ -44,16 +46,15 @@ impl LaminarSocket {
         poll.register(self, SOCKET, Ready::readable(), PollOpt::edge())?;
 
         let mut events = Events::with_capacity(self.config.socket_event_buffer_size);
-        let events_ref = &mut events;
         // Packet receiver MUST only be used in this method.
         let packet_receiver = mem::replace(&mut self.packet_receiver, mpsc::channel().1);
         // Nothing should break out of this loop!
         loop {
             self.handle_idle_clients();
-            if let Err(e) = poll.poll(events_ref, self.config.socket_polling_timeout) {
+            if let Err(e) = poll.poll(&mut events, self.config.socket_polling_timeout) {
                 error!("Error polling the socket: {:?}", e);
             }
-            if let Err(e) = self.process_events(events_ref) {
+            if let Err(e) = self.process_events(&mut events) {
                 error!("Error processing events: {:?}", e);
             }
             // XXX: I'm fairly certain this isn't exactly safe. I'll likely need to add some
@@ -84,7 +85,7 @@ impl LaminarSocket {
         }
     }
 
-    /// Process events received from the mio socket.
+    // Process events received from the mio socket.
     fn process_events(&mut self, events: &mut Events) -> NetworkResult<()> {
         for event in events.iter() {
             match event.token() {
@@ -118,11 +119,11 @@ impl LaminarSocket {
         Ok(())
     }
 
-    /// Serializes and sends a `Packet` on the socket. On success, returns the number of bytes written.
+    // Serializes and sends a `Packet` on the socket. On success, returns the number of bytes written.
     fn send_to(&mut self, packet: Packet) -> NetworkResult<usize> {
         let connection = self
             .connections
-            .get_or_insert_connection(&packet.addr(), self.config.clone());
+            .get_or_insert_connection(packet.addr(), self.config.clone());
         let mut packet_data =
             connection.process_outgoing(packet.payload(), packet.delivery_method())?;
         let mut bytes_sent = 0;
@@ -146,7 +147,7 @@ impl LaminarSocket {
         Ok(bytes_sent)
     }
 
-    /// Receives a single message from the socket. On success, returns the packet containing origin and data.
+    // Receives a single message from the socket. On success, returns the packet containing origin and data.
     fn recv_from(&mut self) -> NetworkResult<Option<Packet>> {
         let (recv_len, address) = self.socket.recv_from(&mut self.recv_buffer)?;
         if recv_len == 0 {
@@ -156,15 +157,13 @@ impl LaminarSocket {
         let received_payload = &self.recv_buffer[..recv_len];
         let connection = self
             .connections
-            .get_or_insert_connection(&address, self.config.clone());
+            .get_or_insert_connection(address, self.config.clone());
         connection.process_incoming(received_payload)
     }
 
-    /// Send a single packet over the udp socket.
+    // Send a single packet over the UDP socket.
     fn send_packet(&self, addr: &SocketAddr, payload: &[u8]) -> NetworkResult<usize> {
-        let mut bytes_sent = 0;
-
-        bytes_sent += self
+        let bytes_sent = self
             .socket
             .send_to(payload, addr)
             .map_err(|io| NetworkError::from(NetworkErrorKind::IOError(io)))?;
@@ -174,7 +173,7 @@ impl LaminarSocket {
 
     fn new(
         socket: mio::net::UdpSocket,
-        config: NetworkConfig,
+        config: Config,
     ) -> (Self, mpsc::Sender<Packet>, mpsc::Receiver<SocketEvent>) {
         let (event_sender, event_receiver) = mpsc::channel();
         let (packet_sender, packet_receiver) = mpsc::channel();
@@ -195,7 +194,7 @@ impl LaminarSocket {
     }
 }
 
-impl Evented for LaminarSocket {
+impl Evented for Socket {
     fn register(
         &self,
         poll: &Poll,

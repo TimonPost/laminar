@@ -3,11 +3,10 @@
 //! 2. setting up client to send data.
 //! 3. serialize data to send and deserialize when received.
 use bincode::{deserialize, serialize};
-use laminar::config::NetworkConfig;
-use laminar::{net::LaminarSocket, Packet, SocketEvent, error::NetworkError};
+use laminar::{Config, NetworkError, Packet, Socket, SocketEvent};
 use serde_derive::{Deserialize, Serialize};
 use std::net::SocketAddr;
-use std::{thread, time, sync::mpsc};
+use std::{sync::mpsc, thread, time};
 
 /// The socket address of where the server is located.
 const SERVER_ADDR: &'static str = "127.0.0.1:12345";
@@ -75,22 +74,23 @@ enum DataType {
 struct Server {
     _packet_sender: mpsc::Sender<Packet>,
     event_receiver: mpsc::Receiver<SocketEvent>,
-    _polling_thread: thread::JoinHandle<Result<(), NetworkError>>
+    _polling_thread: thread::JoinHandle<Result<(), NetworkError>>,
 }
 
 impl Server {
     #[allow(unused_must_use)]
     pub fn new() -> Self {
         // you can change the config but if you want just go for the default.
-        let config = NetworkConfig::default();
+        let config = Config::default();
 
         // setup an udp socket and bind it to the client address.
-        let (mut socket, packet_sender, event_receiver) = LaminarSocket::bind(server_address(), config).unwrap();
+        let (mut socket, packet_sender, event_receiver) =
+            Socket::bind(server_address(), config).unwrap();
         let polling_thread = thread::spawn(move || socket.start_polling());
         Server {
             _packet_sender: packet_sender,
             event_receiver,
-            _polling_thread: polling_thread
+            _polling_thread: polling_thread,
         }
     }
 
@@ -110,7 +110,7 @@ impl Server {
             }
             Ok(SocketEvent::TimeOut(address)) => {
                 println!("A client timed out: {}", address);
-            },
+            }
             Ok(_) => {}
             Err(e) => {
                 println!("Something went wrong when receiving, error: {:?}", e);
@@ -142,23 +142,24 @@ impl Server {
 struct Client {
     packet_sender: mpsc::Sender<Packet>,
     _event_receiver: mpsc::Receiver<SocketEvent>,
-    _polling_thread: thread::JoinHandle<Result<(), NetworkError>>
+    _polling_thread: thread::JoinHandle<Result<(), NetworkError>>,
 }
 
 impl Client {
     #[allow(unused_must_use)]
     pub fn new() -> Self {
         // you can change the config but if you want just go for the default.
-        let config = NetworkConfig::default();
+        let config = Config::default();
 
         // setup an udp socket and bind it to the client address.
-        let (mut socket, packet_sender, event_receiver) = LaminarSocket::bind(client_address(), config).unwrap();
+        let (mut socket, packet_sender, event_receiver) =
+            Socket::bind(client_address(), config).unwrap();
         let polling_thread = thread::spawn(move || socket.start_polling());
 
         Client {
             packet_sender,
             _event_receiver: event_receiver,
-            _polling_thread: polling_thread
+            _polling_thread: polling_thread,
         }
     }
 

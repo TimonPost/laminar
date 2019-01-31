@@ -1,6 +1,6 @@
 use super::Channel;
 
-use crate::config::NetworkConfig;
+use crate::config::Config;
 use crate::error::{NetworkResult, PacketErrorKind};
 use crate::infrastructure::{DeliveryMethod, Fragmentation};
 use crate::net::{ExternalAcks, LocalAckRecord, NetworkQuality, RttMeasurer};
@@ -26,7 +26,7 @@ use std::time::Instant;
 pub struct ReliableChannel {
     // settings
     ordered: bool,
-    config: Arc<NetworkConfig>,
+    config: Arc<Config>,
 
     // reliability control
     seq_num: u16,
@@ -43,7 +43,7 @@ pub struct ReliableChannel {
 
 impl ReliableChannel {
     /// Creates a new instance of the reliable channel by specifying if channel needs to order incoming packets.
-    pub fn new(ordered: bool, config: Arc<NetworkConfig>) -> ReliableChannel {
+    pub fn new(ordered: bool, config: Arc<Config>) -> ReliableChannel {
         ReliableChannel {
             // settings
             ordered,

@@ -1,10 +1,11 @@
-use crate::config::NetworkConfig;
+use crate::config::Config;
 use crate::sequence_buffer::CongestionData;
 
 use std::sync::Arc;
 use std::time::Duration;
 
 /// Represents the quality of a network.
+#[allow(dead_code)]
 pub enum NetworkQuality {
     /// Connection is generally good, minimal packet loss or latency
     Good,
@@ -15,12 +16,12 @@ pub enum NetworkQuality {
 /// This type helps with calculating the round trip time from any packet.
 /// It is able to smooth out the network jitter if there is any.
 pub struct RttMeasurer {
-    config: Arc<NetworkConfig>,
+    config: Arc<Config>,
 }
 
 impl RttMeasurer {
     /// Creates and returns a new RttMeasurer
-    pub fn new(config: Arc<NetworkConfig>) -> RttMeasurer {
+    pub fn new(config: Arc<Config>) -> RttMeasurer {
         RttMeasurer { config }
     }
 
@@ -70,7 +71,7 @@ impl RttMeasurer {
 #[cfg(test)]
 mod test {
     use super::RttMeasurer;
-    use crate::config::NetworkConfig;
+    use crate::config::Config;
     use crate::net::connection::VirtualConnection;
     use std::net::ToSocketAddrs;
     use std::sync::Arc;
@@ -84,13 +85,12 @@ mod test {
         let mut addr = format!("{}:{}", TEST_HOST_IP, TEST_PORT)
             .to_socket_addrs()
             .unwrap();
-        let _new_conn =
-            VirtualConnection::new(addr.next().unwrap(), Arc::new(NetworkConfig::default()));
+        let _new_conn = VirtualConnection::new(addr.next().unwrap(), Arc::new(Config::default()));
     }
 
     #[test]
     fn convert_duration_to_milliseconds_test() {
-        let network_quality = RttMeasurer::new(Arc::new(NetworkConfig::default()));
+        let network_quality = RttMeasurer::new(Arc::new(Config::default()));
         let milliseconds1 = network_quality.as_milliseconds(Duration::from_secs(1));
         let milliseconds2 = network_quality.as_milliseconds(Duration::from_millis(1500));
         let milliseconds3 = network_quality.as_milliseconds(Duration::from_millis(1671));
@@ -102,7 +102,7 @@ mod test {
 
     #[test]
     fn smooth_out_rtt() {
-        let mut config = NetworkConfig::default();
+        let mut config = Config::default();
         // for test purpose make sure we set smoothing factor to 10%.
         config.rtt_smoothing_factor = 0.10;
         config.rtt_max_value = 250;

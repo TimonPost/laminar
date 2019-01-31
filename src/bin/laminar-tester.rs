@@ -7,7 +7,7 @@ use std::{
 
 use clap::{load_yaml, App, AppSettings};
 
-use laminar::{config, net, DeliveryMethod, Packet, SocketEvent};
+use laminar::{Config, DeliveryMethod, Packet, Socket, SocketEvent};
 use log::{debug, error, info};
 
 fn main() {
@@ -68,8 +68,9 @@ fn process_client_subcommand(m: &clap::ArgMatches<'_>) {
 }
 
 fn run_server(socket_addr: &str) {
-    let network_config = config::NetworkConfig::default();
-    let (mut socket, _packet_sender, event_receiver) = net::LaminarSocket::bind(socket_addr, network_config).unwrap();
+    let network_config = Config::default();
+    let (mut socket, _packet_sender, event_receiver) =
+        Socket::bind(socket_addr, network_config).unwrap();
     let _thread = thread::spawn(move || socket.start_polling());
 
     let mut packet_throughput = 0;
@@ -97,14 +98,15 @@ fn run_server(socket_addr: &str) {
 }
 
 fn run_client(test_name: &str, destination: &str, endpoint: &str, pps: &str, test_duration: &str) {
-    let network_config = config::NetworkConfig::default();
-    let (mut socket, packet_sender, _event_receiver) = match net::LaminarSocket::bind(endpoint, network_config.clone()) {
-        Ok((socket, sender, receiver)) => (socket, sender, receiver),
-        Err(e) => {
-            error!("Error binding was: {:?}", e);
-            exit(1);
-        }
-    };
+    let network_config = Config::default();
+    let (mut socket, packet_sender, _event_receiver) =
+        match Socket::bind(endpoint, network_config.clone()) {
+            Ok((socket, sender, receiver)) => (socket, sender, receiver),
+            Err(e) => {
+                println!("Error binding was: {:?}", e);
+                exit(1);
+            }
+        };
     let _thread = thread::spawn(move || socket.start_polling());
 
     // See which test we want to run
@@ -121,12 +123,7 @@ fn run_client(test_name: &str, destination: &str, endpoint: &str, pps: &str, tes
 }
 
 // Basic test where the client sends packets at a steady rate to the server
-fn test_steady_stream(
-    sender: &mpsc::Sender<Packet>,
-    target: &str,
-    pps: &str,
-    test_duration: &str,
-) {
+fn test_steady_stream(sender: &mpsc::Sender<Packet>, target: &str, pps: &str, test_duration: &str) {
     info!("Beginning steady-state test");
     let data_to_send = String::from("steady-state test packet");
     let server_addr: SocketAddr = target.to_socket_addrs().unwrap().next().unwrap();

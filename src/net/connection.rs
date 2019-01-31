@@ -4,7 +4,7 @@ mod virtual_connection;
 pub use self::quality::{NetworkQuality, RttMeasurer};
 pub use self::virtual_connection::VirtualConnection;
 
-use crate::config::NetworkConfig;
+use crate::config::Config;
 use std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Duration};
 
 /// Maintains a registry of active "connections". Essentially, when we receive a packet on the
@@ -24,19 +24,15 @@ impl ActiveConnections {
     /// inserted and returned.
     pub fn get_or_insert_connection(
         &mut self,
-        address: &SocketAddr,
-        config: Arc<NetworkConfig>,
+        address: SocketAddr,
+        config: Arc<Config>,
     ) -> &mut VirtualConnection {
-        if !self.connections.contains_key(address) {
-            self.connections
-                .insert(*address, VirtualConnection::new(*address, config));
-        }
         self.connections
-            .get_mut(address)
-            .expect("We just added this key. It should definitely exist.")
+            .entry(address)
+            .or_insert_with(|| VirtualConnection::new(address, config))
     }
 
-    /// Removes the connection from ActiveConnections by socket address.
+    /// Removes the connection from `ActiveConnections` by socket address.
     pub fn remove_connection(
         &mut self,
         address: &SocketAddr,
@@ -44,7 +40,7 @@ impl ActiveConnections {
         self.connections.remove_entry(address)
     }
 
-    /// Check for and return VirtualConnections which have been idling longer than `max_idle_time`.
+    /// Check for and return `VirtualConnection`s which have been idling longer than `max_idle_time`.
     pub fn idle_connections(&mut self, max_idle_time: Duration) -> Vec<SocketAddr> {
         self.connections
             .iter()
@@ -62,7 +58,7 @@ impl ActiveConnections {
 
 #[cfg(test)]
 mod tests {
-    use super::{ActiveConnections, NetworkConfig};
+    use super::{ActiveConnections, Config};
     use std::{sync::Arc, thread, time::Duration};
 
     const ADDRESS: &str = "127.0.0.1:12345";
@@ -70,12 +66,12 @@ mod tests {
     #[test]
     fn connection_timed_out() {
         let mut connections = ActiveConnections::new();
-        let config = Arc::new(NetworkConfig::default());
+        let config = Arc::new(Config::default());
 
         // add 10 clients
         for i in 0..10 {
             connections.get_or_insert_connection(
-                &(format!("127.0.0.1:123{}", i).parse().unwrap()),
+                format!("127.0.0.1:123{}", i).parse().unwrap(),
                 config.clone(),
             );
         }
@@ -93,35 +89,35 @@ mod tests {
     #[test]
     fn insert_connection() {
         let mut connections = ActiveConnections::new();
-        let config = Arc::new(NetworkConfig::default());
+        let config = Arc::new(Config::default());
 
-        let address = &ADDRESS.parse().unwrap();
+        let address = ADDRESS.parse().unwrap();
         connections.get_or_insert_connection(address, config);
-        assert!(connections.connections.contains_key(address));
+        assert!(connections.connections.contains_key(&address));
     }
 
     #[test]
     fn insert_existing_connection() {
         let mut connections = ActiveConnections::new();
-        let config = Arc::new(NetworkConfig::default());
+        let config = Arc::new(Config::default());
 
-        let address = &ADDRESS.parse().unwrap();
+        let address = ADDRESS.parse().unwrap();
         connections.get_or_insert_connection(address, config.clone());
-        assert!(connections.connections.contains_key(address));
+        assert!(connections.connections.contains_key(&address));
         connections.get_or_insert_connection(address, config);
-        assert!(connections.connections.contains_key(address));
+        assert!(connections.connections.contains_key(&address));
     }
 
     #[test]
     fn remove_connection() {
         let mut connections = ActiveConnections::new();
-        let config = Arc::new(NetworkConfig::default());
+        let config = Arc::new(Config::default());
 
-        let address = &ADDRESS.parse().unwrap();
+        let address = ADDRESS.parse().unwrap();
         connections.get_or_insert_connection(address, config);
-        assert!(connections.connections.contains_key(address));
-        connections.remove_connection(address);
-        assert!(!connections.connections.contains_key(address));
+        assert!(connections.connections.contains_key(&address));
+        connections.remove_connection(&address);
+        assert!(!connections.connections.contains_key(&address));
     }
 
     #[test]
