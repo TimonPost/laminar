@@ -56,11 +56,12 @@ impl Socket {
             if let Err(e) = self.process_events(&mut events) {
                 error!("Error processing events: {:?}", e);
             }
-            // XXX: I'm fairly certain this isn't exactly safe. I'll likely need to add some
-            // handling for when the socket is blocked on send. Worth some more research.
-            // Alternatively, I'm sure the Tokio single threaded runtime does handle this for us
-            // so maybe it's work switching to that while providing the same interface?
+
             for packet in packet_receiver.try_iter() {
+                // XXX: I'm fairly certain this isn't exactly safe. I'll likely need to add some
+                // handling for when the socket is blocked on send. Worth some more research.
+                // Alternatively, I'm sure the Tokio single threaded runtime does handle this for us
+                // so maybe it's work switching to that while providing the same interface?
                 if let Err(e) = self.send_to(packet) {
                     error!("Error sending packet: {:?}", e);
                 }
@@ -79,7 +80,7 @@ impl Socket {
         for address in idle_addresses {
             self.connections.remove_connection(&address);
             if let Err(err) = self.event_sender.send(SocketEvent::TimeOut(address)) {
-                error!("{:?}", err);
+                error!("Error sending timeout: {:?}", err);
             }
         }
     }
@@ -96,7 +97,7 @@ impl Socket {
                                     if let Err(err) =
                                         self.event_sender.send(SocketEvent::Packet(packet))
                                     {
-                                        error!("{:?}", err);
+                                        error!("Error sending packet to caller: {:?}", err);
                                     }
                                 }
                                 Ok(None) => continue,
@@ -106,7 +107,7 @@ impl Socket {
                                     {
                                         break;
                                     }
-                                    _ => error!("{:?}", err),
+                                    _ => error!("Error receiving from socket: {:?}", err),
                                 },
                             };
                         }
