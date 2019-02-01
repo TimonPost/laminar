@@ -4,12 +4,13 @@ use crate::{
     net::{connection::ActiveConnections, events::SocketEvent, link_conditioner::LinkConditioner},
     packet::Packet,
 };
+use crossbeam_channel::{self, unbounded, Receiver, Sender};
 use log::error;
 use mio::{Evented, Events, Poll, PollOpt, Ready, Token};
 use std::{
-    io, mem,
+    io,
     net::{SocketAddr, ToSocketAddrs},
-    sync::{mpsc, Arc},
+    sync::Arc,
 };
 
 const SOCKET: Token = Token(0);
@@ -21,8 +22,8 @@ pub struct Socket {
     connections: ActiveConnections,
     recv_buffer: Vec<u8>,
     link_conditioner: Option<LinkConditioner>,
-    event_sender: mpsc::Sender<SocketEvent>,
-    packet_receiver: mpsc::Receiver<Packet>,
+    event_sender: Sender<SocketEvent>,
+    packet_receiver: Receiver<Packet>,
 }
 
 impl Socket {
@@ -32,7 +33,7 @@ impl Socket {
     pub fn bind<A: ToSocketAddrs>(
         addresses: A,
         config: Config,
-    ) -> NetworkResult<(Self, mpsc::Sender<Packet>, mpsc::Receiver<SocketEvent>)> {
+    ) -> NetworkResult<(Self, Sender<Packet>, Receiver<SocketEvent>)> {
         let socket = std::net::UdpSocket::bind(addresses)?;
         let socket = mio::net::UdpSocket::from_socket(socket)?;
         Ok(Self::new(socket, config))
@@ -46,8 +47,7 @@ impl Socket {
         poll.register(self, SOCKET, Ready::readable(), PollOpt::edge())?;
 
         let mut events = Events::with_capacity(self.config.socket_event_buffer_size);
-        // Packet receiver MUST only be used in this method.
-        let packet_receiver = mem::replace(&mut self.packet_receiver, mpsc::channel().1);
+        let packet_receiver = self.packet_receiver.clone();
         // Nothing should break out of this loop!
         loop {
             self.handle_idle_clients();
@@ -174,9 +174,9 @@ impl Socket {
     fn new(
         socket: mio::net::UdpSocket,
         config: Config,
-    ) -> (Self, mpsc::Sender<Packet>, mpsc::Receiver<SocketEvent>) {
-        let (event_sender, event_receiver) = mpsc::channel();
-        let (packet_sender, packet_receiver) = mpsc::channel();
+    ) -> (Self, Sender<Packet>, Receiver<SocketEvent>) {
+        let (event_sender, event_receiver) = unbounded();
+        let (packet_sender, packet_receiver) = unbounded();
         let buffer_size = config.receive_buffer_max_size;
         (
             Self {

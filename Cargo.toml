@@ -25,6 +25,7 @@ travis-ci = { repository = "amethyst/laminar", branch = "master" }
 [dependencies]
 byteorder = "1.2"
 crc = "1.8"
+crossbeam-channel = "0.3"
 failure = "0.1"
 failure_derive = "0.1"
 lazy_static = "1.1"

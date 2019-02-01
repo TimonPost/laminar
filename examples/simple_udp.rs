@@ -3,10 +3,11 @@
 //! 2. setting up client to send data.
 //! 3. serialize data to send and deserialize when received.
 use bincode::{deserialize, serialize};
+use crossbeam_channel::{Receiver, Sender};
 use laminar::{Config, NetworkError, Packet, Socket, SocketEvent};
 use serde_derive::{Deserialize, Serialize};
 use std::net::SocketAddr;
-use std::{sync::mpsc, thread, time};
+use std::{thread, time};
 
 /// The socket address of where the server is located.
 const SERVER_ADDR: &'static str = "127.0.0.1:12345";
@@ -72,8 +73,8 @@ enum DataType {
 
 /// This is an test server we use to receive data from clients.
 struct Server {
-    _packet_sender: mpsc::Sender<Packet>,
-    event_receiver: mpsc::Receiver<SocketEvent>,
+    _packet_sender: Sender<Packet>,
+    event_receiver: Receiver<SocketEvent>,
     _polling_thread: thread::JoinHandle<Result<(), NetworkError>>,
 }
 
@@ -140,8 +141,8 @@ impl Server {
 
 /// This is an test client to send data to the server.
 struct Client {
-    packet_sender: mpsc::Sender<Packet>,
-    _event_receiver: mpsc::Receiver<SocketEvent>,
+    packet_sender: Sender<Packet>,
+    _event_receiver: Receiver<SocketEvent>,
     _polling_thread: thread::JoinHandle<Result<(), NetworkError>>,
 }
 
