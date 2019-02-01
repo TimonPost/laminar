@@ -10,7 +10,6 @@ use mio::{Evented, Events, Poll, PollOpt, Ready, Token};
 use std::{
     io,
     net::{SocketAddr, ToSocketAddrs},
-    sync::Arc,
 };
 
 const SOCKET: Token = Token(0);
@@ -18,7 +17,7 @@ const SOCKET: Token = Token(0);
 /// A reliable UDP socket implementation with configurable reliability and ordering guarantees.
 pub struct Socket {
     socket: mio::net::UdpSocket,
-    config: Arc<Config>,
+    config: Config,
     connections: ActiveConnections,
     recv_buffer: Vec<u8>,
     link_conditioner: Option<LinkConditioner>,
@@ -123,7 +122,7 @@ impl Socket {
     fn send_to(&mut self, packet: Packet) -> NetworkResult<usize> {
         let connection = self
             .connections
-            .get_or_insert_connection(packet.addr(), self.config.clone());
+            .get_or_insert_connection(packet.addr(), &self.config);
         let mut packet_data =
             connection.process_outgoing(packet.payload(), packet.delivery_method())?;
         let mut bytes_sent = 0;
@@ -157,7 +156,7 @@ impl Socket {
         let received_payload = &self.recv_buffer[..recv_len];
         let connection = self
             .connections
-            .get_or_insert_connection(address, self.config.clone());
+            .get_or_insert_connection(address, &self.config);
         connection.process_incoming(received_payload)
     }
 
@@ -181,7 +180,7 @@ impl Socket {
         (
             Self {
                 socket,
-                config: Arc::new(config),
+                config,
                 connections: ActiveConnections::new(),
                 recv_buffer: vec![0; buffer_size],
                 link_conditioner: None,

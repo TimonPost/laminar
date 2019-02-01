@@ -5,7 +5,7 @@ pub use self::quality::{NetworkQuality, RttMeasurer};
 pub use self::virtual_connection::VirtualConnection;
 
 use crate::config::Config;
-use std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Duration};
+use std::{collections::HashMap, net::SocketAddr, time::Duration};
 
 /// Maintains a registry of active "connections". Essentially, when we receive a packet on the
 /// socket from a particular `SocketAddr`, we will track information about it here.
@@ -25,7 +25,7 @@ impl ActiveConnections {
     pub fn get_or_insert_connection(
         &mut self,
         address: SocketAddr,
-        config: Arc<Config>,
+        config: &Config,
     ) -> &mut VirtualConnection {
         self.connections
             .entry(address)
@@ -66,14 +66,12 @@ mod tests {
     #[test]
     fn connection_timed_out() {
         let mut connections = ActiveConnections::new();
-        let config = Arc::new(Config::default());
+        let config = Config::default();
 
         // add 10 clients
         for i in 0..10 {
-            connections.get_or_insert_connection(
-                format!("127.0.0.1:123{}", i).parse().unwrap(),
-                config.clone(),
-            );
+            connections
+                .get_or_insert_connection(format!("127.0.0.1:123{}", i).parse().unwrap(), &config);
         }
 
         assert_eq!(connections.count(), 10);
@@ -89,22 +87,22 @@ mod tests {
     #[test]
     fn insert_connection() {
         let mut connections = ActiveConnections::new();
-        let config = Arc::new(Config::default());
+        let config = Config::default();
 
         let address = ADDRESS.parse().unwrap();
-        connections.get_or_insert_connection(address, config);
+        connections.get_or_insert_connection(address, &config);
         assert!(connections.connections.contains_key(&address));
     }
 
     #[test]
     fn insert_existing_connection() {
         let mut connections = ActiveConnections::new();
-        let config = Arc::new(Config::default());
+        let config = Config::default();
 
         let address = ADDRESS.parse().unwrap();
-        connections.get_or_insert_connection(address, config.clone());
+        connections.get_or_insert_connection(address, &config);
         assert!(connections.connections.contains_key(&address));
-        connections.get_or_insert_connection(address, config);
+        connections.get_or_insert_connection(address, &config);
         assert!(connections.connections.contains_key(&address));
     }
 
@@ -114,7 +112,7 @@ mod tests {
         let config = Arc::new(Config::default());
 
         let address = ADDRESS.parse().unwrap();
-        connections.get_or_insert_connection(address, config);
+        connections.get_or_insert_connection(address, &config);
         assert!(connections.connections.contains_key(&address));
         connections.remove_connection(&address);
         assert!(!connections.connections.contains_key(&address));

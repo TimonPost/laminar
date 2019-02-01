@@ -10,7 +10,6 @@ use crate::sequence_buffer::{CongestionData, SequenceBuffer};
 
 use log::error;
 use std::io::Cursor;
-use std::sync::Arc;
 use std::time::Instant;
 
 /// This channel should be used for processing packets reliable. All packets will be sent and received, ordering depends on given 'ordering' parameter.
@@ -26,7 +25,7 @@ use std::time::Instant;
 pub struct ReliableChannel {
     // settings
     ordered: bool,
-    config: Arc<Config>,
+    config: Config,
 
     // reliability control
     seq_num: u16,
@@ -43,7 +42,7 @@ pub struct ReliableChannel {
 
 impl ReliableChannel {
     /// Creates a new instance of the reliable channel by specifying if channel needs to order incoming packets.
-    pub fn new(ordered: bool, config: Arc<Config>) -> ReliableChannel {
+    pub fn new(ordered: bool, config: &Config) -> ReliableChannel {
         ReliableChannel {
             // settings
             ordered,
