@@ -6,7 +6,6 @@ use std::{
 };
 
 use clap::{load_yaml, App, AppSettings};
-
 use laminar::{Config, DeliveryMethod, Packet, Socket, SocketEvent};
 use log::{debug, error, info};
 
@@ -123,7 +122,7 @@ fn run_client(test_name: &str, destination: &str, endpoint: &str, pps: &str, tes
 }
 
 // Basic test where the client sends packets at a steady rate to the server
-fn test_steady_stream(sender: &mpsc::Sender<Packet>, target: &str, pps: &str, test_duration: &str) {
+fn test_steady_stream(sender: &Sender<Packet>, target: &str, pps: &str, test_duration: &str) {
     info!("Beginning steady-state test");
     let data_to_send = String::from("steady-state test packet");
     let server_addr: SocketAddr = target.to_socket_addrs().unwrap().next().unwrap();
