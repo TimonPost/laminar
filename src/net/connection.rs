@@ -20,7 +20,7 @@ impl ActiveConnections {
         }
     }
 
-    /// Try to get a VirtualConnection by address. If the connection does not exist, it will be
+    /// Try to get a `VirtualConnection` by address. If the connection does not exist, it will be
     /// inserted and returned.
     pub fn get_or_insert_connection(
         &mut self,

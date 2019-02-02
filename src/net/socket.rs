@@ -8,7 +8,7 @@ use crossbeam_channel::{self, unbounded, Receiver, Sender};
 use log::error;
 use mio::{Evented, Events, Poll, PollOpt, Ready, Token};
 use std::{
-    io,
+    self, io,
     net::{SocketAddr, ToSocketAddrs},
 };
 
@@ -34,6 +34,14 @@ impl Socket {
         config: Config,
     ) -> NetworkResult<(Self, Sender<Packet>, Receiver<SocketEvent>)> {
         let socket = std::net::UdpSocket::bind(addresses)?;
+        Self::from_std(socket, config)
+    }
+
+    /// Binds to a standard library UDP socket.
+    pub fn from_std(
+        socket: std::net::UdpSocket,
+        config: Config,
+    ) -> NetworkResult<(Self, Sender<Packet>, Receiver<SocketEvent>)> {
         let socket = mio::net::UdpSocket::from_socket(socket)?;
         Ok(Self::new(socket, config))
     }
