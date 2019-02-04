@@ -1,21 +1,25 @@
-use std::net::SocketAddr;
-use std::process::exit;
-use std::thread;
-use std::time::{Duration, Instant};
+use std::{
+    net::SocketAddr,
+    process::exit,
+    thread,
+    time::{Duration, Instant}
+};
 
-use clap::{load_yaml, App};
+use clap::{load_yaml, App, AppSettings};
 
 use laminar::{config, net, DeliveryMethod, Packet};
 use log::{debug, error, info};
 
 fn main() {
+    env_logger::init();
     let yaml = load_yaml!("cli.yml");
-    let matches = App::from_yaml(yaml).get_matches();
+    let matches = App::from_yaml(yaml)
+        .setting(AppSettings::ArgRequiredElseHelp)
+        .get_matches();
 
     if let Some(m) = matches.subcommand_matches("server") {
         process_server_subcommand(m);
     }
-
     if let Some(m) = matches.subcommand_matches("client") {
         process_client_subcommand(m);
     }
@@ -94,7 +98,7 @@ fn run_client(test_name: &str, destination: &str, endpoint: &str, pps: &str, tes
     let mut client = match net::UdpSocket::bind(endpoint, network_config.clone()) {
         Ok(c) => c,
         Err(e) => {
-            println!("Error binding was: {:?}", e);
+            error!("Error binding was: {:?}", e);
             exit(1);
         }
     };
@@ -127,7 +131,7 @@ fn test_steady_stream(client: &mut net::UdpSocket, target: &str, pps: &str, test
     let test_packet = Packet::new(
         server_addr,
         data_to_send.clone().into_bytes().into_boxed_slice(),
-        DeliveryMethod::ReliableOrdered,
+        DeliveryMethod::ReliableUnordered,
     );
     let time_quantum = 1000 / pps;
     let start_time = Instant::now();
