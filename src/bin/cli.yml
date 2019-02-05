@@ -43,7 +43,7 @@ subcommands:
                 required: true
                 takes_value: true
                 long: connect-port
-                default_value: "2265"
+                default_value: "2264"
                 short: P
             - LISTEN_HOST:
                 help: "Which host the client should bind to. 0.0.0.0/0 will bind to all"
@@ -57,7 +57,7 @@ subcommands:
                 required: true
                 takes_value: true
                 long: bind-port
-                default_value: "2264"
+                default_value: "2265"
                 short: p
             - TEST_TO_RUN:
                 help: "Which client test to run. Run 'laminar-tester show-tests' to see all available"

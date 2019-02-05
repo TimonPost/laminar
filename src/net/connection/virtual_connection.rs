@@ -102,7 +102,7 @@ impl VirtualConnection {
                         self.remote_address,
                         payload.into_boxed_slice(),
                         header.delivery_method,
-                    )))
+                    )));
                 }
                 Ok(None) => return Ok(None),
                 Err(e) => return Err(e),

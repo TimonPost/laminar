@@ -1,8 +1,8 @@
 use std::{
-    net::SocketAddr,
+    net::{SocketAddr, ToSocketAddrs},
     process::exit,
     thread,
-    time::{Duration, Instant}
+    time::{Duration, Instant},
 };
 
 use clap::{load_yaml, App, AppSettings};
@@ -42,6 +42,7 @@ fn process_server_subcommand(m: &clap::ArgMatches<'_>) {
     let socket_addr = host.to_string() + ":" + port;
     thread::spawn(move || {
         info!("Server started");
+        info!("Server listening on: {:?}", socket_addr);
         run_server(&socket_addr);
     });
     info!("Main thread sleeping");
@@ -62,7 +63,7 @@ fn process_client_subcommand(m: &clap::ArgMatches<'_>) {
     let destination = connect_host.to_string() + ":" + connect_port;
     debug!("Endpoint is: {:?}", endpoint);
     debug!("Client destination is: {:?}", destination);
-    run_client(&test_name, &endpoint, &destination, &pps, &test_duration);
+    run_client(&test_name, &destination, &endpoint, &pps, &test_duration);
     exit(0);
 }
 
@@ -124,13 +125,13 @@ fn run_client(test_name: &str, destination: &str, endpoint: &str, pps: &str, tes
 fn test_steady_stream(client: &mut net::UdpSocket, target: &str, pps: &str, test_duration: &str) {
     info!("Beginning steady-state test");
     let data_to_send = String::from("steady-state test packet");
-    let server_addr: SocketAddr = target.parse().unwrap();
+    let server_addr: SocketAddr = target.to_socket_addrs().unwrap().next().unwrap();
     let pps = pps.parse::<u64>().unwrap();
     let test_duration = test_duration.parse::<u64>().unwrap();
     let test_duration = Duration::from_secs(test_duration);
     let test_packet = Packet::new(
         server_addr,
-        data_to_send.clone().into_bytes().into_boxed_slice(),
+        data_to_send.into_bytes().into_boxed_slice(),
         DeliveryMethod::ReliableUnordered,
     );
     let time_quantum = 1000 / pps;
@@ -138,7 +139,7 @@ fn test_steady_stream(client: &mut net::UdpSocket, target: &str, pps: &str, test
     let mut packets_sent = 0;
     loop {
         client
-            .send(&test_packet.clone())
+            .send(&test_packet)
             .expect("Unable to send a client packet");
         packets_sent += 1;
         let now = Instant::now();
