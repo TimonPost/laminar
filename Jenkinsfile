@@ -3,6 +3,9 @@ pipeline {
     stages {
         stage('fmt') {
             steps {
+                sh 'rustup component add clippy'
+                sh 'rustup component add rustfmt'
+                sh 'rustup install stable'                
                 sh 'cargo fmt --all -- --check'
                 sh 'cargo clippy --all --all-features -- -D warnings'
             }
