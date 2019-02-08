@@ -35,7 +35,7 @@ fn server() -> Result<(), NetworkError> {
                     ))
                     .unwrap();
             }
-            SocketEvent::TimeOut(address) => {
+            SocketEvent::Timeout(address) => {
                 println!("Client timed out: {}", address);
             }
             _ => {}
@@ -82,7 +82,7 @@ fn client() -> Result<(), NetworkError> {
                     println!("Unknown sender.");
                 }
             }
-            SocketEvent::TimeOut(_) => {}
+            SocketEvent::Timeout(_) => {}
             _ => println!("Silence.."),
         }
     }

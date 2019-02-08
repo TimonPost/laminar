@@ -12,5 +12,5 @@ pub enum SocketEvent {
     /// or it could be from the client disconnecting.
     Disconnect(SocketAddr),
     /// This is generated if the server has not seen traffic from a client after a configurable amount of time.
-    TimeOut(SocketAddr),
+    Timeout(SocketAddr),
 }

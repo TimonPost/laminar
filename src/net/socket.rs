@@ -87,7 +87,7 @@ impl Socket {
 
         for address in idle_addresses {
             self.connections.remove_connection(&address);
-            if let Err(err) = self.event_sender.send(SocketEvent::TimeOut(address)) {
+            if let Err(err) = self.event_sender.send(SocketEvent::Timeout(address)) {
                 error!("Error sending timeout: {:?}", err);
             }
         }

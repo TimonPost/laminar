@@ -109,7 +109,7 @@ impl Server {
 
                 self.perform_action(deserialized);
             }
-            Ok(SocketEvent::TimeOut(address)) => {
+            Ok(SocketEvent::Timeout(address)) => {
                 println!("A client timed out: {}", address);
             }
             Ok(_) => {}
