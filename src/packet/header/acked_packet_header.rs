@@ -56,7 +56,7 @@ impl AckedPacketHeader {
 impl HeaderWriter for AckedPacketHeader {
     type Output = NetworkResult<()>;
 
-    fn parse(&self, buffer: &mut Vec<u8>) -> <Self as HeaderWriter>::Output {
+    fn parse(&self, buffer: &mut Vec<u8>) -> Self::Output {
         self.standard_header.parse(buffer)?;
         buffer.write_u16::<BigEndian>(self.seq)?;
         buffer.write_u16::<BigEndian>(self.ack_seq)?;
@@ -68,7 +68,7 @@ impl HeaderWriter for AckedPacketHeader {
 impl HeaderReader for AckedPacketHeader {
     type Header = NetworkResult<AckedPacketHeader>;
 
-    fn read(rdr: &mut Cursor<&[u8]>) -> <Self as HeaderReader>::Header {
+    fn read(rdr: &mut Cursor<&[u8]>) -> Self::Header {
         let standard_header = StandardHeader::read(rdr)?;
         let seq = rdr.read_u16::<BigEndian>()?;
         let ack_seq = rdr.read_u16::<BigEndian>()?;

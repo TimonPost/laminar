@@ -56,7 +56,7 @@ impl FragmentHeader {
 impl HeaderWriter for FragmentHeader {
     type Output = NetworkResult<()>;
 
-    fn parse(&self, buffer: &mut Vec<u8>) -> <Self as HeaderWriter>::Output {
+    fn parse(&self, buffer: &mut Vec<u8>) -> Self::Output {
         self.standard_header.parse(buffer)?;
         buffer.write_u16::<BigEndian>(self.sequence)?;
         buffer.write_u8(self.id)?;
@@ -79,7 +79,7 @@ impl HeaderWriter for FragmentHeader {
 impl HeaderReader for FragmentHeader {
     type Header = NetworkResult<FragmentHeader>;
 
-    fn read(rdr: &mut Cursor<&[u8]>) -> <Self as HeaderReader>::Header {
+    fn read(rdr: &mut Cursor<&[u8]>) -> Self::Header {
         let standard_header = StandardHeader::read(rdr)?;
         let sequence = rdr.read_u16::<BigEndian>()?;
         let id = rdr.read_u8()?;

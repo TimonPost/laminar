@@ -38,7 +38,7 @@ impl Default for StandardHeader {
 impl HeaderWriter for StandardHeader {
     type Output = NetworkResult<()>;
 
-    fn parse(&self, buffer: &mut Vec<u8>) -> <Self as HeaderWriter>::Output {
+    fn parse(&self, buffer: &mut Vec<u8>) -> Self::Output {
         buffer.write_u32::<BigEndian>(self.protocol_version)?;
         buffer.write_u8(PacketTypeId::get_id(self.packet_type_id))?;
         buffer.write_u8(DeliveryMethod::get_delivery_method_id(self.delivery_method))?;
@@ -50,7 +50,7 @@ impl HeaderWriter for StandardHeader {
 impl HeaderReader for StandardHeader {
     type Header = NetworkResult<StandardHeader>;
 
-    fn read(rdr: &mut Cursor<&[u8]>) -> <Self as HeaderReader>::Header {
+    fn read(rdr: &mut Cursor<&[u8]>) -> Self::Header {
         let protocol_version = rdr.read_u32::<BigEndian>()?; /* protocol id */
         let packet_id = rdr.read_u8()?;
         let delivery_method_id = rdr.read_u8()?;
