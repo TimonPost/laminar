@@ -121,7 +121,9 @@ impl Socket {
                         }
                     }
                 }
-                _ => unreachable!(),
+                _ => unreachable!(
+                    "We should never hit this since we only ever register the SOCKET token."
+                ),
             }
         }
         Ok(())
