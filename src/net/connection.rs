@@ -50,7 +50,7 @@ impl ActiveConnections {
     }
 
     /// Get the number of connected clients.
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub fn count(&self) -> usize {
         self.connections.len()
     }

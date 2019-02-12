@@ -25,7 +25,7 @@ impl PacketData {
     }
 
     /// Return the total fragments this packet is divided into.
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub fn fragment_count(&self) -> usize {
         self.parts.len()
     }
