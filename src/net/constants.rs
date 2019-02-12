@@ -11,6 +11,15 @@ pub const MAX_FRAGMENTS_DEFAULT: u16 = 16;
 /// Default max size of each fragment
 pub const FRAGMENT_SIZE_DEFAULT: u16 = 1024;
 
+/// Maximum transmission unit of the payload.
+///
+/// Derived from ethernet_mtu - ipv6_header_size - udp_header_size - packet header size
+///       1452 = 1500         - 40               - 8               - 8
+///
+/// This is not strictly guaranteed -- there may be less room in an ethernet frame than this due to
+/// variability in ipv6 header size.
+#[allow(dead_code)]
+pub const DEFAULT_MTU: u16 = 1452;
 /// This is the current protocol version.
 ///
 /// It is used for:
