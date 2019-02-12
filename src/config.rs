@@ -1,4 +1,4 @@
-use crate::net::constants::{FRAGMENT_SIZE_DEFAULT, MAX_FRAGMENTS_DEFAULT};
+use crate::net::constants::{DEFAULT_MTU, FRAGMENT_SIZE_DEFAULT, MAX_FRAGMENTS_DEFAULT};
 use std::{default::Default, time::Duration};
 
 #[derive(Clone)]
@@ -51,7 +51,7 @@ impl Default for Config {
             max_fragments: MAX_FRAGMENTS_DEFAULT as u8,
             fragment_size: FRAGMENT_SIZE_DEFAULT,
             fragment_reassembly_buffer_size: 64,
-            receive_buffer_max_size: 1500,
+            receive_buffer_max_size: DEFAULT_MTU as usize,
             rtt_smoothing_factor: 0.10,
             rtt_max_value: 250,
             socket_event_buffer_size: 1024,

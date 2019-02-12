@@ -18,7 +18,6 @@ pub const FRAGMENT_SIZE_DEFAULT: u16 = 1024;
 ///
 /// This is not strictly guaranteed -- there may be less room in an ethernet frame than this due to
 /// variability in ipv6 header size.
-#[allow(dead_code)]
 pub const DEFAULT_MTU: u16 = 1452;
 /// This is the current protocol version.
 ///
