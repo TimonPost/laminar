@@ -69,7 +69,7 @@ impl VirtualConnection {
             DeliveryMethod::ReliableUnordered => &mut self.reliable_unordered_channel,
             DeliveryMethod::Sequenced => &mut self.sequenced_channel,
             _ => {
-                error!("Tried using channel type which is not supported yet. Swished to unreliable unordered packet handling.");
+                error!("Tried using channel type which is not supported yet. Switched to unreliable unordered packet handling.");
                 &mut self.unreliable_unordered_channel
             }
         };
@@ -102,7 +102,7 @@ impl VirtualConnection {
                         self.remote_address,
                         payload.into_boxed_slice(),
                         header.delivery_method,
-                    )))
+                    )));
                 }
                 Ok(None) => return Ok(None),
                 Err(e) => return Err(e),

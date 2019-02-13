@@ -1,25 +1,21 @@
 version: '3'
 services:
   server:
-    image: "zerosubnet/laminar:latest"
-    command: server -s 30
-    networks:
-      - laminet
+    image: "laminar-tester:latest"
+    command: server --bind-host 0.0.0.0
+    ports:
+      - "2264:2264/udp"
     environment:
       - RUST_LOG=debug
       - RUST_BACKTRACE=1
 
   client:
-    image: "zerosubnet/laminar:latest"
-    command: client --test-duration 20
-    networks:
-      - laminet
+    image: "laminar-tester:latest"
+    command: client --connect-host server --bind-host 0.0.0.0
+    ports:
+      - "2265:2265/udp"
     environment:
       - RUST_LOG=debug
       - RUST_BACKTRACE=1
-    depends_on: 
+    depends_on:
       - server
-
-networks:
-  laminet:
-    driver: bridge

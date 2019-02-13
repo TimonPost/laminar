@@ -1,23 +1,21 @@
 name: tester
-version: "0.0.1"
+version: "0.1.0"
 author: Fletcher Haynes <fletcher@capitalprawn.com>
 about: Testing binary for laminar
 
 subcommands:
     - server:
         about: Starts the tester in server mode
-        author: Fletcher Haynes <fletcher@capitalprawn.com>
-        version: "0.0.1"
         args:
             - LISTEN_HOST:
-                help: "What host the server bind to. 0.0.0.0/0 will bind to all"
+                help: "Which host the server bind to. 0.0.0.0/0 will bind to all"
                 required: true
                 takes_value: true
                 long: bind-host
                 default_value: "127.0.0.1"
                 short: h
             - LISTEN_PORT:
-                help: "What port the server should listen on"
+                help: "Which port the server should listen on"
                 required: true
                 takes_value: true
                 long: bind-port
@@ -32,36 +30,34 @@ subcommands:
                 short: s
     - client:
         about: Starts the tester in client mode
-        author: Fletcher Haynes <fletcher@capitalprawn.com>
-        version: "0.0.1"
         args:
             - CONNECT_HOST:
-                help: "What host the client will connect to, as a hostname or IP address"
+                help: "Which host the client will connect to, as a hostname or IP address"
                 required: true
                 takes_value: true
                 long: connect-host
                 default_value: "127.0.0.1"
                 short: H
             - CONNECT_PORT:
-                help: "What port the client will connect to"
+                help: "Which port the client will connect to"
                 required: true
                 takes_value: true
                 long: connect-port
                 default_value: "2264"
                 short: P
             - LISTEN_HOST:
-                help: "What host the client should bind to. 0.0.0.0/0 will bind to all"
+                help: "Which host the client should bind to. 0.0.0.0/0 will bind to all"
                 required: true
                 takes_value: true
                 long: bind-host
                 default_value: "127.0.0.1"
                 short: h
             - LISTEN_PORT:
-                help: "What port the client should listen on"
+                help: "Which port the client should listen on"
                 required: true
                 takes_value: true
                 long: bind-port
-                default_value: "2274"
+                default_value: "2265"
                 short: p
             - TEST_TO_RUN:
                 help: "Which client test to run. Run 'laminar-tester show-tests' to see all available"
@@ -90,8 +86,6 @@ subcommands:
                 default_value: "60"
     - show-tests:
         about: Shows all tests available
-        author: Fletcher Haynes <fletcher@capitalprawn.com>
-        version: "0.0.1"
         subcommands:
             - server:
                 about: Shows server tests
