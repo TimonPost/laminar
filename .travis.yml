@@ -32,14 +32,8 @@ matrix:
       script:
         - rustup component add rustfmt
         - cargo fmt -- --check
-  include:
-    - rust: stable
-      script:
-        - cargo test --verbose --all --all-features
+        - cargo test --verbose
         - ./ci/coverage.sh
-
-
-
 
 addons:
   apt:
