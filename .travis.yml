@@ -32,6 +32,7 @@ matrix:
       script:
         - rustup component add rustfmt
         - cargo fmt -- --check
+        - ./ci/coverage.sh
 
 addons:
   apt:
@@ -47,4 +48,3 @@ addons:
 script:
   - cargo clippy --all --all-features -- -D warnings
   - cargo test --verbose --all --all-features
-  - ./ci/coverage.sh
