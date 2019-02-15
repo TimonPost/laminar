@@ -1,0 +1,441 @@
+//! Module with logic for arranging items in-order on multiple streams.
+//!
+//! _"Order is the process of putting something in a particular order."_
+//!
+//! # How ordering works.
+//! Imagine we have this sequence: `1,5,4,2,3` and we want the user to eventually see: `1,2,3,4,5`.
+//!
+//! Let's define some variables:
+//!
+//! ## Variable Setup
+//! **hashmap**
+//!
+//! | Key     | Value |
+//! | :-------------: | :-------------:    |
+//! |       _       |        _         |
+//!
+//! `expected_index = 1;`
+//!
+//! ## Ordering
+//! **Receive '1'**
+//!
+//! - Packet 1 is equals to our expected index we can return it immediately.
+//! - Increase `expected_index` to '2'
+//!
+//! **Receive '5'**
+//!
+//! Packet '5' is not equal to our expected index so we need to store it until we received **all** packets up to 5 before returning.
+//!
+//! | Key     | Value |
+//! | :-------------: | :-------------:    |
+//! |       5       |        packet         |
+//!
+//! **Receive '4'**
+//!
+//! Packet '4' is not equal to our expected index so we need to store it until we received **all** packets up to 4 before returning.
+//!
+//! | Key     | Value |
+//! | :-------------: | :-------------:    |
+//! |       5       |        packet         |
+//! |       4       |        packet         |
+//!
+//! **Receive '3'**
+//!
+//! Packet '3' is not equal to our expected index so we need to store it until we received **all** packets up to 3 before returning.
+//!
+//! | Key     | Value |
+//! | :-------------: | :-------------:    |
+//! |       5       |        packet         |
+//! |       4       |        packet         |
+//! |       4       |        packet         |
+//!
+//! **Receive '2'**
+//!
+//! - Packet 2 is equals to our expected index we can return it immediately.
+//! - Increase `expected_index` to '3'
+//!
+//! Now we received our `expected_index` we can check if we have the next `expected_index` in storage.
+//!
+//! This could be done with an iterator which returns packets as long there are packets in our storage matching the `expected_index`.
+//!
+//! ```rust
+//! let stream = OrderingStream::new();
+//!
+//! let iter = stream.iter_mut();
+//!
+//! while let Some(packet) = iter.next() {
+//!    // packets from iterator are in order.
+//! }
+//! ```
+//!
+//! # Remarks
+//! - See [super-module](../index.html) description for more details.
+
+use super::{Arranging, ArrangingSystem};
+use std::collections::HashMap;
+
+/// An ordering system that can arrange items in order on different streams.
+///
+/// Checkout [`OrderingStream`](./struct.OrderingStream.html), or module description for more details.
+///
+/// # Remarks
+/// - See [super-module](../index.html) for more information about streams.
+pub struct OrderingSystem<T> {
+    // '[HashMap]' with streams on which items can be ordered.
+    streams: HashMap<u8, OrderingStream<T>>,
+}
+
+impl<T> OrderingSystem<T> {
+    /// Constructs a new [`OrderingSystem`](./struct.OrderingSystem.html).
+    pub fn new() -> OrderingSystem<T> {
+        OrderingSystem {
+            streams: HashMap::with_capacity(32),
+        }
+    }
+}
+
+impl<'a, T> ArrangingSystem for OrderingSystem<T> {
+    type Stream = OrderingStream<T>;
+
+    /// Returns the number of ordering streams currently active.
+    fn stream_count(&self) -> usize {
+        self.streams.len()
+    }
+
+    /// Try to get an [`OrderingStream`](./struct.OrderingStream.html) by `stream_id`.
+    /// When the stream does not exist, it will be inserted by the given `stream_id` and returned.
+    fn get_or_create_stream(&mut self, stream_id: u8) -> &mut Self::Stream {
+        self.streams
+            .entry(stream_id)
+            .or_insert_with(|| OrderingStream::new(stream_id))
+    }
+}
+
+/// A stream on which items will be arranged in-order.
+///
+/// # Algorithm
+///
+/// With every ordering operation an `incoming_index` is given. We also keep a local record of the `expected_index`.
+///
+/// There are three scenarios that are important to us.
+/// 1. `incoming_index` == `expected_index`.
+/// This package meets the expected order, so we can return it immediately.
+/// 2. `incoming_index` > `expected_index`.
+/// This package is newer than we expect, so we have to hold it temporarily until we have received all previous packages.
+/// 3. `incoming_index`< `expected_index`
+/// This can only happen in cases where we have a duplicated package. Again we don't give anything back.
+/// # Remarks
+/// - See [super-module](../index.html) for more information about streams.
+pub struct OrderingStream<T> {
+    // the id of this stream.
+    stream_id: u8,
+    // the storage for items that are waiting for older items to arrive.
+    // the items will be stored by key and value where the key is de incoming index and value the item value.
+    storage: HashMap<usize, T>,
+    // the next expected item index.
+    expected_index: usize,
+}
+
+impl<T> OrderingStream<T> {
+    /// Constructs a new, empty [`OrderingStream<T>`](./struct.OrderingStream.html).
+    ///
+    /// The default stream will have a capacity of 32 items.
+    pub fn new(stream_id: u8) -> OrderingStream<T> {
+        OrderingStream::with_capacity(1024, stream_id)
+    }
+
+    /// Constructs a new, empty [`OrderingStream`] with the specified capacity.
+    ///
+    /// The stream will be able to hold exactly capacity elements without
+    /// reallocating. If capacity is 0, the vector will not allocate.
+    ///
+    /// It is important to note that although the returned stream has the capacity specified,
+    /// the stream will have a zero length.
+    ///
+    /// [`OrderingStream`]: ./struct.OrderingStream.html
+    pub fn with_capacity(size: usize, stream_id: u8) -> OrderingStream<T> {
+        OrderingStream {
+            storage: HashMap::with_capacity(size),
+            expected_index: 1,
+            stream_id,
+        }
+    }
+
+    /// Returns the identifier of this stream.
+    fn stream_id(&self) -> u8 {
+        self.stream_id
+    }
+
+    /// Returns the next expected index.
+    pub fn expected_index(&self) -> usize {
+        self.expected_index
+    }
+
+    /// Returns an iterator of stored items.
+    ///
+    /// # Algorithm for returning items from an Iterator.
+    ///
+    /// 1. See if there is an item matching our `expected_index`
+    /// 2. If there is return the `Some(item)`
+    ///    - Increase the `expected_index`
+    ///    - Start at '1'
+    /// 3. If there isn't return `None`
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let stream = OrderingStream::new();
+    ///
+    /// let iter = stream.iter_mut();
+    ///
+    /// while let Some(item) = iter.next() {
+    ///    // Items from iterator are in order.
+    /// }
+    /// ```
+    ///
+    /// # Remarks
+    /// - Iterator mutates the `expected_index`.
+    /// - You can't use this iterator for iterating trough all cached values.
+    pub fn iter_mut(&mut self) -> IterMut<T> {
+        IterMut {
+            items: &mut self.storage,
+            expected_index: &mut self.expected_index,
+        }
+    }
+}
+
+impl<T> Arranging for OrderingStream<T> {
+    type ArrangingItem = T;
+
+    /// Will order the given item based on the ordering algorithm.
+    ///
+    /// With every ordering operation an `incoming_index` is given. We also keep a local record of the `expected_index`.
+    ///
+    /// # Algorithm
+    ///
+    /// There are three scenarios that are important to us.
+    /// 1. `incoming_index` == `expected_index`.
+    /// This package meets the expected order, so we can return it immediately.
+    /// 2. `incoming_index` > `expected_index`.
+    /// This package is newer than we expect, so we have to hold it temporarily until we have received all previous packages.
+    /// 3. `incoming_index` < `expected_index`
+    /// This can only happen in cases where we have a duplicated package. Again we don't give anything back.
+    ///
+    /// # Remark
+    /// - When we receive an item there is a possibility that a gab is filled and one or more items will could be returned.
+    ///   You should use the `iter_mut` instead for reading the items in order.
+    ///   However the item given to `arrange` will be returned directly when it matches the `expected_index`.
+    fn arrange(
+        &mut self,
+        incoming_offset: usize,
+        index: Self::ArrangingItem,
+    ) -> Option<Self::ArrangingItem> {
+        if incoming_offset == self.expected_index {
+            self.expected_index += 1;
+            Some(index)
+        } else if incoming_offset > self.expected_index {
+            self.storage.insert(incoming_offset, index);
+            None
+        } else {
+            // only occurs when we get a duplicated incoming_offset.
+            None
+        }
+    }
+}
+
+/// Mutable Iterator for [`OrderingStream<T>`](./struct.OrderingStream.html).
+///
+/// # Algorithm for returning items from Iterator.
+///
+/// 1. See if there is an item matching our `expected_index`
+/// 2. If there is return the `Some(item)`
+///    - Increase the `expected_index`
+///    - Start at '1'
+/// 3. If there isn't return `None`
+///
+/// # Remarks
+///
+/// - Iterator mutates the `expected_index`.
+/// - You can't use this iterator for iterating trough all cached values.
+pub struct IterMut<'a, T> {
+    items: &'a mut HashMap<usize, T>,
+    expected_index: &'a mut usize,
+}
+
+impl<'a, T> Iterator for IterMut<'a, T> {
+    type Item = T;
+
+    /// Returns `Some` when there is an item in our cache matching the `expected_index`.
+    /// Returns `None` if there are no times matching our `expected` index.
+    fn next(&mut self) -> Option<<Self as Iterator>::Item> {
+        match self.items.remove(&self.expected_index) {
+            None => None,
+            Some(e) => {
+                *self.expected_index += 1;
+                Some(e)
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Arranging, ArrangingSystem, OrderingSystem};
+
+    #[derive(Debug, PartialEq, Clone)]
+    struct Packet {
+        pub sequence: usize,
+        pub ordering_stream: u8,
+    }
+
+    impl Packet {
+        fn new(sequence: usize, ordering_stream: u8) -> Packet {
+            Packet {
+                sequence,
+                ordering_stream,
+            }
+        }
+    }
+
+    #[test]
+    fn create_stream() {
+        let mut system: OrderingSystem<Packet> = OrderingSystem::new();
+        let stream = system.get_or_create_stream(1);
+
+        assert_eq!(stream.expected_index(), 1);
+        assert_eq!(stream.stream_id(), 1);
+    }
+
+    #[test]
+    fn create_existing_stream() {
+        let mut system: OrderingSystem<Packet> = OrderingSystem::new();
+
+        system.get_or_create_stream(1);
+        let stream = system.get_or_create_stream(1);
+
+        assert_eq!(stream.stream_id(), 1);
+    }
+
+    #[test]
+    fn iter_mut() {
+        let mut system: OrderingSystem<Packet> = OrderingSystem::new();
+
+        system.get_or_create_stream(1);
+        let stream = system.get_or_create_stream(1);
+
+        let stub_packet1 = Packet::new(1, 1);
+        let stub_packet2 = Packet::new(2, 1);
+        let stub_packet3 = Packet::new(3, 1);
+        let stub_packet4 = Packet::new(4, 1);
+        let stub_packet5 = Packet::new(5, 1);
+
+        {
+            assert_eq!(
+                stream.arrange(1, stub_packet1.clone()).unwrap(),
+                stub_packet1
+            );
+
+            stream.arrange(4, stub_packet4.clone()).is_none();
+            stream.arrange(5, stub_packet5.clone()).is_none();
+            stream.arrange(3, stub_packet3.clone()).is_none();
+        }
+        {
+            let mut iterator = stream.iter_mut();
+
+            // since we are awaiting for packet '2' our iterator should not return yet.
+            assert_eq!(iterator.next(), None);
+        }
+        {
+            assert_eq!(
+                stream.arrange(2, stub_packet2.clone()).unwrap(),
+                stub_packet2
+            );
+        }
+        {
+            // since we processed packet 2 by now we should be able to iterate and get back: 3,4,5;
+            let mut iterator = stream.iter_mut();
+
+            assert_eq!(iterator.next().unwrap(), stub_packet3);
+            assert_eq!(iterator.next().unwrap(), stub_packet4);
+            assert_eq!(iterator.next().unwrap(), stub_packet5);
+        }
+    }
+
+    /// Asserts that the given collection, on the left, should result - after it is ordered - into the given collection, on the right.
+    macro_rules! assert_order {
+        ( [$( $x:expr ),*] , [$( $y:expr),*] , $stream_id:expr) => {
+        {
+            // initialize vector of given range on the left.
+            let mut before: Vec<usize> = Vec::new();
+            $(
+                before.push($x);
+            )*
+
+            // initialize vector of given range on the right.
+            let mut after: Vec<usize> = Vec::new();
+            $(
+                after.push($y);
+            )*
+
+            // generate test packets
+            let mut packets = Vec::new();
+            for (_, v) in before.iter().enumerate() {
+                packets.push(Packet::new(*v, $stream_id));
+            }
+
+            // create system to handle the ordering of our packets.
+            let mut ordering_system = OrderingSystem::<Packet>::new();
+
+            // get stream '1' to order the packets on.
+            let stream = ordering_system.get_or_create_stream(1);
+
+            // order packets
+            let mut ordered_packets = Vec::new();
+
+            for packet in packets.into_iter() {
+                match stream.arrange(packet.sequence, packet.clone()) {
+                    Some(packet) => {
+                        ordered_packets.push(packet.sequence);
+                         // empty the remaining ordered packets into an vector so that we can check if they are ordered.
+                        let mut iter = stream.iter_mut();
+
+                        while let Some(packet) = iter.next() {
+                            ordered_packets.push(packet.sequence);
+                        }
+                    }
+                    None => {}
+                };
+            }
+
+             // assert if the expected range of the given numbers equals to the processed range which is in sequence.
+             assert_eq!(after, ordered_packets);
+            }
+        };
+    }
+
+    #[test]
+    fn ordering_test() {
+        // we order on stream 1
+        assert_order!([1, 3, 5, 4, 2], [1, 2, 3, 4, 5], 1);
+        assert_order!([1, 5, 4, 3, 2], [1, 2, 3, 4, 5], 1);
+        assert_order!([5, 3, 4, 2, 1], [1, 2, 3, 4, 5], 1);
+        assert_order!([4, 3, 2, 1, 5], [1, 2, 3, 4, 5], 1);
+        assert_order!([2, 1, 4, 3, 5], [1, 2, 3, 4, 5], 1);
+        assert_order!([5, 2, 1, 4, 3], [1, 2, 3, 4, 5], 1);
+        assert_order!([3, 2, 4, 1, 5], [1, 2, 3, 4, 5], 1);
+        assert_order!([2, 1, 4, 3, 5], [1, 2, 3, 4, 5], 1);
+    }
+
+    #[test]
+    fn multiple_stream_ordering_test() {
+        // we order on streams [1...8]
+        assert_order!([1, 3, 5, 4, 2], [1, 2, 3, 4, 5], 1);
+        assert_order!([1, 5, 4, 3, 2], [1, 2, 3, 4, 5], 2);
+        assert_order!([5, 3, 4, 2, 1], [1, 2, 3, 4, 5], 3);
+        assert_order!([4, 3, 2, 1, 5], [1, 2, 3, 4, 5], 4);
+        assert_order!([2, 1, 4, 3, 5], [1, 2, 3, 4, 5], 5);
+        assert_order!([5, 2, 1, 4, 3], [1, 2, 3, 4, 5], 6);
+        assert_order!([3, 2, 4, 1, 5], [1, 2, 3, 4, 5], 7);
+        assert_order!([2, 1, 4, 3, 5], [1, 2, 3, 4, 5], 8);
+    }
+}
