@@ -1,4 +1,4 @@
-use super::{HeaderParser, HeaderReader};
+use super::{HeaderReader, HeaderWriter};
 use crate::error::NetworkResult;
 use crate::net::constants::ACKED_PACKET_HEADER;
 use crate::packet::header::StandardHeader;
@@ -53,10 +53,10 @@ impl AckedPacketHeader {
     }
 }
 
-impl HeaderParser for AckedPacketHeader {
+impl HeaderWriter for AckedPacketHeader {
     type Output = NetworkResult<()>;
 
-    fn parse(&self, buffer: &mut Vec<u8>) -> <Self as HeaderParser>::Output {
+    fn parse(&self, buffer: &mut Vec<u8>) -> Self::Output {
         self.standard_header.parse(buffer)?;
         buffer.write_u16::<BigEndian>(self.seq)?;
         buffer.write_u16::<BigEndian>(self.ack_seq)?;
@@ -68,7 +68,7 @@ impl HeaderParser for AckedPacketHeader {
 impl HeaderReader for AckedPacketHeader {
     type Header = NetworkResult<AckedPacketHeader>;
 
-    fn read(rdr: &mut Cursor<&[u8]>) -> <Self as HeaderReader>::Header {
+    fn read(rdr: &mut Cursor<&[u8]>) -> Self::Header {
         let standard_header = StandardHeader::read(rdr)?;
         let seq = rdr.read_u16::<BigEndian>()?;
         let ack_seq = rdr.read_u16::<BigEndian>()?;
@@ -89,7 +89,7 @@ impl HeaderReader for AckedPacketHeader {
 
 #[cfg(test)]
 mod tests {
-    use crate::packet::header::{AckedPacketHeader, HeaderParser, HeaderReader, StandardHeader};
+    use crate::packet::header::{AckedPacketHeader, HeaderReader, HeaderWriter, StandardHeader};
     use std::io::Cursor;
 
     #[test]

@@ -1,4 +1,4 @@
-use super::{AckedPacketHeader, HeaderParser, HeaderReader, StandardHeader};
+use super::{AckedPacketHeader, HeaderReader, HeaderWriter, StandardHeader};
 use crate::error::{FragmentErrorKind, NetworkResult};
 use crate::net::constants::FRAGMENT_HEADER_SIZE;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
@@ -53,10 +53,10 @@ impl FragmentHeader {
     }
 }
 
-impl HeaderParser for FragmentHeader {
+impl HeaderWriter for FragmentHeader {
     type Output = NetworkResult<()>;
 
-    fn parse(&self, buffer: &mut Vec<u8>) -> <Self as HeaderParser>::Output {
+    fn parse(&self, buffer: &mut Vec<u8>) -> Self::Output {
         self.standard_header.parse(buffer)?;
         buffer.write_u16::<BigEndian>(self.sequence)?;
         buffer.write_u8(self.id)?;
@@ -79,7 +79,7 @@ impl HeaderParser for FragmentHeader {
 impl HeaderReader for FragmentHeader {
     type Header = NetworkResult<FragmentHeader>;
 
-    fn read(rdr: &mut Cursor<&[u8]>) -> <Self as HeaderReader>::Header {
+    fn read(rdr: &mut Cursor<&[u8]>) -> Self::Header {
         let standard_header = StandardHeader::read(rdr)?;
         let sequence = rdr.read_u16::<BigEndian>()?;
         let id = rdr.read_u8()?;
@@ -121,7 +121,7 @@ impl HeaderReader for FragmentHeader {
 mod tests {
     use crate::infrastructure::DeliveryMethod;
     use crate::packet::header::{
-        AckedPacketHeader, FragmentHeader, HeaderParser, HeaderReader, StandardHeader,
+        AckedPacketHeader, FragmentHeader, HeaderReader, HeaderWriter, StandardHeader,
     };
     use crate::packet::PacketTypeId;
     use std::io::Cursor;

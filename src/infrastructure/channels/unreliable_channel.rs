@@ -3,7 +3,7 @@ use super::Channel;
 use crate::error::NetworkResult;
 use crate::infrastructure::DeliveryMethod;
 use crate::net::constants::STANDARD_HEADER_SIZE;
-use crate::packet::header::{HeaderParser, HeaderReader, StandardHeader};
+use crate::packet::header::{HeaderReader, HeaderWriter, StandardHeader};
 use crate::packet::{PacketData, PacketTypeId};
 
 /// This channel should be used for unreliable processing of packets.

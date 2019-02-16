@@ -1,4 +1,4 @@
-use super::{HeaderParser, HeaderReader};
+use super::{HeaderReader, HeaderWriter};
 use crate::error::NetworkResult;
 use crate::net::constants::HEART_BEAT_HEADER_SIZE;
 use crate::packet::PacketTypeId;
@@ -28,10 +28,10 @@ impl Default for HeartBeatHeader {
     }
 }
 
-impl HeaderParser for HeartBeatHeader {
+impl HeaderWriter for HeartBeatHeader {
     type Output = NetworkResult<()>;
 
-    fn parse(&self, buffer: &mut Vec<u8>) -> <Self as HeaderParser>::Output {
+    fn parse(&self, buffer: &mut Vec<u8>) -> Self::Output {
         buffer.write_u32::<BigEndian>(ProtocolVersion::get_crc32())?;
         buffer.write_u8(PacketTypeId::get_id(self.packet_type_id))?;
 
@@ -42,7 +42,7 @@ impl HeaderParser for HeartBeatHeader {
 impl HeaderReader for HeartBeatHeader {
     type Header = NetworkResult<HeartBeatHeader>;
 
-    fn read(rdr: &mut Cursor<&[u8]>) -> <Self as HeaderReader>::Header {
+    fn read(rdr: &mut Cursor<&[u8]>) -> Self::Header {
         let _ = rdr.read_u32::<BigEndian>()?;
         let _ = rdr.read_u8();
         let header = HeartBeatHeader {

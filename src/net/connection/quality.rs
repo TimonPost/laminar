@@ -1,10 +1,10 @@
-use crate::config::NetworkConfig;
+use crate::config::Config;
 use crate::sequence_buffer::CongestionData;
 
-use std::sync::Arc;
 use std::time::Duration;
 
 /// Represents the quality of a network.
+#[allow(dead_code)]
 pub enum NetworkQuality {
     /// Connection is generally good, minimal packet loss or latency
     Good,
@@ -15,13 +15,15 @@ pub enum NetworkQuality {
 /// This type helps with calculating the round trip time from any packet.
 /// It is able to smooth out the network jitter if there is any.
 pub struct RttMeasurer {
-    config: Arc<NetworkConfig>,
+    config: Config,
 }
 
 impl RttMeasurer {
     /// Creates and returns a new RttMeasurer
-    pub fn new(config: Arc<NetworkConfig>) -> RttMeasurer {
-        RttMeasurer { config }
+    pub fn new(config: &Config) -> RttMeasurer {
+        RttMeasurer {
+            config: config.clone(),
+        }
     }
 
     /// This will calculate the round trip time (rtt) from the given acknowledgement.
@@ -70,10 +72,9 @@ impl RttMeasurer {
 #[cfg(test)]
 mod test {
     use super::RttMeasurer;
-    use crate::config::NetworkConfig;
+    use crate::config::Config;
     use crate::net::connection::VirtualConnection;
     use std::net::ToSocketAddrs;
-    use std::sync::Arc;
     use std::time::Duration;
 
     static TEST_HOST_IP: &'static str = "127.0.0.1";
@@ -84,13 +85,12 @@ mod test {
         let mut addr = format!("{}:{}", TEST_HOST_IP, TEST_PORT)
             .to_socket_addrs()
             .unwrap();
-        let _new_conn =
-            VirtualConnection::new(addr.next().unwrap(), Arc::new(NetworkConfig::default()));
+        let _new_conn = VirtualConnection::new(addr.next().unwrap(), &Config::default());
     }
 
     #[test]
     fn convert_duration_to_milliseconds_test() {
-        let network_quality = RttMeasurer::new(Arc::new(NetworkConfig::default()));
+        let network_quality = RttMeasurer::new(&Config::default());
         let milliseconds1 = network_quality.as_milliseconds(Duration::from_secs(1));
         let milliseconds2 = network_quality.as_milliseconds(Duration::from_millis(1500));
         let milliseconds3 = network_quality.as_milliseconds(Duration::from_millis(1671));
@@ -102,12 +102,12 @@ mod test {
 
     #[test]
     fn smooth_out_rtt() {
-        let mut config = NetworkConfig::default();
+        let mut config = Config::default();
         // for test purpose make sure we set smoothing factor to 10%.
         config.rtt_smoothing_factor = 0.10;
         config.rtt_max_value = 250;
 
-        let network_quality = RttMeasurer::new(Arc::new(config));
+        let network_quality = RttMeasurer::new(&config);
         let smoothed_rtt = network_quality.smooth_out_rtt(300);
 
         // 300ms has exceeded 50ms over the max allowed rtt. So we check if or smoothing factor is now 10% from 50.

@@ -6,8 +6,8 @@ use std::{
 };
 
 use clap::{load_yaml, App, AppSettings};
-
-use laminar::{config, net, DeliveryMethod, Packet};
+use crossbeam_channel::Sender;
+use laminar::{Config, DeliveryMethod, Packet, Socket, SocketEvent};
 use log::{debug, error, info};
 
 fn main() {
@@ -68,19 +68,22 @@ fn process_client_subcommand(m: &clap::ArgMatches<'_>) {
 }
 
 fn run_server(socket_addr: &str) {
-    let network_config = config::NetworkConfig::default();
-    let mut udp_server = net::UdpSocket::bind(socket_addr, network_config).unwrap();
+    let network_config = Config::default();
+    let (mut socket, _packet_sender, event_receiver) =
+        Socket::bind(socket_addr, network_config).unwrap();
+    let _thread = thread::spawn(move || socket.start_polling());
+
     let mut packet_throughput = 0;
     let mut packets_total_received = 0;
     let mut second_counter = Instant::now();
     loop {
-        let result = udp_server.recv();
+        let result = event_receiver.recv();
         match result {
-            Ok(Some(_packet)) => {
+            Ok(SocketEvent::Packet(_packet)) => {
                 packets_total_received += 1;
                 packet_throughput += 1;
             }
-            Ok(None) => {}
+            Ok(_) => {}
             Err(e) => {
                 error!("Error receiving packet: {:?}", e);
             }
@@ -95,23 +98,21 @@ fn run_server(socket_addr: &str) {
 }
 
 fn run_client(test_name: &str, destination: &str, endpoint: &str, pps: &str, test_duration: &str) {
-    let network_config = config::NetworkConfig::default();
-    let mut client = match net::UdpSocket::bind(endpoint, network_config.clone()) {
-        Ok(c) => c,
-        Err(e) => {
-            error!("Error binding was: {:?}", e);
-            exit(1);
-        }
-    };
-
-    client
-        .set_nonblocking(true)
-        .expect("Unable to set nonblocking");
+    let network_config = Config::default();
+    let (mut socket, packet_sender, _event_receiver) =
+        match Socket::bind(endpoint, network_config.clone()) {
+            Ok((socket, sender, receiver)) => (socket, sender, receiver),
+            Err(e) => {
+                println!("Error binding was: {:?}", e);
+                exit(1);
+            }
+        };
+    let _thread = thread::spawn(move || socket.start_polling());
 
     // See which test we want to run
     match test_name {
         "steady-stream" => {
-            test_steady_stream(&mut client, destination, pps, test_duration);
+            test_steady_stream(&packet_sender, destination, pps, test_duration);
             exit(0);
         }
         _ => {
@@ -122,7 +123,7 @@ fn run_client(test_name: &str, destination: &str, endpoint: &str, pps: &str, tes
 }
 
 // Basic test where the client sends packets at a steady rate to the server
-fn test_steady_stream(client: &mut net::UdpSocket, target: &str, pps: &str, test_duration: &str) {
+fn test_steady_stream(sender: &Sender<Packet>, target: &str, pps: &str, test_duration: &str) {
     info!("Beginning steady-state test");
     let data_to_send = String::from("steady-state test packet");
     let server_addr: SocketAddr = target.to_socket_addrs().unwrap().next().unwrap();
@@ -138,8 +139,8 @@ fn test_steady_stream(client: &mut net::UdpSocket, target: &str, pps: &str, test
     let start_time = Instant::now();
     let mut packets_sent = 0;
     loop {
-        client
-            .send(&test_packet)
+        sender
+            .send(test_packet.clone())
             .expect("Unable to send a client packet");
         packets_sent += 1;
         let now = Instant::now();

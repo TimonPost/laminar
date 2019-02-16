@@ -1,4 +1,4 @@
-use crate::config::NetworkConfig;
+use crate::config::Config;
 use crate::error::{NetworkErrorKind, NetworkResult};
 use crate::infrastructure::{
     Channel, DeliveryMethod, Fragmentation, ReliableChannel, SequencedChannel, UnreliableChannel,
@@ -12,7 +12,6 @@ use log::error;
 use std::fmt;
 use std::io::Cursor;
 use std::net::SocketAddr;
-use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 /// Contains the information about a certain 'virtual connection' over udp.
@@ -35,7 +34,7 @@ pub struct VirtualConnection {
 
 impl VirtualConnection {
     /// Creates and returns a new Connection that wraps the provided socket address
-    pub fn new(addr: SocketAddr, config: Arc<NetworkConfig>) -> VirtualConnection {
+    pub fn new(addr: SocketAddr, config: &Config) -> VirtualConnection {
         VirtualConnection {
             // client information
             last_heard: Instant::now(),
@@ -43,7 +42,7 @@ impl VirtualConnection {
 
             // reliability channels for processing packets.
             unreliable_unordered_channel: UnreliableChannel::new(true),
-            reliable_unordered_channel: ReliableChannel::new(false, config.clone()),
+            reliable_unordered_channel: ReliableChannel::new(false, config),
             sequenced_channel: SequencedChannel::new(),
 
             fragmentation: Fragmentation::new(config),
@@ -154,18 +153,14 @@ impl fmt::Debug for VirtualConnection {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::NetworkConfig;
+    use crate::config::Config;
     use crate::infrastructure::DeliveryMethod;
     use crate::net::connection::VirtualConnection;
-    use std::sync::Arc;
 
     const SERVER_ADDR: &str = "127.0.0.1:12345";
 
     fn create_virtual_connection() -> VirtualConnection {
-        VirtualConnection::new(
-            SERVER_ADDR.parse().unwrap(),
-            Arc::new(NetworkConfig::default()),
-        )
+        VirtualConnection::new(SERVER_ADDR.parse().unwrap(), &Config::default())
     }
 
     fn assert_packet_payload(
