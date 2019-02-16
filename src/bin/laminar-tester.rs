@@ -6,6 +6,7 @@ use std::{
 };
 
 use clap::{load_yaml, App, AppSettings};
+use crossbeam_channel::Sender;
 use laminar::{Config, DeliveryMethod, Packet, Socket, SocketEvent};
 use log::{debug, error, info};
 
@@ -138,8 +139,8 @@ fn test_steady_stream(sender: &Sender<Packet>, target: &str, pps: &str, test_dur
     let start_time = Instant::now();
     let mut packets_sent = 0;
     loop {
-        client
-            .send(&test_packet)
+        sender
+            .send(test_packet.clone())
             .expect("Unable to send a client packet");
         packets_sent += 1;
         let now = Instant::now();
