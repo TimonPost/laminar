@@ -228,7 +228,7 @@ impl<T> Arranging for OrderingStream<T> {
     fn arrange(
         &mut self,
         incoming_offset: usize,
-        index: Self::ArrangingItem,
+        item: Self::ArrangingItem,
     ) -> Option<Self::ArrangingItem> {
         if incoming_offset == self.expected_index {
             self.expected_index += 1;

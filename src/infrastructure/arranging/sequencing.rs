@@ -120,7 +120,7 @@ impl<T> Arranging for SequencingStream<T> {
         incoming_index: usize,
         item: Self::ArrangingItem,
     ) -> Option<Self::ArrangingItem> {
-        if incoming_index >= self.top_index {
+        if incoming_index > self.top_index {
             self.top_index = incoming_index;
             return Some(item);
         }

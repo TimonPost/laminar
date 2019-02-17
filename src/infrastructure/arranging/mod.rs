@@ -47,8 +47,8 @@ pub trait Arranging {
     type ArrangingItem;
 
     /// Arrange the given item based on the given index.
-    /// If the `incoming_offset` somehow does not satisfies the arranging algorithm `None`.
-    /// If the `incoming_offset` satisfies the arranging algorithm `Some` will be returned with the passed item.
+    /// If the `incoming_offset` somehow does not satisfies the arranging algorithm it returns `None`.
+    /// If the `incoming_offset` satisfies the arranging algorithm it returns `Some` with the passed item.
     fn arrange(
         &mut self,
         incoming_index: usize,
