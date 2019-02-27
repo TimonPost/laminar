@@ -1,6 +1,6 @@
 use super::Channel;
 
-use crate::error::NetworkResult;
+use crate::error::Result;
 use crate::infrastructure::DeliveryMethod;
 use crate::packet::PacketData;
 
@@ -30,11 +30,11 @@ impl Channel for SequencedChannel {
         &mut self,
         _payload: &[u8],
         _delivery_method: DeliveryMethod,
-    ) -> NetworkResult<PacketData> {
+    ) -> Result<PacketData> {
         unimplemented!()
     }
 
-    fn process_incoming<'d>(&mut self, _buffer: &'d [u8]) -> NetworkResult<&'d [u8]> {
+    fn process_incoming<'d>(&mut self, _buffer: &'d [u8]) -> Result<&'d [u8]> {
         unimplemented!()
     }
 }

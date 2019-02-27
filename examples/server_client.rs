@@ -3,12 +3,12 @@
 //! Note that in practice you don't want to implement a chat client using UDP.
 use std::io::stdin;
 
-use laminar::{Config, NetworkError, Packet, Socket, SocketEvent};
+use laminar::{Config, ErrorKind, Packet, Socket, SocketEvent};
 use std::thread;
 
 const SERVER: &str = "127.0.0.1:12351";
 
-fn server() -> Result<(), NetworkError> {
+fn server() -> Result<(), ErrorKind> {
     let (mut socket, packet_sender, event_receiver) = Socket::bind(SERVER, Config::default())?;
     let _thread = thread::spawn(move || socket.start_polling());
 
@@ -45,7 +45,7 @@ fn server() -> Result<(), NetworkError> {
     Ok(())
 }
 
-fn client() -> Result<(), NetworkError> {
+fn client() -> Result<(), ErrorKind> {
     let addr = "127.0.0.1:12352";
     let (mut socket, packet_sender, event_receiver) = Socket::bind(addr, Config::default())?;
     println!("Connected on {}", addr);
@@ -90,7 +90,7 @@ fn client() -> Result<(), NetworkError> {
     Ok(())
 }
 
-fn main() -> Result<(), NetworkError> {
+fn main() -> Result<(), ErrorKind> {
     let stdin = stdin();
 
     println!("Please type in `server` or `client`.");

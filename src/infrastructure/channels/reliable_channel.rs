@@ -1,7 +1,7 @@
 use super::Channel;
 
 use crate::config::Config;
-use crate::error::{NetworkResult, PacketErrorKind};
+use crate::error::{PacketErrorKind, Result};
 use crate::infrastructure::{DeliveryMethod, Fragmentation};
 use crate::net::{ExternalAcks, LocalAckRecord, NetworkQuality, RttMeasurer};
 use crate::packet::header::{AckedPacketHeader, HeaderReader, HeaderWriter, StandardHeader};
@@ -103,7 +103,7 @@ impl Channel for ReliableChannel {
         &mut self,
         payload: &[u8],
         delivery_method: DeliveryMethod,
-    ) -> NetworkResult<PacketData> {
+    ) -> Result<PacketData> {
         if payload.len() > self.config.max_packet_size {
             error!(
                 "Packet too large: Attempting to send {}, max={}",
@@ -164,7 +164,7 @@ impl Channel for ReliableChannel {
     /// 2. Update acknowledgement data.
     /// 3. Calculate RTT time.
     /// 4. Update dropped packets.
-    fn process_incoming<'d>(&mut self, buffer: &'d [u8]) -> NetworkResult<&'d [u8]> {
+    fn process_incoming<'d>(&mut self, buffer: &'d [u8]) -> Result<&'d [u8]> {
         let mut cursor = Cursor::new(buffer);
         let acked_header = AckedPacketHeader::read(&mut cursor)?;
 

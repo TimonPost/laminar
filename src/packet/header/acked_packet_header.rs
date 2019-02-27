@@ -1,5 +1,5 @@
 use super::{HeaderReader, HeaderWriter};
-use crate::error::NetworkResult;
+use crate::error::Result;
 use crate::net::constants::ACKED_PACKET_HEADER;
 use crate::packet::header::StandardHeader;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
@@ -54,7 +54,7 @@ impl AckedPacketHeader {
 }
 
 impl HeaderWriter for AckedPacketHeader {
-    type Output = NetworkResult<()>;
+    type Output = Result<()>;
 
     fn parse(&self, buffer: &mut Vec<u8>) -> Self::Output {
         self.standard_header.parse(buffer)?;
@@ -66,7 +66,7 @@ impl HeaderWriter for AckedPacketHeader {
 }
 
 impl HeaderReader for AckedPacketHeader {
-    type Header = NetworkResult<AckedPacketHeader>;
+    type Header = Result<AckedPacketHeader>;
 
     fn read(rdr: &mut Cursor<&[u8]>) -> Self::Header {
         let standard_header = StandardHeader::read(rdr)?;

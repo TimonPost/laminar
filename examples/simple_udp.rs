@@ -4,7 +4,7 @@
 //! 3. serialize data to send and deserialize when received.
 use bincode::{deserialize, serialize};
 use crossbeam_channel::{Receiver, Sender};
-use laminar::{Config, NetworkError, Packet, Socket, SocketEvent};
+use laminar::{Config, ErrorKind, Packet, Socket, SocketEvent};
 use serde_derive::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::{thread, time};
@@ -75,7 +75,7 @@ enum DataType {
 struct Server {
     _packet_sender: Sender<Packet>,
     event_receiver: Receiver<SocketEvent>,
-    _polling_thread: thread::JoinHandle<Result<(), NetworkError>>,
+    _polling_thread: thread::JoinHandle<Result<(), ErrorKind>>,
 }
 
 impl Server {
@@ -143,7 +143,7 @@ impl Server {
 struct Client {
     packet_sender: Sender<Packet>,
     _event_receiver: Receiver<SocketEvent>,
-    _polling_thread: thread::JoinHandle<Result<(), NetworkError>>,
+    _polling_thread: thread::JoinHandle<Result<(), ErrorKind>>,
 }
 
 impl Client {

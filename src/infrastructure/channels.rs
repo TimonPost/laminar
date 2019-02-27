@@ -4,7 +4,7 @@ mod reliable_channel;
 mod sequenced_channel;
 mod unreliable_channel;
 
-use crate::error::NetworkResult;
+use crate::error::Result;
 use crate::infrastructure::DeliveryMethod;
 use crate::packet::PacketData;
 
@@ -19,8 +19,8 @@ pub trait Channel {
         &mut self,
         payload: &[u8],
         delivery_method: DeliveryMethod,
-    ) -> NetworkResult<PacketData>;
+    ) -> Result<PacketData>;
 
     /// Progress an packet on receive and receive the processed data.
-    fn process_incoming<'d>(&mut self, buffer: &'d [u8]) -> NetworkResult<&'d [u8]>;
+    fn process_incoming<'d>(&mut self, buffer: &'d [u8]) -> Result<&'d [u8]>;
 }

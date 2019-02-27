@@ -59,7 +59,7 @@ mod error;
 mod net;
 
 pub use self::config::Config;
-pub use self::error::{NetworkError, NetworkResult};
+pub use self::error::{ErrorKind, Result};
 pub use self::infrastructure::DeliveryMethod;
 pub use self::net::Socket;
 pub use self::net::SocketEvent;
