@@ -1,7 +1,7 @@
 use super::Channel;
 
 use crate::config::Config;
-use crate::error::{Result, PacketErrorKind};
+use crate::error::{PacketErrorKind, Result};
 use crate::infrastructure::{DeliveryMethod, Fragmentation};
 use crate::net::{ExternalAcks, LocalAckRecord, NetworkQuality, RttMeasurer};
 use crate::packet::header::{AckedPacketHeader, HeaderReader, HeaderWriter, StandardHeader};

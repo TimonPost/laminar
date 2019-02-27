@@ -103,10 +103,7 @@ impl Fragmentation {
     }
 
     /// This will read fragment data and returns the complete packet data when all fragments are received.
-    pub fn handle_fragment(
-        &mut self,
-        cursor: &mut Cursor<&[u8]>,
-    ) -> Result<Option<Vec<u8>>> {
+    pub fn handle_fragment(&mut self, cursor: &mut Cursor<&[u8]>) -> Result<Option<Vec<u8>>> {
         // read fragment packet
         let fragment_header = FragmentHeader::read(cursor)?;
 
@@ -162,10 +159,7 @@ impl Fragmentation {
     }
 
     /// If fragment does not exist we need to insert a new entry.
-    fn create_fragment_if_not_exists(
-        &mut self,
-        fragment_header: &FragmentHeader,
-    ) -> Result<()> {
+    fn create_fragment_if_not_exists(&mut self, fragment_header: &FragmentHeader) -> Result<()> {
         if !self.fragments.exists(fragment_header.sequence()) {
             if fragment_header.id() == 0 {
                 match fragment_header.packet_header() {
