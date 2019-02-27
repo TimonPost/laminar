@@ -2,7 +2,7 @@ use crate::{
     config::Config,
     error::{ErrorKind, Result},
     net::{connection::ActiveConnections, events::SocketEvent, link_conditioner::LinkConditioner},
-    packet::Packet,
+    packet::{Outgoing, Packet},
 };
 use crossbeam_channel::{self, unbounded, Receiver, Sender};
 use log::error;
@@ -32,7 +32,7 @@ impl Socket {
     pub fn bind<A: ToSocketAddrs>(
         addresses: A,
         config: Config,
-    ) -> Result<(Self, Sender<Packet>, Receiver<SocketEvent>)> {
+    ) -> Result<(Socket, Sender<Packet>, Receiver<SocketEvent>)> {
         let socket = std::net::UdpSocket::bind(addresses)?;
         Self::from_std(socket, config)
     }
@@ -41,7 +41,7 @@ impl Socket {
     pub fn from_std(
         socket: std::net::UdpSocket,
         config: Config,
-    ) -> Result<(Self, Sender<Packet>, Receiver<SocketEvent>)> {
+    ) -> Result<(Socket, Sender<Packet>, Receiver<SocketEvent>)> {
         let socket = mio::net::UdpSocket::from_socket(socket)?;
         Ok(Self::new(socket, config))
     }
@@ -100,24 +100,16 @@ impl Socket {
                 SOCKET => {
                     if event.readiness().is_readable() {
                         loop {
-                            match self.recv_from() {
-                                Ok(Some(packet)) => {
-                                    if let Err(err) =
-                                        self.event_sender.send(SocketEvent::Packet(packet))
-                                    {
-                                        error!("Error sending packet to caller: {:?}", err);
-                                    }
-                                }
-                                Ok(None) => continue,
-                                Err(ref err) => match *err {
+                            if let Err(ref err) = self.recv_from() {
+                                match *err {
                                     ErrorKind::IOError(ref io_err)
                                         if io_err.kind() == io::ErrorKind::WouldBlock =>
                                     {
                                         break;
                                     }
                                     _ => error!("Error receiving from socket: {:?}", err),
-                                },
-                            };
+                                };
+                            }
                         }
                     }
                 }
@@ -131,34 +123,52 @@ impl Socket {
 
     // Serializes and sends a `Packet` on the socket. On success, returns the number of bytes written.
     fn send_to(&mut self, packet: Packet) -> Result<usize> {
-        let connection = self
-            .connections
-            .get_or_insert_connection(packet.addr(), &self.config);
-        let mut packet_data =
-            connection.process_outgoing(packet.payload(), packet.delivery_method())?;
+        let (dropped_packets, processed_packet) = {
+            let connection = self
+                .connections
+                .get_or_insert_connection(packet.addr(), &self.config);
+
+            let processed_packet = connection.process_outgoing(
+                packet.payload(),
+                packet.delivery_guarantee(),
+                packet.order_guarantee(),
+            )?;
+
+            (connection.gather_dropped_packets(), processed_packet)
+        };
+
         let mut bytes_sent = 0;
 
-        if let Some(link_conditioner) = &self.link_conditioner {
-            if link_conditioner.should_send() {
-                for payload in packet_data.parts() {
-                    bytes_sent += self.send_packet(&packet.addr(), &payload)?;
+        let should_send = if let Some(link_conditioner) = &self.link_conditioner {
+            link_conditioner.should_send()
+        } else {
+            true
+        };
+
+        if should_send {
+            match processed_packet {
+                Outgoing::Packet(outgoing) => {
+                    bytes_sent += self.send_packet(&packet.addr(), &outgoing.contents())?;
+                }
+                Outgoing::Fragments(packets) => {
+                    for outgoing in packets {
+                        bytes_sent += self.send_packet(&packet.addr(), &outgoing.contents())?;
+                    }
                 }
             }
-        } else {
-            for payload in connection.gather_dropped_packets() {
+
+            for payload in dropped_packets {
                 bytes_sent += self.send_packet(&packet.addr(), &payload)?;
             }
 
-            for payload in packet_data.parts() {
-                bytes_sent += self.send_packet(&packet.addr(), &payload)?;
-            }
+            return Ok(bytes_sent);
         }
 
-        Ok(bytes_sent)
+        Ok(0)
     }
 
     // Receives a single message from the socket. On success, returns the packet containing origin and data.
-    fn recv_from(&mut self) -> Result<Option<Packet>> {
+    fn recv_from(&mut self) -> Result<()> {
         let (recv_len, address) = self.socket.recv_from(&mut self.recv_buffer)?;
         if recv_len == 0 {
             return Err(ErrorKind::ReceivedDataToShort)?;
@@ -168,12 +178,16 @@ impl Socket {
         let connection = self
             .connections
             .get_or_insert_connection(address, &self.config);
-        connection.process_incoming(received_payload)
+        connection.process_incoming(received_payload, &self.event_sender)?;
+        Ok(())
     }
 
     // Send a single packet over the UDP socket.
     fn send_packet(&self, addr: &SocketAddr, payload: &[u8]) -> Result<usize> {
-        let bytes_sent = self.socket.send_to(payload, addr)?;
+        let bytes_sent = self
+            .socket
+            .send_to(&*payload, addr)
+            .map_err(|io| ErrorKind::from(ErrorKind::IOError(io)))?;
 
         Ok(bytes_sent)
     }
@@ -181,7 +195,7 @@ impl Socket {
     fn new(
         socket: mio::net::UdpSocket,
         config: Config,
-    ) -> (Self, Sender<Packet>, Receiver<SocketEvent>) {
+    ) -> (Socket, Sender<Packet>, Receiver<SocketEvent>) {
         let (event_sender, event_receiver) = unbounded();
         let (packet_sender, packet_receiver) = unbounded();
         let buffer_size = config.receive_buffer_max_size;
@@ -201,7 +215,7 @@ impl Socket {
     }
 }
 
-impl Evented for Socket {
+impl<'p> Evented for Socket {
     fn register(
         &self,
         poll: &Poll,

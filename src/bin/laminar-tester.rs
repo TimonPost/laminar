@@ -7,7 +7,7 @@ use std::{
 
 use clap::{load_yaml, App, AppSettings};
 use crossbeam_channel::Sender;
-use laminar::{Config, DeliveryMethod, Packet, Socket, SocketEvent};
+use laminar::{Config, DeliveryGuarantee, Packet, Socket, SocketEvent};
 use log::{debug, error, info};
 
 fn main() {
@@ -133,7 +133,7 @@ fn test_steady_stream(sender: &Sender<Packet>, target: &str, pps: &str, test_dur
     let test_packet = Packet::new(
         server_addr,
         data_to_send.into_bytes().into_boxed_slice(),
-        DeliveryMethod::ReliableUnordered,
+        DeliveryGuarantee::ReliableUnordered,
     );
     let time_quantum = 1000 / pps;
     let start_time = Instant::now();

@@ -10,10 +10,7 @@
 //! - See [super-module](../index.html) description for more details.
 
 use super::{Arranging, ArrangingSystem};
-use std::{
-    collections::HashMap,
-    marker::PhantomData
-};
+use std::{collections::HashMap, marker::PhantomData};
 
 /// An sequencing system that can arrange items in sequence on different streams.
 ///
@@ -74,7 +71,9 @@ pub struct SequencingStream<T> {
     // the highest seen item index.
     top_index: usize,
     // I need `PhantomData`, otherwise, I can't use a generic in the `Arranging` implementation because `T` is not constrained.
-    phantom: PhantomData<T>
+    phantom: PhantomData<T>,
+    // unique identifier which should be used for ordering on an other stream e.g. the remote endpoint.
+    unique_item_identifier: u16,
 }
 
 impl<T> SequencingStream<T> {
@@ -85,13 +84,25 @@ impl<T> SequencingStream<T> {
         SequencingStream {
             stream_id,
             top_index: 0,
-            phantom: PhantomData
+            phantom: PhantomData,
+            unique_item_identifier: 0,
         }
     }
 
     /// Returns the identifier of this stream.
-    fn stream_id(&self) -> u8 {
+    pub fn stream_id(&self) -> u8 {
         self.stream_id
+    }
+
+    /// Returns the highest received index of this stream.
+    pub fn top_index(&self) -> usize {
+        self.top_index
+    }
+
+    /// Returns the unique identifier which should be used for ordering on an other stream e.g. the remote endpoint.
+    pub fn new_item_identifier(&mut self) -> u16 {
+        self.unique_item_identifier = self.unique_item_identifier.wrapping_add(1);
+        self.unique_item_identifier
     }
 }
 

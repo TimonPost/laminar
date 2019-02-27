@@ -39,16 +39,19 @@
 //! The game developer can indicate on which stream he can order his packets and how he wants to arrange them.
 //! For example, the game developer can say: "Let me set all chat messages to 'stream 1' and all motion packets to 'stream 2'.
 
-pub mod ordering;
-pub mod sequencing;
+mod ordering;
+mod sequencing;
+
+pub use self::ordering::{IterMut, OrderingStream, OrderingSystem};
+pub use self::sequencing::{SequencingStream, SequencingSystem};
 
 /// A trait which could be implemented for arranging operations.
 pub trait Arranging {
     type ArrangingItem;
 
     /// Arrange the given item based on the given index.
-    /// If the `incoming_offset` somehow does not satisfies the arranging algorithm it returns `None`.
-    /// If the `incoming_offset` satisfies the arranging algorithm it returns `Some` with the passed item.
+    /// If the `incoming_offset` somehow does not satisfies the arranging algorithm `None`.
+    /// If the `incoming_offset` satisfies the arranging algorithm `Some` will be returned with the passed item.
     fn arrange(
         &mut self,
         incoming_index: usize,

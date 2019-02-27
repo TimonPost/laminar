@@ -1,13 +1,13 @@
 mod acked_packet_header;
+mod arranging_header;
 mod fragment_header;
 mod header_reader;
 mod header_writer;
-mod heart_beat_header;
 mod standard_header;
 
 pub use self::acked_packet_header::AckedPacketHeader;
+pub use self::arranging_header::ArrangingHeader;
 pub use self::fragment_header::FragmentHeader;
 pub use self::header_reader::HeaderReader;
 pub use self::header_writer::HeaderWriter;
-pub use self::heart_beat_header::HeartBeatHeader;
 pub use self::standard_header::StandardHeader;

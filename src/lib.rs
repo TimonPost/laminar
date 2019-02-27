@@ -60,8 +60,17 @@ mod net;
 
 pub use self::config::Config;
 pub use self::error::{ErrorKind, Result};
-pub use self::infrastructure::DeliveryMethod;
 pub use self::net::Socket;
 pub use self::net::SocketEvent;
-pub use self::packet::Packet;
+pub use self::packet::{DeliveryGuarantee, OrderingGuarantee, Packet};
 pub use self::protocol_version::ProtocolVersion;
+
+trait IntoBoxedSlice {
+    fn into_boxed_slice(self, start: usize, end: usize) -> Box<[u8]>;
+}
+
+impl<'a> IntoBoxedSlice for &'a [u8] {
+    fn into_boxed_slice(self, start: usize, end: usize) -> Box<[u8]> {
+        self[(start as usize)..end].to_vec().into_boxed_slice()
+    }
+}

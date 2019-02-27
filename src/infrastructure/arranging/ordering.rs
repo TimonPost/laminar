@@ -134,6 +134,8 @@ pub struct OrderingStream<T> {
     storage: HashMap<usize, T>,
     // the next expected item index.
     expected_index: usize,
+    // unique identifier which should be used for ordering on an other stream e.g. the remote endpoint.
+    unique_item_identifier: u16,
 }
 
 impl<T> OrderingStream<T> {
@@ -158,17 +160,24 @@ impl<T> OrderingStream<T> {
             storage: HashMap::with_capacity(size),
             expected_index: 1,
             stream_id,
+            unique_item_identifier: 0,
         }
     }
 
     /// Returns the identifier of this stream.
-    fn stream_id(&self) -> u8 {
+    pub fn stream_id(&self) -> u8 {
         self.stream_id
     }
 
     /// Returns the next expected index.
     pub fn expected_index(&self) -> usize {
         self.expected_index
+    }
+
+    /// Returns the unique identifier which should be used for ordering on an other stream e.g. the remote endpoint.
+    pub fn new_item_identifier(&mut self) -> u16 {
+        self.unique_item_identifier = self.unique_item_identifier.wrapping_add(1);
+        self.unique_item_identifier
     }
 
     /// Returns an iterator of stored items.
@@ -232,9 +241,9 @@ impl<T> Arranging for OrderingStream<T> {
     ) -> Option<Self::ArrangingItem> {
         if incoming_offset == self.expected_index {
             self.expected_index += 1;
-            Some(index)
+            Some(item)
         } else if incoming_offset > self.expected_index {
-            self.storage.insert(incoming_offset, index);
+            self.storage.insert(incoming_offset, item);
             None
         } else {
             // only occurs when we get a duplicated incoming_offset.

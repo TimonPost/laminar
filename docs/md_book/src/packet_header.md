@@ -10,7 +10,7 @@ pub struct StandardHeader {
     /// specifies the packet type.
     pub packet_type_id: PacketTypeId,
     /// specifies how this packet should be processed.
-    pub delivery_method: DeliveryMethod,
+    pub delivery_guarantee: DeliveryGuarantee,
 }
 ```
 ## Fragment header.
