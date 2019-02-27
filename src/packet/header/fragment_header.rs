@@ -1,5 +1,5 @@
 use super::{AckedPacketHeader, HeaderReader, HeaderWriter, StandardHeader};
-use crate::error::{FragmentErrorKind, NetworkResult};
+use crate::error::{FragmentErrorKind, Result};
 use crate::net::constants::FRAGMENT_HEADER_SIZE;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use log::error;
@@ -54,7 +54,7 @@ impl FragmentHeader {
 }
 
 impl HeaderWriter for FragmentHeader {
-    type Output = NetworkResult<()>;
+    type Output = Result<()>;
 
     fn parse(&self, buffer: &mut Vec<u8>) -> Self::Output {
         self.standard_header.parse(buffer)?;
@@ -77,7 +77,7 @@ impl HeaderWriter for FragmentHeader {
 }
 
 impl HeaderReader for FragmentHeader {
-    type Header = NetworkResult<FragmentHeader>;
+    type Header = Result<FragmentHeader>;
 
     fn read(rdr: &mut Cursor<&[u8]>) -> Self::Header {
         let standard_header = StandardHeader::read(rdr)?;

@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::error::{FragmentErrorKind, NetworkResult};
+use crate::error::{FragmentErrorKind, Result};
 use crate::packet::header::{AckedPacketHeader, FragmentHeader, HeaderReader, HeaderWriter};
 use crate::packet::PacketData;
 use crate::sequence_buffer::{ReassemblyData, SequenceBuffer};
@@ -65,7 +65,7 @@ impl Fragmentation {
         acked_header: AckedPacketHeader,
         packet_data: &mut PacketData,
         config: &Config,
-    ) -> NetworkResult<()> {
+    ) -> Result<()> {
         let payload_length = payload.len() as u16;
         let num_fragments =
             Fragmentation::total_fragments_needed(payload_length, config.fragment_size) as u8; /* safe cast max fragments is u8 */
@@ -106,7 +106,7 @@ impl Fragmentation {
     pub fn handle_fragment(
         &mut self,
         cursor: &mut Cursor<&[u8]>,
-    ) -> NetworkResult<Option<Vec<u8>>> {
+    ) -> Result<Option<Vec<u8>>> {
         // read fragment packet
         let fragment_header = FragmentHeader::read(cursor)?;
 
@@ -165,7 +165,7 @@ impl Fragmentation {
     fn create_fragment_if_not_exists(
         &mut self,
         fragment_header: &FragmentHeader,
-    ) -> NetworkResult<()> {
+    ) -> Result<()> {
         if !self.fragments.exists(fragment_header.sequence()) {
             if fragment_header.id() == 0 {
                 match fragment_header.packet_header() {

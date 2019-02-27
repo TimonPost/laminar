@@ -1,5 +1,5 @@
 use super::{HeaderReader, HeaderWriter};
-use crate::error::NetworkResult;
+use crate::error::Result;
 use crate::infrastructure::DeliveryMethod;
 use crate::net::constants::STANDARD_HEADER_SIZE;
 use crate::packet::PacketTypeId;
@@ -36,7 +36,7 @@ impl Default for StandardHeader {
 }
 
 impl HeaderWriter for StandardHeader {
-    type Output = NetworkResult<()>;
+    type Output = Result<()>;
 
     fn parse(&self, buffer: &mut Vec<u8>) -> Self::Output {
         buffer.write_u32::<BigEndian>(self.protocol_version)?;
@@ -48,7 +48,7 @@ impl HeaderWriter for StandardHeader {
 }
 
 impl HeaderReader for StandardHeader {
-    type Header = NetworkResult<StandardHeader>;
+    type Header = Result<StandardHeader>;
 
     fn read(rdr: &mut Cursor<&[u8]>) -> Self::Header {
         let protocol_version = rdr.read_u32::<BigEndian>()?; /* protocol id */
