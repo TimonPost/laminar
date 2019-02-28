@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::error::{NetworkErrorKind, NetworkResult};
+use crate::error::{ErrorKind, Result};
 use crate::infrastructure::{
     Channel, DeliveryMethod, Fragmentation, ReliableChannel, SequencedChannel, UnreliableChannel,
 };
@@ -62,7 +62,7 @@ impl VirtualConnection {
         &mut self,
         payload: &[u8],
         delivery_method: DeliveryMethod,
-    ) -> NetworkResult<PacketData> {
+    ) -> Result<PacketData> {
         let channel: &mut Channel = match delivery_method {
             DeliveryMethod::UnreliableUnordered => &mut self.unreliable_unordered_channel,
             DeliveryMethod::ReliableUnordered => &mut self.reliable_unordered_channel,
@@ -83,14 +83,14 @@ impl VirtualConnection {
     /// Returns `Ok(None)`:
     /// 1. In the case of fragmentation and not all fragments are received
     /// 2. In the case of the packet being queued for ordering and we are waiting on older packets first.
-    pub fn process_incoming(&mut self, received_data: &[u8]) -> NetworkResult<Option<Packet>> {
+    pub fn process_incoming(&mut self, received_data: &[u8]) -> Result<Option<Packet>> {
         self.last_heard = Instant::now();
 
         let mut cursor = Cursor::new(received_data);
         let header = StandardHeader::read(&mut cursor)?;
 
         if !ProtocolVersion::valid_version(header.protocol_version) {
-            return Err(NetworkErrorKind::ProtocolVersionMismatch.into());
+            return Err(ErrorKind::ProtocolVersionMismatch);
         }
 
         if header.packet_type_id == PacketTypeId::Fragment {

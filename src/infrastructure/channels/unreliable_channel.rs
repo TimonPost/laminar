@@ -1,6 +1,6 @@
 use super::Channel;
 
-use crate::error::NetworkResult;
+use crate::error::Result;
 use crate::infrastructure::DeliveryMethod;
 use crate::net::constants::STANDARD_HEADER_SIZE;
 use crate::packet::header::{HeaderReader, HeaderWriter, StandardHeader};
@@ -43,7 +43,7 @@ impl Channel for UnreliableChannel {
         &mut self,
         payload: &[u8],
         delivery_method: DeliveryMethod,
-    ) -> NetworkResult<PacketData> {
+    ) -> Result<PacketData> {
         let header = StandardHeader::new(delivery_method, PacketTypeId::Packet);
         let mut buffer = Vec::with_capacity(header.size() as usize);
         header.parse(&mut buffer)?;
@@ -56,7 +56,7 @@ impl Channel for UnreliableChannel {
     /// Process a packet on receive.
     ///
     /// This will not do anything it will only return the bytes as they are received.
-    fn process_incoming<'d>(&mut self, buffer: &'d [u8]) -> NetworkResult<&'d [u8]> {
+    fn process_incoming<'d>(&mut self, buffer: &'d [u8]) -> Result<&'d [u8]> {
         Ok(&buffer[STANDARD_HEADER_SIZE as usize..buffer.len()])
     }
 }

@@ -1,4 +1,4 @@
-use crate::error::NetworkResult;
+use crate::error::Result;
 use std::io::Write;
 
 /// Contains the raw data this packet exists of. Note that a packet can be divided into separate fragments
@@ -16,7 +16,7 @@ impl PacketData {
     }
 
     /// Add fragment to this packet
-    pub fn add_fragment(&mut self, fragment: &[u8], fragment_data: &[u8]) -> NetworkResult<()> {
+    pub fn add_fragment(&mut self, fragment: &[u8], fragment_data: &[u8]) -> Result<()> {
         let mut part = Vec::with_capacity(fragment.len() + fragment_data.len());
         part.write_all(fragment)?;
         part.write_all(fragment_data)?;

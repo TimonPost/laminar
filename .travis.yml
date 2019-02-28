@@ -30,6 +30,7 @@ matrix:
   include:
     - rust: stable
       script:
+        - chmod +x ./ci/coverage.sh
         - rustup component add rustfmt
         - cargo fmt -- --check
         - cargo test --verbose

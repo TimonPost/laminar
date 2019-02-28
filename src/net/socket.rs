@@ -1,6 +1,6 @@
 use crate::{
     config::Config,
-    error::{NetworkError, NetworkErrorKind, NetworkResult},
+    error::{ErrorKind, Result},
     net::{connection::ActiveConnections, events::SocketEvent, link_conditioner::LinkConditioner},
     packet::Packet,
 };
@@ -32,7 +32,7 @@ impl Socket {
     pub fn bind<A: ToSocketAddrs>(
         addresses: A,
         config: Config,
-    ) -> NetworkResult<(Self, Sender<Packet>, Receiver<SocketEvent>)> {
+    ) -> Result<(Self, Sender<Packet>, Receiver<SocketEvent>)> {
         let socket = std::net::UdpSocket::bind(addresses)?;
         Self::from_std(socket, config)
     }
@@ -41,14 +41,14 @@ impl Socket {
     pub fn from_std(
         socket: std::net::UdpSocket,
         config: Config,
-    ) -> NetworkResult<(Self, Sender<Packet>, Receiver<SocketEvent>)> {
+    ) -> Result<(Self, Sender<Packet>, Receiver<SocketEvent>)> {
         let socket = mio::net::UdpSocket::from_socket(socket)?;
         Ok(Self::new(socket, config))
     }
 
     /// Entry point to the run loop. This should run in a spawned thread since calls to `poll.poll`
     /// are blocking.
-    pub fn start_polling(&mut self) -> NetworkResult<()> {
+    pub fn start_polling(&mut self) -> Result<()> {
         let poll = Poll::new()?;
 
         poll.register(self, SOCKET, Ready::readable(), PollOpt::edge())?;
@@ -94,7 +94,7 @@ impl Socket {
     }
 
     // Process events received from the mio socket.
-    fn process_events(&mut self, events: &mut Events) -> NetworkResult<()> {
+    fn process_events(&mut self, events: &mut Events) -> Result<()> {
         for event in events.iter() {
             match event.token() {
                 SOCKET => {
@@ -109,8 +109,8 @@ impl Socket {
                                     }
                                 }
                                 Ok(None) => continue,
-                                Err(ref err) => match err.kind() {
-                                    NetworkErrorKind::IOError(io_err)
+                                Err(ref err) => match *err {
+                                    ErrorKind::IOError(ref io_err)
                                         if io_err.kind() == io::ErrorKind::WouldBlock =>
                                     {
                                         break;
@@ -130,7 +130,7 @@ impl Socket {
     }
 
     // Serializes and sends a `Packet` on the socket. On success, returns the number of bytes written.
-    fn send_to(&mut self, packet: Packet) -> NetworkResult<usize> {
+    fn send_to(&mut self, packet: Packet) -> Result<usize> {
         let connection = self
             .connections
             .get_or_insert_connection(packet.addr(), &self.config);
@@ -158,10 +158,10 @@ impl Socket {
     }
 
     // Receives a single message from the socket. On success, returns the packet containing origin and data.
-    fn recv_from(&mut self) -> NetworkResult<Option<Packet>> {
+    fn recv_from(&mut self) -> Result<Option<Packet>> {
         let (recv_len, address) = self.socket.recv_from(&mut self.recv_buffer)?;
         if recv_len == 0 {
-            return Err(NetworkErrorKind::ReceivedDataToShort)?;
+            return Err(ErrorKind::ReceivedDataToShort)?;
         }
 
         let received_payload = &self.recv_buffer[..recv_len];
@@ -172,11 +172,8 @@ impl Socket {
     }
 
     // Send a single packet over the UDP socket.
-    fn send_packet(&self, addr: &SocketAddr, payload: &[u8]) -> NetworkResult<usize> {
-        let bytes_sent = self
-            .socket
-            .send_to(payload, addr)
-            .map_err(|io| NetworkError::from(NetworkErrorKind::IOError(io)))?;
+    fn send_packet(&self, addr: &SocketAddr, payload: &[u8]) -> Result<usize> {
+        let bytes_sent = self.socket.send_to(payload, addr)?;
 
         Ok(bytes_sent)
     }
