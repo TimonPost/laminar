@@ -1,10 +1,12 @@
-use crate::config::Config;
-use crate::error::{FragmentErrorKind, Result};
-use crate::packet::header::{AckedPacketHeader, FragmentHeader, HeaderReader, HeaderWriter};
-use crate::packet::PacketData;
-use crate::sequence_buffer::{ReassemblyData, SequenceBuffer};
+use crate::{
+    config::Config,
+    error::{FragmentErrorKind, Result},
+    net::constants::FRAGMENT_HEADER_SIZE,
+    packet::header::FragmentHeader,
+    sequence_buffer::{ReassemblyData, SequenceBuffer},
+};
 
-use std::io::{Cursor, Read, Write};
+use std::io::Write;
 
 /// Type that will manage fragmentation of packets.
 pub struct Fragmentation {
@@ -50,7 +52,7 @@ impl Fragmentation {
     ///
     /// So for 4000 bytes we need 4 fragments
     /// [fragment: 1024] [fragment: 1024] [fragment: 1024] [fragment: 928]
-    pub fn total_fragments_needed(payload_length: u16, fragment_size: u16) -> u16 {
+    pub fn fragments_needed(payload_length: u16, fragment_size: u16) -> u16 {
         let remainder = if payload_length % fragment_size > 0 {
             1
         } else {
@@ -60,31 +62,20 @@ impl Fragmentation {
     }
 
     /// Split the given payload into fragments and write those fragments to the passed packet data.
-    pub fn spit_into_fragments(
-        payload: &[u8],
-        acked_header: AckedPacketHeader,
-        packet_data: &mut PacketData,
-        config: &Config,
-    ) -> Result<()> {
+    pub fn spit_into_fragments<'a>(payload: &'a [u8], config: &Config) -> Result<Vec<&'a [u8]>> {
+        let mut fragments = Vec::new();
+
         let payload_length = payload.len() as u16;
         let num_fragments =
-            Fragmentation::total_fragments_needed(payload_length, config.fragment_size) as u8; /* safe cast max fragments is u8 */
+            // Safe cast max fragments is u8
+            Fragmentation::fragments_needed(payload_length, config.fragment_size) as u8;
 
         if num_fragments > config.max_fragments {
             Err(FragmentErrorKind::ExceededMaxFragments)?;
         }
 
         for fragment_id in 0..num_fragments {
-            let fragment = FragmentHeader::new(
-                acked_header.standard_header,
-                fragment_id,
-                num_fragments,
-                acked_header,
-            );
-            let mut buffer = Vec::with_capacity(fragment.size() as usize);
-            fragment.parse(&mut buffer)?;
-
-            // get start end pos in buffer
+            // get start and end position of buffer
             let start_fragment_pos = u16::from(fragment_id) * config.fragment_size;
             let mut end_fragment_pos = (u16::from(fragment_id) + 1) * config.fragment_size;
 
@@ -96,18 +87,21 @@ impl Fragmentation {
             // get specific slice of data for fragment
             let fragment_data = &payload[start_fragment_pos as usize..end_fragment_pos as usize];
 
-            packet_data.add_fragment(&buffer, fragment_data)?;
+            fragments.push(fragment_data);
         }
 
-        Ok(())
+        Ok(fragments)
     }
 
-    /// This will read fragment data and returns the complete packet data when all fragments are received.
-    pub fn handle_fragment(&mut self, cursor: &mut Cursor<&[u8]>) -> Result<Option<Vec<u8>>> {
+    /// This will read fragment data and return the complete packet when all fragments are received.
+    pub fn handle_fragment(
+        &mut self,
+        fragment_header: FragmentHeader,
+        fragment_payload: &[u8],
+    ) -> Result<Option<Vec<u8>>> {
         // read fragment packet
-        let fragment_header = FragmentHeader::read(cursor)?;
 
-        self.create_fragment_if_not_exists(&fragment_header)?;
+        self.create_fragment_if_not_exists(fragment_header);
 
         let num_fragments_received;
         let num_fragments_total;
@@ -134,12 +128,8 @@ impl Fragmentation {
             reassembly_data.num_fragments_received += 1;
             reassembly_data.fragments_received[usize::from(fragment_header.id())] = true;
 
-            // read payload after fragment header
-            let mut payload = Vec::new();
-            cursor.read_to_end(&mut payload)?;
-
             // add the payload from the fragment to the buffer whe have in cache
-            reassembly_data.buffer.write_all(payload.as_slice())?;
+            reassembly_data.buffer.write_all(&*fragment_payload)?;
 
             num_fragments_received = reassembly_data.num_fragments_received;
             num_fragments_total = reassembly_data.num_fragments_total;
@@ -159,28 +149,17 @@ impl Fragmentation {
     }
 
     /// If fragment does not exist we need to insert a new entry.
-    fn create_fragment_if_not_exists(&mut self, fragment_header: &FragmentHeader) -> Result<()> {
+    fn create_fragment_if_not_exists(&mut self, fragment_header: FragmentHeader) {
         if !self.fragments.exists(fragment_header.sequence()) {
-            if fragment_header.id() == 0 {
-                match fragment_header.packet_header() {
-                    Some(_header) => {
-                        let reassembly_data = ReassemblyData::new(
-                            fragment_header.sequence(),
-                            fragment_header.fragment_count(),
-                            (9 + self.config.fragment_size) as usize,
-                        );
+            let reassembly_data = ReassemblyData::new(
+                fragment_header.sequence(),
+                fragment_header.fragment_count(),
+                (u16::from(FRAGMENT_HEADER_SIZE) + self.config.fragment_size) as usize,
+            );
 
-                        self.fragments
-                            .insert(reassembly_data.clone(), fragment_header.sequence());
-                    }
-                    None => Err(FragmentErrorKind::PacketHeaderNotFound)?,
-                }
-            } else {
-                Err(FragmentErrorKind::AlreadyProcessedFragment)?
-            }
+            self.fragments
+                .insert(reassembly_data, fragment_header.sequence());
         }
-
-        Ok(())
     }
 }
 
@@ -190,8 +169,8 @@ mod test {
 
     #[test]
     pub fn total_fragments_needed_test() {
-        let fragment_number = Fragmentation::total_fragments_needed(4000, 1024);
-        let fragment_number1 = Fragmentation::total_fragments_needed(500, 1024);
+        let fragment_number = Fragmentation::fragments_needed(4000, 1024);
+        let fragment_number1 = Fragmentation::fragments_needed(500, 1024);
 
         assert_eq!(fragment_number, 4);
         assert_eq!(fragment_number1, 1);

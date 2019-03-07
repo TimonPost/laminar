@@ -2,7 +2,7 @@ use crate::packet::Packet;
 use std::net::SocketAddr;
 
 /// Events which will be pushed through the event_receiver returned by `Socket::bind`.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum SocketEvent {
     /// A packet has been received from a client.
     Packet(Packet),

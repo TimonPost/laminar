@@ -4,7 +4,7 @@ mod common;
 #[cfg(feature = "tester")]
 use common::{client_addr, Client, Server, ServerEvent};
 
-use laminar::{DeliveryMethod, Packet};
+use laminar::{DeliveryGuarantee, OrderingGuarantee, Packet};
 use log::{debug, error, info};
 use std::net::SocketAddr;
 use std::{thread, time::Duration};
@@ -19,11 +19,8 @@ fn send_receive_unreliable_packets() {
     let client = Client::new(Duration::from_millis(1), 5000);
 
     let assert_function = move |packet: Packet| {
-        //        assert_eq!(packet.addr(), client_addr);
-        assert_eq!(
-            packet.delivery_method(),
-            DeliveryMethod::UnreliableUnordered
-        );
+        assert_eq!(packet.order_guarantee(), OrderingGuarantee::None);
+        assert_eq!(packet.delivery_guarantee(), DeliveryGuarantee::Unreliable);
         assert_eq!(packet.payload(), payload().as_slice());
     };
 
@@ -66,10 +63,8 @@ fn send_receive_unreliable_packets_muliple_clients() {
     let client = Client::new(Duration::from_millis(16), 500);
 
     let assert_function = move |packet: Packet| {
-        assert_eq!(
-            packet.delivery_method(),
-            DeliveryMethod::UnreliableUnordered
-        );
+        assert_eq!(packet.order_guarantee(), OrderingGuarantee::None);
+        assert_eq!(packet.delivery_guarantee(), DeliveryGuarantee::Unreliable);
         assert_eq!(packet.payload(), payload().as_slice());
     };
 

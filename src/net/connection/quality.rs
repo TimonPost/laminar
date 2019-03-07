@@ -16,6 +16,7 @@ pub enum NetworkQuality {
 /// It is able to smooth out the network jitter if there is any.
 pub struct RttMeasurer {
     config: Config,
+    rtt: f32,
 }
 
 impl RttMeasurer {
@@ -23,13 +24,14 @@ impl RttMeasurer {
     pub fn new(config: &Config) -> RttMeasurer {
         RttMeasurer {
             config: config.clone(),
+            rtt: 0.,
         }
     }
 
     /// This will calculate the round trip time (rtt) from the given acknowledgement.
     /// Where after it updates the rtt from the given connection.
-    pub fn get_rtt(&self, congestion_data: Option<&mut CongestionData>) -> f32 {
-        self.get_smoothed_rtt(congestion_data)
+    pub fn calculate_rrt(&mut self, congestion_data: Option<&mut CongestionData>) {
+        self.rtt = self.get_smoothed_rtt(congestion_data);
     }
 
     /// This will get the smoothed round trip time (rtt) from the time we last heard from an packet.

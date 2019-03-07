@@ -8,5 +8,5 @@ pub trait HeaderReader {
     fn read(rdr: &mut Cursor<&[u8]>) -> Self::Header;
 
     /// This will get the size of the header.
-    fn size(&self) -> u8;
+    fn size() -> u8;
 }

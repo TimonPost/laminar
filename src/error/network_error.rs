@@ -1,5 +1,7 @@
 use super::{FragmentErrorKind, PacketErrorKind};
 
+use crate::SocketEvent;
+use crossbeam_channel::SendError;
 use std::fmt::{self, Display, Formatter};
 use std::io;
 
@@ -26,8 +28,12 @@ pub enum ErrorKind {
     ConnectionPoolError(String),
     /// Error occurred when joining thread.
     JoiningThreadFailed,
-    /// There was an unexpected error caused by an poisoned lock.
+    /// There was an unexpected error caused by a poisoned lock.
     PoisonedLock(String),
+    /// Could not send on `SendChannel`.
+    SendError(SendError<SocketEvent>),
+    /// Expected header but could not be read from buffer.
+    CouldNotReadHeader(String),
 }
 
 impl Display for ErrorKind {
@@ -44,6 +50,8 @@ impl Display for ErrorKind {
             ErrorKind::ConnectionPoolError(e) => { write!(fmt, "Something went wrong with connection timeout thread. Reason: {:?}", e) },
             ErrorKind::JoiningThreadFailed => { write!(fmt, "Joining thread failed.") },
             ErrorKind::PoisonedLock(e) => { write!(fmt, "There was an unexpected error caused by an poisoned lock. Reason: {:?}", e) },
+            ErrorKind::SendError(e) => { write!(fmt, "Could not sent on channel because it was closed. Reason: {:?}", e) },
+            ErrorKind::CouldNotReadHeader(header) => { write!(fmt, "Expected {} header but could not be read from buffer.", header) }
         }
     }
 }
@@ -63,5 +71,11 @@ impl From<PacketErrorKind> for ErrorKind {
 impl From<FragmentErrorKind> for ErrorKind {
     fn from(inner: FragmentErrorKind) -> Self {
         ErrorKind::FragmentError(inner)
+    }
+}
+
+impl From<crossbeam_channel::SendError<SocketEvent>> for ErrorKind {
+    fn from(inner: SendError<SocketEvent>) -> Self {
+        ErrorKind::SendError(inner)
     }
 }

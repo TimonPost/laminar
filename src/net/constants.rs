@@ -1,11 +1,13 @@
 /// Fragment header size
-pub const FRAGMENT_HEADER_SIZE: u8 = 4 + STANDARD_HEADER_SIZE;
+pub const FRAGMENT_HEADER_SIZE: u8 = 4;
 /// Acked packet header size
-pub const ACKED_PACKET_HEADER: u8 = 8 + STANDARD_HEADER_SIZE;
+pub const ACKED_PACKET_HEADER: u8 = 8;
+/// Arranging packet header size
+pub const ARRANGING_PACKET_HEADER: u8 = 3;
 /// Standard header size
-pub const STANDARD_HEADER_SIZE: u8 = 4;
-/// Heartbeat header size
-pub const HEART_BEAT_HEADER_SIZE: u8 = 5;
+pub const STANDARD_HEADER_SIZE: u8 = 5;
+pub const DEFAULT_ORDERING_STREAM: u8 = 255;
+pub const DEFAULT_SEQUENCING_STREAM: u8 = 255;
 /// Default max number of fragments to size
 pub const MAX_FRAGMENTS_DEFAULT: u16 = 16;
 /// Default max size of each fragment

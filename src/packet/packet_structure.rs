@@ -1,28 +1,48 @@
-use crate::infrastructure::DeliveryMethod;
+use crate::packet::{DeliveryGuarantee, OrderingGuarantee};
 use std::net::SocketAddr;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-/// This is a user friendly packet containing the payload from the packet and the endpoint from where it came.
+/// This is a user friendly packet containing the payload, endpoint, and reliability guarantees.
+/// A packet could have reliability guarantees to specify how it should be delivered and processed.
+///
+/// | Reliability Type                 | Packet Drop | Packet Duplication | Packet Order  | Packet Fragmentation |Packet Delivery|
+/// | :-------------:                  | :-------------: | :-------------:    | :-------------:  | :-------------:    | :-------------:
+/// |       **Unreliable Unordered**   |       Yes       |       Yes          |      No          |      No             |       No
+/// |       **Reliable Unordered**     |       No        |      No            |      No          |      Yes             |       Yes
+/// |       **Reliable Ordered**       |       No        |      No            |      Ordered |      Yes             |       Yes
+/// |       **Sequenced**              |       Yes       |      No            |      Sequenced |      No |       No
+///
+/// You are able to send packets with any the above guarantees.
 pub struct Packet {
     /// the endpoint from where it came
     addr: SocketAddr,
     /// the raw payload of the packet
     payload: Box<[u8]>,
     /// defines on how the packet will be delivered.
-    delivery_method: DeliveryMethod,
+    delivery: DeliveryGuarantee,
+    /// defines on how the packet will be ordered.
+    ordering: OrderingGuarantee,
 }
 
 impl Packet {
-    /// Create an new packet by passing the receiver, data and how this packet should be delivered.
-    pub fn new(addr: SocketAddr, payload: Box<[u8]>, delivery_method: DeliveryMethod) -> Self {
+    /// Create a new packet by passing the receiver, data, and guarantees on how this packet should be delivered.
+    pub(crate) fn new(
+        addr: SocketAddr,
+        payload: Box<[u8]>,
+        delivery: DeliveryGuarantee,
+        ordering: OrderingGuarantee,
+    ) -> Packet {
         Packet {
             addr,
             payload,
-            delivery_method,
+            delivery,
+            ordering,
         }
     }
 
-    /// Unreliable. Packets can be dropped, duplicated or arrive without order.
+    /// Create a new unreliable packet by passing the receiver, data.
+    ///
+    /// Unreliable: Packets can be dropped, duplicated or arrive without order.
     ///
     /// **Details**
     ///
@@ -30,16 +50,42 @@ impl Packet {
     /// | :-------------: | :-------------:    | :-------------:  | :-------------:      | :-------------: |
     /// |       Yes       |        Yes         |      No          |      No              |       No        |
     ///
-    /// Basically just bare UDP, free to be dropped, used for very unnecessary data, great for 'general' position updates.
+    /// Basically just bare UDP. The packet may or may not be delivered.
     pub fn unreliable(addr: SocketAddr, payload: Vec<u8>) -> Packet {
-        Packet::new(
+        Packet {
             addr,
-            payload.into_boxed_slice(),
-            DeliveryMethod::UnreliableUnordered,
-        )
+            payload: payload.into_boxed_slice(),
+            delivery: DeliveryGuarantee::Unreliable,
+            ordering: OrderingGuarantee::None,
+        }
     }
 
-    /// Reliable. All packets will be sent and received, but without order.
+    /// Create a new unreliable sequenced packet by passing the receiver, data.
+    ///
+    /// Unreliable Sequenced; Packets can be dropped, but could not be duplicated and arrive in sequence.
+    ///
+    /// *Details*
+    ///
+    /// | Packet Drop     | Packet Duplication | Packet Order     | Packet Fragmentation | Packet Delivery |
+    /// | :-------------: | :-------------:    | :-------------:  | :-------------:      | :-------------: |
+    /// |       Yes       |        Yes         |      Sequenced          |      No              |       No        |
+    ///
+    /// Basically just bare UDP, free to be dropped, but has some sequencing to it so that only the newest packets are kept.
+    pub fn unreliable_sequenced(
+        addr: SocketAddr,
+        payload: Vec<u8>,
+        stream_id: Option<u8>,
+    ) -> Packet {
+        Packet {
+            addr,
+            payload: payload.into_boxed_slice(),
+            delivery: DeliveryGuarantee::Unreliable,
+            ordering: OrderingGuarantee::Sequenced(stream_id),
+        }
+    }
+
+    /// Create a new packet by passing the receiver, data.
+    /// Reliable; All packets will be sent and received, but without order.
     ///
     /// *Details*
     ///
@@ -47,28 +93,157 @@ impl Packet {
     /// | :-------------: | :-------------:    | :-------------:  | :-------------:      | :-------------: |
     /// |       No        |      No            |      No          |      Yes             |       Yes       |
     ///
-    /// Basically this is almost TCP like without ordering of packets.
-    /// Receive every packet and immediately give to application, order does not matter.
+    /// Basically this is almost TCP without ordering of packets.
     pub fn reliable_unordered(addr: SocketAddr, payload: Vec<u8>) -> Packet {
-        Packet::new(
+        Packet {
             addr,
-            payload.into_boxed_slice(),
-            DeliveryMethod::ReliableUnordered,
-        )
+            payload: payload.into_boxed_slice(),
+            delivery: DeliveryGuarantee::Reliable,
+            ordering: OrderingGuarantee::None,
+        }
     }
 
-    /// Get the payload (raw data) of this packet.
+    /// Create a new packet by passing the receiver, data and a optional stream on which the ordering will be done.
+    ///
+    /// Reliable; All packets will be sent and received, with order.
+    ///
+    /// *Details*
+    ///
+    /// |   Packet Drop   | Packet Duplication | Packet Order     | Packet Fragmentation | Packet Delivery |
+    /// | :-------------: | :-------------:    | :-------------:  | :-------------:      | :-------------: |
+    /// |       No        |      No            |      Ordered     |      Yes             |       Yes       |
+    ///
+    /// Basically this is almost TCP-like with ordering of packets.
+    ///
+    /// # Remark
+    /// - When `stream_id` is specified as `None` the default stream will be used; if you are not sure what this is you can leave it at `None`.
+    pub fn reliable_ordered(addr: SocketAddr, payload: Vec<u8>, stream_id: Option<u8>) -> Packet {
+        Packet {
+            addr,
+            payload: payload.into_boxed_slice(),
+            delivery: DeliveryGuarantee::Reliable,
+            ordering: OrderingGuarantee::Ordered(stream_id),
+        }
+    }
+
+    /// Create a new packet by passing the receiver, data and a optional stream on which the sequencing will be done.
+    ///
+    /// Reliable; All packets will be sent and received, but arranged in sequence.
+    /// Which means that only the newest packets will be let through, older packets will be received but they won't get to the user.
+    ///
+    /// *Details*
+    ///
+    /// |   Packet Drop   | Packet Duplication | Packet Order     | Packet Fragmentation | Packet Delivery |
+    /// | :-------------: | :-------------:    | :-------------:  | :-------------:      | :-------------: |
+    /// |       Yes        |      No            |      Sequenced     |      Yes             |       Yes       |
+    ///
+    /// Basically this is almost TCP-like but then sequencing instead of ordering.
+    ///
+    /// # Remark
+    /// - When `stream_id` is specified as `None` the default stream will be used; if you are not sure what this is you can leave it at `None`.
+    pub fn reliable_sequenced(addr: SocketAddr, payload: Vec<u8>, stream_id: Option<u8>) -> Packet {
+        Packet {
+            addr,
+            payload: payload.into_boxed_slice(),
+            delivery: DeliveryGuarantee::Reliable,
+            ordering: OrderingGuarantee::Sequenced(stream_id),
+        }
+    }
+
+    /// Returns the payload of this packet.
     pub fn payload(&self) -> &[u8] {
         &self.payload
     }
 
-    /// Get the endpoint from this packet.
+    /// Returns the address of this packet.
+    ///
+    /// # Remark
+    /// Could be both the receiving endpoint or the one to send this packet to.
+    /// This depends whether it is a packet that has been received or one that needs to be send.
     pub fn addr(&self) -> SocketAddr {
         self.addr
     }
 
-    /// Get the type representing on how this packet will be delivered.
-    pub fn delivery_method(&self) -> DeliveryMethod {
-        self.delivery_method
+    /// Returns the [`DeliveryGuarantee`](./enum.DeliveryGuarantee.html) of this packet.
+    pub fn delivery_guarantee(&self) -> DeliveryGuarantee {
+        self.delivery
+    }
+
+    /// Returns the [`OrderingGuarantee`](./enum.OrderingGuarantee.html) of this packet.
+    pub fn order_guarantee(&self) -> OrderingGuarantee {
+        self.ordering
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::packet::{DeliveryGuarantee, OrderingGuarantee, Packet};
+    use std::net::SocketAddr;
+
+    #[test]
+    fn create_unreliable() {
+        let packet = Packet::unreliable(test_addr(), test_payload());
+
+        assert_eq!(packet.addr(), test_addr());
+        assert_eq!(packet.payload(), test_payload().as_slice());
+        assert_eq!(packet.delivery_guarantee(), DeliveryGuarantee::Unreliable);
+        assert_eq!(packet.order_guarantee(), OrderingGuarantee::None);
+    }
+
+    #[test]
+    fn create_unreliable_sequenced() {
+        let packet = Packet::unreliable_sequenced(test_addr(), test_payload(), Some(1));
+
+        assert_eq!(packet.addr(), test_addr());
+        assert_eq!(packet.payload(), test_payload().as_slice());
+        assert_eq!(packet.delivery_guarantee(), DeliveryGuarantee::Unreliable);
+        assert_eq!(
+            packet.order_guarantee(),
+            OrderingGuarantee::Sequenced(Some(1))
+        );
+    }
+
+    #[test]
+    fn create_reliable() {
+        let packet = Packet::reliable_unordered(test_addr(), test_payload());
+
+        assert_eq!(packet.addr(), test_addr());
+        assert_eq!(packet.payload(), test_payload().as_slice());
+        assert_eq!(packet.delivery_guarantee(), DeliveryGuarantee::Reliable);
+        assert_eq!(packet.order_guarantee(), OrderingGuarantee::None);
+    }
+
+    #[test]
+    fn create_reliable_ordered() {
+        let packet = Packet::reliable_ordered(test_addr(), test_payload(), Some(1));
+
+        assert_eq!(packet.addr(), test_addr());
+        assert_eq!(packet.payload(), test_payload().as_slice());
+        assert_eq!(packet.delivery_guarantee(), DeliveryGuarantee::Reliable);
+        assert_eq!(
+            packet.order_guarantee(),
+            OrderingGuarantee::Ordered(Some(1))
+        );
+    }
+
+    #[test]
+    fn create_reliable_sequence() {
+        let packet = Packet::reliable_sequenced(test_addr(), test_payload(), Some(1));
+
+        assert_eq!(packet.addr(), test_addr());
+        assert_eq!(packet.payload(), test_payload().as_slice());
+        assert_eq!(packet.delivery_guarantee(), DeliveryGuarantee::Reliable);
+        assert_eq!(
+            packet.order_guarantee(),
+            OrderingGuarantee::Sequenced(Some(1))
+        );
+    }
+
+    fn test_payload() -> Vec<u8> {
+        return "test".as_bytes().to_vec();
+    }
+
+    fn test_addr() -> SocketAddr {
+        "127.0.0.1:12345".parse().unwrap()
     }
 }

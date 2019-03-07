@@ -58,7 +58,7 @@
 //!
 //! This could be done with an iterator which returns packets as long there are packets in our storage matching the `expected_index`.
 //!
-//! ```rust
+//! ```no-run
 //! let stream = OrderingStream::new();
 //!
 //! let iter = stream.iter_mut();
@@ -72,6 +72,7 @@
 //! - See [super-module](../index.html) description for more details.
 
 use super::{Arranging, ArrangingSystem};
+use crate::packet::SequenceNumber;
 use std::collections::HashMap;
 
 /// An ordering system that can arrange items in order on different streams.
@@ -128,12 +129,14 @@ impl<'a, T> ArrangingSystem for OrderingSystem<T> {
 /// - See [super-module](../index.html) for more information about streams.
 pub struct OrderingStream<T> {
     // the id of this stream.
-    stream_id: u8,
+    _stream_id: u8,
     // the storage for items that are waiting for older items to arrive.
-    // the items will be stored by key and value where the key is de incoming index and value the item value.
+    // the items will be stored by key and value where the key is the incoming index and the value is the item value.
     storage: HashMap<usize, T>,
     // the next expected item index.
     expected_index: usize,
+    // unique identifier which should be used for ordering on a different stream e.g. the remote endpoint.
+    unique_item_identifier: u16,
 }
 
 impl<T> OrderingStream<T> {
@@ -157,18 +160,27 @@ impl<T> OrderingStream<T> {
         OrderingStream {
             storage: HashMap::with_capacity(size),
             expected_index: 1,
-            stream_id,
+            _stream_id: stream_id,
+            unique_item_identifier: 0,
         }
     }
 
     /// Returns the identifier of this stream.
-    fn stream_id(&self) -> u8 {
-        self.stream_id
+    #[cfg(test)]
+    pub fn stream_id(&self) -> u8 {
+        self._stream_id
     }
 
     /// Returns the next expected index.
+    #[cfg(test)]
     pub fn expected_index(&self) -> usize {
         self.expected_index
+    }
+
+    /// Returns the unique identifier which should be used for ordering on the other stream e.g. the remote endpoint.
+    pub fn new_item_identifier(&mut self) -> SequenceNumber {
+        self.unique_item_identifier = self.unique_item_identifier.wrapping_add(1);
+        self.unique_item_identifier
     }
 
     /// Returns an iterator of stored items.
@@ -183,7 +195,7 @@ impl<T> OrderingStream<T> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```ignore
     /// let stream = OrderingStream::new();
     ///
     /// let iter = stream.iter_mut();
@@ -232,9 +244,9 @@ impl<T> Arranging for OrderingStream<T> {
     ) -> Option<Self::ArrangingItem> {
         if incoming_offset == self.expected_index {
             self.expected_index += 1;
-            Some(index)
+            Some(item)
         } else if incoming_offset > self.expected_index {
-            self.storage.insert(incoming_offset, index);
+            self.storage.insert(incoming_offset, item);
             None
         } else {
             // only occurs when we get a duplicated incoming_offset.
