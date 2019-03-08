@@ -29,18 +29,14 @@ impl ServerMoq {
         let mut packets_total_received = 0;
         let mut second_counter = Instant::now();
 
-        thread::spawn(move || {
+        let handle = thread::spawn(move || {
             let _polling_thread = thread::spawn(move || socket.start_polling());
-
             loop {
-                let result = event_receiver.recv();
-
-                match result {
+                match event_receiver.try_recv() {
                     Ok(SocketEvent::Packet(packet)) => {
                         assert_eq!(packet.payload(), expected_payload.as_slice());
                         packets_total_received += 1;
                         packet_throughput += 1;
-
                         packet_sender.send(packet).unwrap();
                     }
                     _ => {}
@@ -62,7 +58,8 @@ impl ServerMoq {
                     packet_throughput = 0;
                 }
             }
-        })
+        });
+        handle
     }
 
     pub fn add_client(&self, data: Vec<u8>, client_stub: ClientStub) -> JoinHandle<()> {
