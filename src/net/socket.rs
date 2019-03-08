@@ -5,12 +5,10 @@ use crate::{
     packet::Packet,
 };
 use crossbeam_channel::{self, unbounded, Receiver, Sender};
-#[allow(unused_imports)]
-use log::{debug, error, info};
+use log::{error};
 use std::{
-    self,
-    net::{SocketAddr, ToSocketAddrs, UdpSocket},
-    {thread::sleep, time},
+    self, io,
+    net::{SocketAddr, ToSocketAddrs, UdpSocket}
 };
 
 /// A reliable UDP socket implementation with configurable reliability and ordering guarantees.
@@ -33,6 +31,7 @@ impl Socket {
         config: Config,
     ) -> Result<(Self, Sender<Packet>, Receiver<SocketEvent>)> {
         let socket = UdpSocket::bind(addresses)?;
+        socket.set_nonblocking(true)?;
         let (event_sender, event_receiver) = unbounded();
         let (packet_sender, packet_receiver) = unbounded();
         Ok((
@@ -60,9 +59,7 @@ impl Socket {
                 Ok(result) => match result {
                     Some(packet) => {
                         match self.event_sender.send(SocketEvent::Packet(packet)) {
-                            Ok(p) => {
-                                println!("Packet received: {:?}", p);
-                            }
+                            Ok(_) => {}
                             Err(e) => {
                                 error!("Error sending SocketEvent: {:?}", e);
                             }
@@ -97,15 +94,11 @@ impl Socket {
     /// remove them from the active connections. For each connection removed, we will send a
     /// `SocketEvent::TimeOut` event to the `event_sender` channel.
     fn handle_idle_clients(&mut self) {
-        let ten_seconds = time::Duration::from_secs(10);
-        loop {
-            let idle_addresses = self
-                .connections
-                .idle_connections(self.config.idle_connection_timeout);
-            for address in idle_addresses {
-                self.connections.remove_connection(&address);
-            }
-            sleep(ten_seconds);
+        let idle_addresses = self
+            .connections
+            .idle_connections(self.config.idle_connection_timeout);
+        for address in idle_addresses {
+            self.connections.remove_connection(&address);
         }
     }
 
@@ -139,16 +132,26 @@ impl Socket {
 
     // Receives a single message from the socket. On success, returns the packet containing origin and data.
     fn recv_from(&mut self) -> Result<Option<Packet>> {
-        let (recv_len, address) = self.socket.recv_from(&mut self.recv_buffer)?;
-        if recv_len == 0 {
-            return Err(ErrorKind::ReceivedDataToShort)?;
+        match self.socket.recv_from(&mut self.recv_buffer) {
+            Ok((recv_len, address)) => {
+                if recv_len == 0 {
+                    return Err(ErrorKind::ReceivedDataToShort)?;
+                }
+                let received_payload = &self.recv_buffer[..recv_len];
+                let connection = self
+                    .connections
+                    .get_or_insert_connection(address, &self.config);
+                connection.process_incoming(received_payload)
+            },
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                error!("Encountered a WouldBlock: {:?}", e);
+                Ok(None)
+            },
+            Err(e) => {
+                error!("Encountered an error receiving data: {:?}", e);
+                Ok(None)
+            }
         }
-
-        let received_payload = &self.recv_buffer[..recv_len];
-        let connection = self
-            .connections
-            .get_or_insert_connection(address, &self.config);
-        connection.process_incoming(received_payload)
     }
 
     // Send a single packet over the UDP socket.
@@ -159,6 +162,7 @@ impl Socket {
 
     #[allow(dead_code)]
     fn new(socket: UdpSocket, config: Config) -> (Self, Sender<Packet>, Receiver<SocketEvent>) {
+        let _ = socket.set_nonblocking(true);
         let (event_sender, event_receiver) = unbounded();
         let (packet_sender, packet_receiver) = unbounded();
         let buffer_size = config.receive_buffer_max_size;
