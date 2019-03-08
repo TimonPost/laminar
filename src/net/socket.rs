@@ -5,10 +5,10 @@ use crate::{
     packet::Packet,
 };
 use crossbeam_channel::{self, unbounded, Receiver, Sender};
-use log::{error};
+use log::error;
 use std::{
     self, io,
-    net::{SocketAddr, ToSocketAddrs, UdpSocket}
+    net::{SocketAddr, ToSocketAddrs, UdpSocket},
 };
 
 /// A reliable UDP socket implementation with configurable reliability and ordering guarantees.
@@ -41,8 +41,8 @@ impl Socket {
                 connections: ActiveConnections::new(),
                 recv_buffer: Vec::new(),
                 link_conditioner: None,
-                event_sender: event_sender,
-                packet_receiver: packet_receiver,
+                event_sender,
+                packet_receiver,
             },
             packet_sender,
             event_receiver,
@@ -142,11 +142,11 @@ impl Socket {
                     .connections
                     .get_or_insert_connection(address, &self.config);
                 connection.process_incoming(received_payload)
-            },
+            }
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                 error!("Encountered a WouldBlock: {:?}", e);
                 Ok(None)
-            },
+            }
             Err(e) => {
                 error!("Encountered an error receiving data: {:?}", e);
                 Ok(None)
