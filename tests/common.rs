@@ -29,7 +29,7 @@ impl ServerMoq {
         let mut packets_total_received = 0;
         let mut second_counter = Instant::now();
 
-        let handle = thread::spawn(move || {
+        thread::spawn(move || {
             let _polling_thread = thread::spawn(move || socket.start_polling());
             loop {
                 match event_receiver.try_recv() {
@@ -58,8 +58,7 @@ impl ServerMoq {
                     packet_throughput = 0;
                 }
             }
-        });
-        handle
+        })
     }
 
     pub fn add_client(&self, data: Vec<u8>, client_stub: ClientStub) -> JoinHandle<()> {

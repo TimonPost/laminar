@@ -33,7 +33,7 @@ mod config;
 /// All internal error handling logic
 mod error;
 /// Networking modules
-pub mod net;
+mod net;
 
 pub use self::config::Config;
 pub use self::error::{ErrorKind, Result};
