@@ -53,6 +53,7 @@ impl Socket {
     /// are blocking.
     pub fn start_polling(&mut self) -> Result<()> {
         // Nothing should break out of this loop!
+        let mut to_send: Vec<Packet>;
         loop {
             // First we pull any newly arrived packets and handle them
             match self.recv_from() {
@@ -75,7 +76,7 @@ impl Socket {
             };
 
             // Now grab all the packets waiting to be sent and send them
-            let to_send: Vec<Packet> = self.packet_receiver.try_iter().collect();
+            to_send = self.packet_receiver.try_iter().collect();
             for p in to_send {
                 match self.send_to(p) {
                     Ok(_) => {}

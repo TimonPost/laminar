@@ -40,5 +40,6 @@ pub use self::error::{ErrorKind, Result};
 pub use self::infrastructure::DeliveryMethod;
 pub use self::net::Socket;
 pub use self::net::SocketEvent;
+pub use self::net::VirtualConnection;
 pub use self::packet::Packet;
 pub use self::protocol_version::ProtocolVersion;
