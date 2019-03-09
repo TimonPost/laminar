@@ -6,6 +6,7 @@ use crate::{
 };
 use crossbeam_channel::{self, unbounded, Receiver, Sender};
 use log::error;
+use std::error::Error;
 use std::{
     self, io,
     net::{SocketAddr, ToSocketAddrs, UdpSocket},
@@ -61,12 +62,12 @@ impl Socket {
                         match self.event_sender.send(SocketEvent::Packet(packet)) {
                             Ok(_) => {}
                             Err(e) => {
-                                error!("Error sending SocketEvent: {:?}", e);
+                                println!("Error sending SocketEvent: {:?}", e.description());
                             }
                         };
                     }
                     None => {
-                        error!("Empty packet received");
+                        //                        println!("Empty packet received");
                     }
                 },
                 Err(e) => {
@@ -77,7 +78,7 @@ impl Socket {
             // Now grab all the packets waiting to be sent and send them
             while let Ok(p) = self.packet_receiver.try_recv() {
                 if let Err(e) = self.send_to(p) {
-                    error!("There was an error sending packet: {:?}", e);
+                    println!("There was an error sending packet: {:?}", e);
                 }
             }
 
