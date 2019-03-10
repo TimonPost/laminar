@@ -53,7 +53,6 @@ impl Socket {
     /// are blocking.
     pub fn start_polling(&mut self) -> Result<()> {
         // Nothing should break out of this loop!
-        let mut to_send: Vec<Packet>;
         loop {
             // First we pull any newly arrived packets and handle them
             match self.recv_from() {
@@ -76,13 +75,9 @@ impl Socket {
             };
 
             // Now grab all the packets waiting to be sent and send them
-            to_send = self.packet_receiver.try_iter().collect();
-            for p in to_send {
-                match self.send_to(p) {
-                    Ok(_) => {}
-                    Err(e) => {
-                        error!("Error sending packet: {:?}", e);
-                    }
+            while let Ok(p) = self.packet_receiver.try_recv() {
+                if let Err(e) = self.send_to(p) {
+                    error!("There was an error sending packet: {:?}", e);
                 }
             }
 
@@ -159,26 +154,5 @@ impl Socket {
     fn send_packet(&self, addr: &SocketAddr, payload: &[u8]) -> Result<usize> {
         let bytes_sent = self.socket.send_to(payload, addr)?;
         Ok(bytes_sent)
-    }
-
-    #[allow(dead_code)]
-    fn new(socket: UdpSocket, config: Config) -> (Self, Sender<Packet>, Receiver<SocketEvent>) {
-        let _ = socket.set_nonblocking(true);
-        let (event_sender, event_receiver) = unbounded();
-        let (packet_sender, packet_receiver) = unbounded();
-        let buffer_size = config.receive_buffer_max_size;
-        (
-            Self {
-                socket,
-                config,
-                connections: ActiveConnections::new(),
-                recv_buffer: vec![0; buffer_size],
-                link_conditioner: None,
-                event_sender,
-                packet_receiver,
-            },
-            packet_sender,
-            event_receiver,
-        )
     }
 }
