@@ -22,25 +22,34 @@ pub fn fragment_packet_integration_test() {
     let (tx, rx) = mpsc::channel();
 
     let test_data = vec![1; 4000];
-
+    debug!("Test data created");
     let mut server = ServerMoq::new(Config::default(), SERVER_ADDR.parse().unwrap());
+    debug!("ServerMoq created");
     let server_thread = server.start_receiving(rx, test_data.clone());
-
+    debug!("Server thread has started receiving");
     let client = ClientStub::new(
         Duration::from_millis(0),
         CLIENT_ADDR.parse().unwrap(),
         TOTAL_PACKETS_TO_SEND,
         DeliveryMethod::ReliableUnordered,
     );
-
+    debug!("Beginning stopwatch");
     let stopwatch = Instant::now();
-
+    debug!("Adding client");
     server
         .add_client(test_data.to_vec(), client)
         .join()
         .unwrap();
     // notify server to stop receiving.
-    tx.send(true).unwrap();
-    let _total_received = server_thread.join().unwrap();
-    let _elapsed_time = stopwatch.elapsed();
+    debug!("Sending cancellation message");
+    match tx.send(true) {
+        Ok(_) => {
+            debug!("Server stopped");
+            let _total_received = server_thread.join().unwrap();
+            let _elapsed_time = stopwatch.elapsed();
+        },
+        Err(e) => {
+            error!("Error sending cancellation message: {:?}", e);
+        }
+    }
 }
