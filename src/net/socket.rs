@@ -139,13 +139,13 @@ impl Socket {
                     .get_or_insert_connection(address, &self.config);
                 connection.process_incoming(received_payload)
             }
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                error!("Encountered a WouldBlock: {:?}", e);
-                Ok(None)
-            }
             Err(e) => {
-                error!("Encountered an error receiving data: {:?}", e);
-                Ok(None)
+                if e.kind() == io::ErrorKind::WouldBlock {
+                    error!("Encountered a WouldBlock error: {:?}", e);
+                } else {
+                    error!("Encountered an error receiving data: {:?}", e);
+                }
+                Err(e.into())
             }
         }
     }
