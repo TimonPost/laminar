@@ -1,5 +1,9 @@
 # Set up the Rust toolchain.
 language: rust
+
+env:
+  - RUST_LOG="debug"
+
 rust:
   - stable
   - beta
