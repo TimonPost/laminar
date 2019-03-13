@@ -10,8 +10,8 @@ use std::io::Cursor;
 #[derive(Copy, Clone, Debug)]
 /// This header will be included in each packet, and contains some basic information.
 pub struct StandardHeader {
-    /// crc32 of the protocol version.
-    pub protocol_version: u32,
+    /// crc16 of the protocol version.
+    pub protocol_version: u16,
     /// specifies the packet type.
     pub packet_type_id: PacketTypeId,
     /// specifies how this packet should be processed.
@@ -22,7 +22,7 @@ impl StandardHeader {
     /// Create new heartbeat header.
     pub fn new(delivery_method: DeliveryMethod, packet_type_id: PacketTypeId) -> Self {
         StandardHeader {
-            protocol_version: ProtocolVersion::get_crc32(),
+            protocol_version: ProtocolVersion::get_crc16(),
             packet_type_id,
             delivery_method,
         }
@@ -39,7 +39,7 @@ impl HeaderWriter for StandardHeader {
     type Output = Result<()>;
 
     fn parse(&self, buffer: &mut Vec<u8>) -> Self::Output {
-        buffer.write_u32::<BigEndian>(self.protocol_version)?;
+        buffer.write_u16::<BigEndian>(self.protocol_version)?;
         buffer.write_u8(PacketTypeId::get_id(self.packet_type_id))?;
         buffer.write_u8(DeliveryMethod::get_delivery_method_id(self.delivery_method))?;
 
@@ -51,7 +51,7 @@ impl HeaderReader for StandardHeader {
     type Header = Result<StandardHeader>;
 
     fn read(rdr: &mut Cursor<&[u8]>) -> Self::Header {
-        let protocol_version = rdr.read_u32::<BigEndian>()?; /* protocol id */
+        let protocol_version = rdr.read_u16::<BigEndian>()?; /* protocol id */
         let packet_id = rdr.read_u8()?;
         let delivery_method_id = rdr.read_u8()?;
 
