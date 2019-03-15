@@ -5,6 +5,7 @@ use std::{
     thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
+use log::{error, debug};
 
 /// This is an test server we use to receive data from clients.
 pub struct ServerMoq {
@@ -31,34 +32,35 @@ impl ServerMoq {
 
         thread::spawn(move || {
             let _polling_thread = thread::spawn(move || socket.start_polling());
-
             loop {
-                let result = event_receiver.recv();
-
-                match result {
+                match event_receiver.try_recv() {
                     Ok(SocketEvent::Packet(packet)) => {
+                        debug!("Received Packet Event");
                         assert_eq!(packet.payload(), expected_payload.as_slice());
                         packets_total_received += 1;
                         packet_throughput += 1;
-
                         packet_sender.send(packet).unwrap();
+                    },
+                    _ => {
+                        debug!("Received unexpected event");
                     }
-                    _ => {}
                 }
 
                 match cancellation_channel.try_recv() {
                     Ok(cancelled) => {
+                        debug!("Received cancel message");
                         if cancelled {
                             return packets_total_received;
                         }
+                    },
+                    Err(e) => {
+                        error!("Received error on cancelleation channel: {:?}", e);
                     }
-                    Err(_e) => {}
                 }
 
                 if second_counter.elapsed().as_secs() >= 1 {
                     // reset counter
                     second_counter = Instant::now();
-
                     packet_throughput = 0;
                 }
             }

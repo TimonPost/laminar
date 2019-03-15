@@ -20,29 +20,6 @@
 //!
 //! # Example
 //!
-//! ```rust
-//! use laminar::{Config, Packet, Socket};
-//!
-//! use std::{
-//!     net::Ipv4Addr,
-//!     thread
-//! };
-//!
-//! fn main() {
-//!   let addr = "127.0.0.1:12345".parse().unwrap();
-//!
-//!   let (mut socket, packet_sender, event_receiver) = Socket::bind(addr, Config::default()).unwrap();
-//!   let _thread = thread::spawn(move || socket.start_polling());
-//!
-//!   let data = "example data".as_bytes();
-//!   let packet: Packet = Packet::reliable_unordered(addr, data.to_vec());
-//!
-//!   packet_sender.send(packet).unwrap();
-//!
-//!   let data = event_receiver.recv().unwrap();
-//!   println!("{:?}", data);
-//! }
-//! ```
 
 #![warn(missing_docs)]
 
@@ -63,5 +40,6 @@ pub use self::error::{ErrorKind, Result};
 pub use self::infrastructure::DeliveryMethod;
 pub use self::net::Socket;
 pub use self::net::SocketEvent;
+pub use self::net::VirtualConnection;
 pub use self::packet::Packet;
 pub use self::protocol_version::ProtocolVersion;

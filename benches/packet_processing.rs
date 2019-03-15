@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
-use laminar::{net::VirtualConnection, Config, DeliveryMethod, ProtocolVersion};
+use laminar::{Config, DeliveryMethod, ProtocolVersion, VirtualConnection};
 
 use criterion::{criterion_group, criterion_main, Criterion};
 
@@ -19,34 +19,6 @@ fn process_packet_before_send(
     let _packet_data = connection
         .process_outgoing(&payload, delivery_method)
         .unwrap();
-}
-
-fn send_unreliable_benchmark(c: &mut Criterion) {
-    let config = Config::default();
-    let mut connection =
-        VirtualConnection::new(SERVER_ADDR.parse().unwrap(), Arc::new(Config::default()));
-
-    c.bench_function("process unreliable before send", move |b| {
-        b.iter(|| {
-            process_packet_before_send(
-                &mut connection,
-                &config,
-                DeliveryMethod::UnreliableUnordered,
-            )
-        })
-    });
-}
-
-fn send_reliable_benchmark(c: &mut Criterion) {
-    let config = Config::default();
-    let mut connection =
-        VirtualConnection::new(SERVER_ADDR.parse().unwrap(), Arc::new(Config::default()));
-
-    c.bench_function("process reliable before send", move |b| {
-        b.iter(|| {
-            process_packet_before_send(&mut connection, &config, DeliveryMethod::ReliableUnordered)
-        })
-    });
 }
 
 fn process_packet_when_received(connection: &mut VirtualConnection, data: &[u8]) {
@@ -81,7 +53,7 @@ fn acked_header_bytes(
 
 fn receive_unreliable_benchmark(c: &mut Criterion) {
     let mut connection =
-        VirtualConnection::new(SERVER_ADDR.parse().unwrap(), Arc::new(Config::default()));
+        VirtualConnection::new(SERVER_ADDR.parse().unwrap(), &Arc::new(Config::default()));
 
     // setup fake received bytes.
     let mut buffer = standard_header_bytes(DeliveryMethod::UnreliableUnordered);
@@ -94,7 +66,7 @@ fn receive_unreliable_benchmark(c: &mut Criterion) {
 
 fn receive_reliable_benchmark(c: &mut Criterion) {
     let mut connection =
-        VirtualConnection::new(SERVER_ADDR.parse().unwrap(), Arc::new(Config::default()));
+        VirtualConnection::new(SERVER_ADDR.parse().unwrap(), &Arc::new(Config::default()));
 
     // setup fake received bytes.
     let mut buffer = acked_header_bytes(DeliveryMethod::ReliableUnordered, 0, 1, 2);
@@ -107,8 +79,6 @@ fn receive_reliable_benchmark(c: &mut Criterion) {
 
 criterion_group!(
     benches,
-    send_reliable_benchmark,
-    send_unreliable_benchmark,
     receive_unreliable_benchmark,
     receive_reliable_benchmark
 );

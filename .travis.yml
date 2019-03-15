@@ -1,5 +1,6 @@
 # Set up the Rust toolchain.
 language: rust
+
 rust:
   - stable
   - beta
