@@ -24,7 +24,7 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        sh 'cargo +stable test'   
+                        sh '/root/.cargo/bin/cargo test'   
                     }
                 }
             }
