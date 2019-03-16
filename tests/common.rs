@@ -1,11 +1,11 @@
 use laminar::{Config, DeliveryMethod, Packet, Socket, SocketEvent};
+use log::{debug, error};
 use std::{
     net::SocketAddr,
     sync::mpsc::Receiver,
     thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
-use log::{error, debug};
 
 /// This is an test server we use to receive data from clients.
 pub struct ServerMoq {
@@ -40,7 +40,7 @@ impl ServerMoq {
                         packets_total_received += 1;
                         packet_throughput += 1;
                         packet_sender.send(packet).unwrap();
-                    },
+                    }
                     _ => {
                         debug!("Received unexpected event");
                     }
@@ -52,7 +52,7 @@ impl ServerMoq {
                         if cancelled {
                             return packets_total_received;
                         }
-                    },
+                    }
                     Err(e) => {
                         error!("Received error on cancelleation channel: {:?}", e);
                     }

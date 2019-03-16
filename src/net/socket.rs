@@ -159,30 +159,49 @@ impl Socket {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Socket, Packet, Config};
+    use crate::{Config, Packet, Socket};
     use std::net::SocketAddr;
     use std::thread;
 
     #[test]
     fn test_send_receive() {
-        let (mut server, _, packet_receiver) = Socket::bind("127.0.0.1:12345".parse::<SocketAddr>().unwrap(), Config::default()).unwrap();
-        let (mut client, packet_sender, _) = Socket::bind("127.0.0.1:12344".parse::<SocketAddr>().unwrap(), Config::default()).unwrap();
+        let (mut server, _, packet_receiver) = Socket::bind(
+            "127.0.0.1:12345".parse::<SocketAddr>().unwrap(),
+            Config::default(),
+        )
+        .unwrap();
+        let (mut client, packet_sender, _) = Socket::bind(
+            "127.0.0.1:12344".parse::<SocketAddr>().unwrap(),
+            Config::default(),
+        )
+        .unwrap();
 
         thread::spawn(move || client.start_polling());
         thread::spawn(move || server.start_polling());
 
-        packet_sender.send(Packet::unreliable("127.0.0.1:12345".parse::<SocketAddr>().unwrap(), vec![1, 2, 3, 4, 5, 6, 7, 8, 9])).unwrap();
-        packet_sender.send(Packet::unreliable("127.0.0.1:12345".parse::<SocketAddr>().unwrap(), vec![1, 2, 3, 4, 5, 6, 7, 8, 9])).unwrap();
-        packet_sender.send(Packet::unreliable("127.0.0.1:12345".parse::<SocketAddr>().unwrap(), vec![1, 2, 3, 4, 5, 6, 7, 8, 9])).unwrap();
+        packet_sender
+            .send(Packet::unreliable(
+                "127.0.0.1:12345".parse::<SocketAddr>().unwrap(),
+                vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+            ))
+            .unwrap();
+        packet_sender
+            .send(Packet::unreliable(
+                "127.0.0.1:12345".parse::<SocketAddr>().unwrap(),
+                vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+            ))
+            .unwrap();
+        packet_sender
+            .send(Packet::unreliable(
+                "127.0.0.1:12345".parse::<SocketAddr>().unwrap(),
+                vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+            ))
+            .unwrap();
 
         let mut iter = packet_receiver.iter();
 
         assert!(iter.next().is_some());
         assert!(iter.next().is_some());
         assert!(iter.next().is_some());
-    }
-
-    pub fn payload() -> Vec<u8> {
-        vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     }
 }
