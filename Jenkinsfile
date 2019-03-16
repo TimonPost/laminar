@@ -32,8 +32,7 @@ pipeline {
                         label 'mac'
                     }
                     steps {
-                        sh 'pwd'
-                        sh 'whoami'
+                        sh 'cargo test'
                     }
                 }
             }
