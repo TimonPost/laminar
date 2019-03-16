@@ -1,6 +1,7 @@
 pipeline {
     environment {
         CARGO_HOME = 'C:\\Users\\root\\.cargo'
+        RUSTUP_HOME = 'C:\\Users\\root\\.rustup'
     }
     agent none
     stages {
