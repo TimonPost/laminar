@@ -24,7 +24,7 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        sh '/root/.cargo/bin/cargo test'   
+                        sh 'sudo /root/.cargo/bin/cargo test'   
                     }
                 }
             }
