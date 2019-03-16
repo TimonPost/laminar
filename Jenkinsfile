@@ -27,6 +27,15 @@ pipeline {
                         sh '/home/jenkins/.cargo/bin/cargo test'
                     }
                 }
+                stage("Test on macOS") {
+                    agent {
+                        label 'mac'
+                    }
+                    steps {
+                        sh 'pwd'
+                        sh 'whoami'
+                    }
+                }
             }
         }
     }
