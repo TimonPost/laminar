@@ -28,6 +28,10 @@ pipeline {
                     }
                 }
                 stage("Test on macOS") {
+                    environment {
+                        CARGO_HOME = '/home/jenkins/.cargo'
+                        RUSTUP_HOME = '/home/jenkins/.rustup'
+                    }
                     agent {
                         label 'mac'
                     }
