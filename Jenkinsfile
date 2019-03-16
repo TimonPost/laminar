@@ -6,7 +6,7 @@ pipeline {
                 label 'windows' 
             }
             steps {
-                bat 'C:\\Users\\root\\.cargo\\bin\\cargo test'
+                bat 'C:\\Users\\root\\.cargo\\bin\\cargo +stable test'
             }
         }
     }
