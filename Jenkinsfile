@@ -16,11 +16,15 @@ pipeline {
                     }
                 }
                 stage("Test on Linux") {
+                    environment {
+                        CARGO_HOME = '/root/.cargo
+                        RUSTUP_HOME = '/root/.rustup
+                    }
                     agent {
                         label 'linux'
                     }
                     steps {
-                        sh 'cargo test'   
+                        sh 'cargo +stable test'   
                     }
                 }
             }
