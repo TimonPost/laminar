@@ -36,7 +36,7 @@ pipeline {
                         label 'mac'
                     }
                     steps {
-                        sh 'cargo test'
+                        sh '/Users/jenkins/.cargo/bin/cargo test'
                     }
                 }
             }
