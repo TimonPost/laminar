@@ -24,7 +24,8 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        sh 'sudo /root/.cargo/bin/cargo test'   
+                        sh '/usr/local/bin/rustup install stable'
+                        sh 'cargo test'
                     }
                 }
             }
