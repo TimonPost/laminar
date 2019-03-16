@@ -1,4 +1,7 @@
 pipeline {
+    environment {
+        CARGO_HOME = 'C:\\Users\\root\\.cargo'
+    }
     agent none
     stages {
         stage('Test on Windows') {
