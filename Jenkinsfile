@@ -24,9 +24,7 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        sh 'whoami'
-                        sh 'pwd'
-                        sh 'cargo test'
+                        sh '/home/jenkins/.cargo/bin/cargo test'
                     }
                 }
             }
