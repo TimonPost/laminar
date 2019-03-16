@@ -24,7 +24,6 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        sh 'echo $PATH'
                         sh '/home/jenkins/.cargo/bin/cargo'
                     }
                 }
