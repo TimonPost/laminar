@@ -25,7 +25,7 @@ pipeline {
                     }
                     steps {
                         sh 'echo $PATH'
-                        sh '/home/jenkins/.cargo/bin/cargo test'
+                        sh '/home/jenkins/.cargo/bin/cargo'
                     }
                 }
             }
