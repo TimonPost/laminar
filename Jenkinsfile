@@ -16,11 +16,17 @@ pipeline {
                     }
                 }
                 stage("Test on Linux") {
+                    environment {
+                        CARGO_HOME = '/home/jenkins/.cargo'
+                        RUSTUP_HOME = '/home/jenkins/.rustup'
+                    }
                     agent {
                         label 'linux'
                     }
                     steps {
-                        sh '/home/jenkins/.cargo/bin/cargo test'
+                        sh 'whoami'
+                        sh 'pwd'
+                        sh 'cargo test'
                     }
                 }
             }
