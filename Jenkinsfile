@@ -20,7 +20,6 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        sh '/usr/local/bin/rustup install stable'
                         sh 'cargo test'
                     }
                 }
