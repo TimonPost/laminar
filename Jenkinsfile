@@ -24,9 +24,7 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        sh 'ls -lah /home'
-                        sh 'ls -lah /home/jenkins'
-                        sh '/home/jenkins/.cargo/bin/cargo'
+                        sh '/home/jenkins/.cargo/bin/cargo test'
                     }
                 }
             }
