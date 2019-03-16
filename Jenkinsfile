@@ -20,7 +20,7 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        sh 'cargo test'
+                        sh '/home/jenkins/.cargo/bin/cargo test'
                     }
                 }
             }
