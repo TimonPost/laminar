@@ -47,7 +47,7 @@ pub fn fragment_packet_integration_test() {
             debug!("Server stopped");
             let _total_received = server_thread.join().unwrap();
             let _elapsed_time = stopwatch.elapsed();
-        },
+        }
         Err(e) => {
             error!("Error sending cancellation message: {:?}", e);
         }
