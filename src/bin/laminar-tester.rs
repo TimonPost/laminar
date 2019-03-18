@@ -1,6 +1,6 @@
 use std::{
     clone::Clone,
-    net::{SocketAddr, ToSocketAddrs},
+    net::SocketAddr,
     process::exit,
     thread,
     time::{Duration, Instant},
@@ -29,8 +29,8 @@ fn main() {
 struct ClientConfiguration {
     listen_host: SocketAddr,
     destination: SocketAddr,
-    run_duration: Duration,
-    packet_ps: u8,
+    _run_duration: Duration,
+    packet_ps: u64,
     maximal_duration: Duration,
     test_name: String,
 }
@@ -38,23 +38,37 @@ struct ClientConfiguration {
 impl From<clap::ArgMatches<'_>> for ClientConfiguration {
     fn from(args: clap::ArgMatches<'_>) -> Self {
         ClientConfiguration {
-            listen_host: args.value_of("LISTEN_ADDR").unwrap().parse().unwrap(),
-            destination: args.value_of("CONNECT_ADDR").unwrap().parse().unwrap(),
-            run_duration: Duration::from_secs(
+            listen_host: args
+                .value_of("LISTEN_ADDR")
+                .expect("No `LISTEN_ADDR` argument provided!")
+                .parse()
+                .expect("Could not parse `LISTEN_ADDR` argument!"),
+            destination: args
+                .value_of("CONNECT_ADDR")
+                .expect("No `CONNECT_ADDR` argument provided!")
+                .parse()
+                .expect("Could not parse `CONNECT_ADDR` argument!"),
+            _run_duration: Duration::from_secs(
                 args.value_of("SHUTDOWN_TIMER")
-                    .unwrap()
-                    .parse::<u64>()
-                    .unwrap(),
+                    .expect("No `SHUTDOWN_TIMER` argument provided!")
+                    .parse()
+                    .expect("Could not parse `SHUTDOWN_TIMER` argument!"),
             ),
             packet_ps: args
                 .value_of("PACKETS_PER_SECOND")
-                .unwrap()
+                .expect("No `PACKETS_PER_SECOND` argument provided!")
                 .parse()
-                .unwrap(),
+                .expect("Could not parse `PACKETS_PER_SECOND` argument!"),
             maximal_duration: Duration::from_secs(
-                args.value_of("TEST_DURATION").unwrap().parse().unwrap(),
+                args.value_of("TEST_DURATION")
+                    .expect("No `TEST_DURATION` argument provided!")
+                    .parse()
+                    .expect("Could not parse `TEST_DURATION` argument!"),
             ),
-            test_name: String::from(args.value_of("TEST_TO_RUN").unwrap()),
+            test_name: String::from(
+                args.value_of("TEST_TO_RUN")
+                    .expect("No `TEST_TO_RUN` argument provided!"),
+            ),
         }
     }
 }
@@ -68,12 +82,16 @@ struct ServerConfiguration {
 impl From<clap::ArgMatches<'_>> for ServerConfiguration {
     fn from(args: clap::ArgMatches<'_>) -> Self {
         ServerConfiguration {
-            listen_host: args.value_of("LISTEN_ADDR").unwrap().parse().unwrap(),
+            listen_host: args
+                .value_of("LISTEN_ADDR")
+                .expect("No `LISTEN_ADDR` argument provided!")
+                .parse()
+                .expect("Could not parse `LISTEN_ADDR` argument!"),
             run_duration: Duration::from_secs(
                 args.value_of("SHUTDOWN_TIMER")
-                    .unwrap()
-                    .parse::<u64>()
-                    .unwrap(),
+                    .expect("No `SHUTDOWN_TIMER` argument provided!")
+                    .parse()
+                    .expect("Could not parse `SHUTDOWN_TIMER` argument!"),
             ),
         }
     }
@@ -87,8 +105,9 @@ fn process_server_subcommand(m: clap::ArgMatches<'_>) {
     thread::spawn(move || {
         info!("Server started");
         info!("Server listening on: {:?}", config.listen_host);
-        run_server(config);
+        run_server(config).expect("Server should run.");
     });
+
     info!("Main thread sleeping");
     thread::sleep(run_duration);
     info!("Shutting down...");
@@ -97,10 +116,9 @@ fn process_server_subcommand(m: clap::ArgMatches<'_>) {
 
 fn process_client_subcommand(m: clap::ArgMatches<'_>) {
     let client_config = ClientConfiguration::from(m);
-
     debug!("Endpoint is: {:?}", client_config.listen_host);
     debug!("Client destination is: {:?}", client_config.destination);
-    run_client(client_config);
+    run_client(client_config).expect("Client should run.");
     exit(0);
 }
 
@@ -120,10 +138,10 @@ fn run_server(server_config: ServerConfiguration) -> Result<()> {
             Err(e) => {
                 error!("Error receiving packet: {:?}", e);
             }
-            _ => {}
+            _ => error!("Event not handled yet."),
         }
 
-        println!("{}", throughput);
+        info!("{}", throughput);
     }
 }
 

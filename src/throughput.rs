@@ -4,9 +4,10 @@ use std::time::Duration;
 use std::time::Instant;
 
 /// Entry for throughput monitor with measured information.
+#[derive(Debug)]
 struct ThroughputEntry {
     measured_throughput: u32,
-    start: Instant,
+    _start: Instant,
 }
 
 impl ThroughputEntry {
@@ -14,7 +15,7 @@ impl ThroughputEntry {
     pub fn new(measured_throughput: u32, time: Instant) -> ThroughputEntry {
         ThroughputEntry {
             measured_throughput,
-            start: time,
+            _start: time,
         }
     }
 }
@@ -50,16 +51,16 @@ impl ThroughputMonitoring {
                 .push(ThroughputEntry::new(self.current_throughput, self.timer));
             self.current_throughput = 0;
             self.timer = Instant::now();
-            return true;
+            true
         } else {
             self.current_throughput += 1;
-            return false;
+            false
         }
     }
 
     /// Returns the average throughput over all throughput up-till now.
     pub fn average(&self) -> u32 {
-        if self.measured_throughput.len() != 0 {
+        if !self.measured_throughput.is_empty() {
             return self
                 .measured_throughput
                 .iter()
@@ -78,15 +79,19 @@ impl ThroughputMonitoring {
 
     /// Returns the last measured throughput.
     pub fn last_throughput(&self) -> u32 {
-        self.measured_throughput.last().unwrap().measured_throughput
+        self.measured_throughput
+            .last()
+            .map(|x| x.measured_throughput)
+            .unwrap_or(0)
     }
 
     /// Returns the totals measured throughput ticks.
-    pub fn total_measured(&self) -> u32 {
+    pub fn total_measured_ticks(&self) -> u32 {
         self.measured_throughput
             .iter()
             .map(|x| x.measured_throughput)
             .sum::<u32>()
+            + self.current_throughput
     }
 }
 
@@ -94,7 +99,7 @@ impl Debug for ThroughputMonitoring {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(
             f,
-            "Current Throughput: {}, Elapsed Time: {:?}, Average Throughput: {}",
+            "Current Throughput: {}, Elapsed Time: {:#?}, Average Throughput: {}",
             self.last_throughput(),
             self.timer.elapsed(),
             self.average()
@@ -106,7 +111,7 @@ impl Display for ThroughputMonitoring {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(
             f,
-            "Current Throughput: {}, Elapsed Time: {:?}, Average Throughput: {}",
+            "Current Throughput: {}, Elapsed Time: {:#?}, Average Throughput: {}",
             self.last_throughput(),
             self.timer.elapsed(),
             self.average()
