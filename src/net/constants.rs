@@ -3,7 +3,7 @@ pub const FRAGMENT_HEADER_SIZE: u8 = 4 + STANDARD_HEADER_SIZE;
 /// Acked packet header size
 pub const ACKED_PACKET_HEADER: u8 = 8 + STANDARD_HEADER_SIZE;
 /// Standard header size
-pub const STANDARD_HEADER_SIZE: u8 = 6;
+pub const STANDARD_HEADER_SIZE: u8 = 4;
 /// Heartbeat header size
 pub const HEART_BEAT_HEADER_SIZE: u8 = 5;
 /// Default max number of fragments to size
@@ -22,6 +22,6 @@ pub const DEFAULT_MTU: u16 = 1452;
 /// This is the current protocol version.
 ///
 /// It is used for:
-/// - Generating crc32 for the packet header.
+/// - Generating crc16 for the packet header.
 /// - Validating if arriving packets have the same protocol version.
 pub const PROTOCOL_VERSION: &str = "laminar-0.1.0";

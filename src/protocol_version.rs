@@ -1,11 +1,11 @@
-use crc::crc32;
+use crc::crc16;
 use lazy_static::lazy_static;
 
 pub use crate::net::constants::PROTOCOL_VERSION;
 
 lazy_static! {
-    // The CRC32 of the current protocol version.
-    static ref VERSION_CRC32: u32 = crc32::checksum_ieee(PROTOCOL_VERSION.as_bytes());
+    // The CRC16 of the current protocol version.
+    static ref VERSION_CRC16: u16 = crc16::checksum_x25(PROTOCOL_VERSION.as_bytes());
 }
 
 /// Wrapper to provide some functions to perform with the current protocol version.
@@ -18,16 +18,16 @@ impl ProtocolVersion {
         PROTOCOL_VERSION
     }
 
-    /// This will return the crc32 from the current protocol version.
+    /// This will return the crc16 from the current protocol version.
     #[inline]
-    pub fn get_crc32() -> u32 {
-        *VERSION_CRC32
+    pub fn get_crc16() -> u16 {
+        *VERSION_CRC16
     }
 
-    /// Validate a crc32 with the current protocol version and return the results.
+    /// Validate a crc16 with the current protocol version and return the results.
     #[inline]
-    pub fn valid_version(protocol_version_crc32: u32) -> bool {
-        protocol_version_crc32 == ProtocolVersion::get_crc32()
+    pub fn valid_version(protocol_version_crc16: u16) -> bool {
+        protocol_version_crc16 == ProtocolVersion::get_crc16()
     }
 }
 
@@ -38,19 +38,19 @@ mod test {
 
     #[test]
     fn valid_version() {
-        let protocol_id = crc32::checksum_ieee(PROTOCOL_VERSION.as_bytes());
+        let protocol_id = crc16::checksum_x25(PROTOCOL_VERSION.as_bytes());
         assert!(ProtocolVersion::valid_version(protocol_id));
     }
 
     #[test]
     fn not_valid_version() {
-        let protocol_id = crc32::checksum_ieee("not-laminar".as_bytes());
+        let protocol_id = crc16::checksum_x25("not-laminar".as_bytes());
         assert!(!ProtocolVersion::valid_version(protocol_id));
     }
 
     #[test]
-    fn get_crc32() {
-        assert_eq!(ProtocolVersion::get_crc32(), *VERSION_CRC32);
+    fn get_crc16() {
+        assert_eq!(ProtocolVersion::get_crc16(), *VERSION_CRC16);
     }
 
     #[test]

@@ -5,8 +5,8 @@ In this topic we'll discuss the different headers we are pre-pending to the data
 Will be included in each packet.
 ```rust 
 pub struct StandardHeader {
-    /// crc32 of the protocol version.
-    pub protocol_version: u32,
+    /// crc16 of the protocol version.
+    pub protocol_version: u16,
     /// specifies the packet type.
     pub packet_type_id: PacketTypeId,
     /// specifies how this packet should be processed.

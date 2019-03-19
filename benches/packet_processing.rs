@@ -29,7 +29,7 @@ fn process_packet_when_received(connection: &mut VirtualConnection, data: &[u8])
 /// visible externally
 fn standard_header_bytes(delivery_method: DeliveryMethod) -> Vec<u8> {
     let mut buffer = Vec::new();
-    buffer.write_u32::<BigEndian>(ProtocolVersion::get_crc32());
+    buffer.write_u16::<BigEndian>(ProtocolVersion::get_crc16());
     // Represents a standard `Packet`
     buffer.write_u8(0);
     buffer.write_u8(delivery_method as u8);
