@@ -18,7 +18,7 @@
 This library implements some TCP-like features on top of an UDP-socket. 
 It will provide a lightweight message-based interface with certain guarantees like reliability, fragmentation congestion monitoring.
 
-Laminar was designed to be used in the [Amethyst][amethyst] game engine and is loosely based on articles from [gaffer on games](https://gafferongames.com/).
+Laminar was designed to be used in the [Amethyst][amethyst] game engine and is loosely based on articles from [Gaffer on Games](https://gafferongames.com/).
 
 [amethyst]: https://github.com/amethyst/amethyst
 
