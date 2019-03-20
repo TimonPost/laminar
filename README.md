@@ -133,6 +133,7 @@ match result {
 - [Lucio Franco](https://github.com/LucioFranco)
 - [Fletcher Haynes](https://github.com/fhaynes)
 - [Timon Post](https://github.com/TimonPost)
+- [Justin LeFebvre](https://github.com/jstnlef)
 
 We want to give credit to [gaffer on games](https://gafferongames.com/) as we have used his guide to building a game networking protocol to build this library. 
 
