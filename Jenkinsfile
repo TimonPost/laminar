@@ -1,7 +1,7 @@
 pipeline {
     agent none
     stages {
-        stage('Check Formatting and Clippy') {
+        stage('Check Formatting') {
             environment {
                 CARGO_HOME = '/home/jenkins/.cargo'
                 RUSTUP_HOME = '/home/jenkins/.rustup'
