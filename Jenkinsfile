@@ -1,7 +1,7 @@
 pipeline {
     agent none
     stages {
-        stage('Check formatting and Clippy') {
+        stage('Check Formatting and Clippy') {
             environment {
                 CARGO_HOME = '/home/jenkins/.cargo'
                 RUSTUP_HOME = '/home/jenkins/.rustup'
@@ -13,6 +13,18 @@ pipeline {
             steps {
                 echo 'Checking formatting...'
                 sh '$CARGO_HOME/bin/cargo fmt -- --check'
+            }
+        }
+        stage('Run Clippy') {
+            environment {
+                CARGO_HOME = '/home/jenkins/.cargo'
+                RUSTUP_HOME = '/home/jenkins/.rustup'
+                RUSTFLAGS = "-D warnings"
+            }
+            agent {
+                label 'linux'
+            }
+            steps {
                 echo 'Running Clippy...'
                 sh '$CARGO_HOME/bin/cargo clippy --all --all-features -- -D warnings'
             }
