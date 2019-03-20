@@ -1,6 +1,34 @@
 pipeline {
     agent none
     stages {
+        stage('Check Formatting') {
+            environment {
+                CARGO_HOME = '/home/jenkins/.cargo'
+                RUSTUP_HOME = '/home/jenkins/.rustup'
+                RUSTFLAGS = "-D warnings"
+            }
+            agent {
+                label 'linux'
+            }
+            steps {
+                echo 'Checking formatting...'
+                sh '$CARGO_HOME/bin/cargo fmt -- --check'
+            }
+        }
+        stage('Run Clippy') {
+            environment {
+                CARGO_HOME = '/home/jenkins/.cargo'
+                RUSTUP_HOME = '/home/jenkins/.rustup'
+                RUSTFLAGS = "-D warnings"
+            }
+            agent {
+                label 'linux'
+            }
+            steps {
+                echo 'Running Clippy...'
+                sh '$CARGO_HOME/bin/cargo clippy --all --all-features -- -D warnings'
+            }
+        }
         stage('Run Tests') {
             parallel {
                 stage("Test on Windows") {                    
@@ -12,7 +40,9 @@ pipeline {
                         label 'windows' 
                     }
                     steps {
+                        echo 'Beginning tests...'
                         bat 'C:\\Users\\root\\.cargo\\bin\\cargo +stable test'
+                        echo 'Tests done!'
                     }
                 }
                 stage("Test on Linux") {
@@ -24,7 +54,9 @@ pipeline {
                         label 'linux'
                     }
                     steps {
+                        echo 'Beginning tests...'
                         sh '/home/jenkins/.cargo/bin/cargo test'
+                        echo 'Tests done!'
                     }
                 }
                 stage("Test on macOS") {
@@ -36,7 +68,9 @@ pipeline {
                         label 'mac'
                     }
                     steps {
+                        echo 'Beginning tests...'
                         sh '/Users/jenkins/.cargo/bin/cargo test'
+                        echo 'Tests done!'
                     }
                 }
             }
