@@ -73,9 +73,19 @@ impl ServerMoq {
         let data_to_send = data;
         let config = self.config.clone();
         thread::spawn(move || {
+            println!("[{}] - Starting thread", client_stub.endpoint);
+            let mut stopwatch = Instant::now();
+
             let (mut client, packet_sender, _event_receiver) =
                 Socket::bind(client_stub.endpoint, config.clone()).unwrap();
             let _thread = thread::spawn(move || client.start_polling());
+
+            println!(
+                "[{}] - Binding and starting the polling thread took {} ms.",
+                client_stub.endpoint,
+                stopwatch.elapsed().as_millis()
+            );
+            stopwatch = Instant::now();
 
             let len = data_to_send.len();
 
@@ -95,6 +105,12 @@ impl ServerMoq {
 
                 thread::sleep(client_stub.timeout_sending);
             }
+
+            println!(
+                "[{}] - Sending the packets took {} ms.",
+                client_stub.endpoint,
+                stopwatch.elapsed().as_millis()
+            );
         })
     }
 }
