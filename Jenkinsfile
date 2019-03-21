@@ -26,7 +26,7 @@ pipeline {
             }
             steps {
                 echo 'Running Clippy...'
-                sh '$CARGO_HOME/bin/cargo clippy --all --all-features -- -D warnings'
+               // sh '$CARGO_HOME/bin/cargo clippy --all --all-features -- -D warnings'
             }
         }
         stage('Run Tests') {
