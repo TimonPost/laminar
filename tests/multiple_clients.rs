@@ -17,6 +17,8 @@ const SERVER_ADDR: &str = "127.0.0.1:12345";
 /// 3. Validate received data.
 #[test]
 pub fn multiple_client_integration_test() {
+    let mut stopwatch = Instant::now();
+
     let (tx, rx) = mpsc::channel();
 
     let test_data = "Test Data!".as_bytes();
@@ -24,6 +26,9 @@ pub fn multiple_client_integration_test() {
     // setup the server and start receiving.
     let mut server = ServerMoq::new(Config::default(), SERVER_ADDR.parse().unwrap());
     let server_thread = server.start_receiving(rx, test_data.to_vec());
+
+    println!("Setting up the server to took {} ms.", stopwatch.elapsed().as_millis());
+    stopwatch = Instant::now();
 
     // the packet rate at which clients send data.
     let sixteenth_a_second = Duration::from_millis(16);
@@ -67,7 +72,8 @@ pub fn multiple_client_integration_test() {
         DeliveryMethod::UnreliableUnordered,
     ));
 
-    let stopwatch = Instant::now();
+    println!("Pushing the client stubs to took {} ms.", stopwatch.elapsed().as_millis());
+    stopwatch = Instant::now();
 
     let mut handles = Vec::new();
 
@@ -76,14 +82,21 @@ pub fn multiple_client_integration_test() {
         handles.push(server.add_client(test_data.to_vec(), client));
     }
 
+    println!("Adding the handles to took {} ms.", stopwatch.elapsed().as_millis());
+    stopwatch = Instant::now();
+
     // wait for clients to send data
     for handle in handles {
         handle.join().unwrap();
     }
 
+    println!("Joining the handles to took {} ms.", stopwatch.elapsed().as_millis());
+    stopwatch = Instant::now();
+
     // notify server to stop receiving.
     tx.send(true).unwrap();
 
     let _total_received = server_thread.join().unwrap();
-    let _elapsed_time = stopwatch.elapsed();
+
+    println!("Ending the test took {} ms.", stopwatch.elapsed().as_millis());
 }
