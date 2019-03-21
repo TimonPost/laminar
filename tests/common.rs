@@ -103,7 +103,7 @@ impl ServerMoq {
                     send_result.is_ok();
                 }
 
-                thread::sleep(client_stub.timeout_sending);
+//                thread::sleep(client_stub.timeout_sending);
             }
 
             println!(
