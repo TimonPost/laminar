@@ -36,7 +36,7 @@ pub fn multiple_client_integration_test() {
     // the packet rate at which clients send data.
     let sixteenth_a_second = Duration::from_millis(16);
 
-    println!("sixteenth_a_second: {:?}", sixteenth_a_second);
+    println!("sixteenth_a_second: secs: {:?} nanos: {:?}", sixteenth_a_second.as_secs(), sixteenth_a_second.subsec_nanos());
 
     // create client stubs.
     let mut clients = Vec::new();
