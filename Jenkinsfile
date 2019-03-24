@@ -41,7 +41,7 @@ pipeline {
                     }
                     steps {
                         echo 'Beginning tests...'
-                        bat 'C:\\Users\\root\\.cargo\\bin\\cargo +stable test'
+                        bat 'C:\\Users\\root\\.cargo\\bin\\cargo test --features="tester"'
                         echo 'Tests done!'
                     }
                 }
@@ -55,7 +55,7 @@ pipeline {
                     }
                     steps {
                         echo 'Beginning tests...'
-                        sh '/home/jenkins/.cargo/bin/cargo test'
+                        sh '/home/jenkins/.cargo/bin/cargo test --features="tester"'
                         echo 'Tests done!'
                     }
                 }
@@ -70,6 +70,7 @@ pipeline {
                     steps {
                         echo 'Beginning tests...'
                         sh '/Users/jenkins/.cargo/bin/cargo test'
+                        sh '/Users/jenkins/.cargo/bin/cargo test --features="tester"'
                         echo 'Tests done!'
                     }
                 }
@@ -85,9 +86,9 @@ pipeline {
                 label 'linux'
             }
             steps {
-                withCredentials([string(credentialsId: 'codecov_token', variable: 'CODECOV_TOKEN')]) {                
+                withCredentials([string(credentialsId: 'codecov_token', variable: 'CODECOV_TOKEN')]) {
                     echo 'Calculating code coverage...'
-                    sh 'for file in target/debug/laminar-*[^\\.d]; do mkdir -p \"target/cov/$(basename $file)\"; kcov --exclude-pattern=/.cargo,/usr/lib --verify \"target/cov/$(basename $file)\" \"$file\"; done'
+                    sh 'for file in target/debug/laminar-[a-f0-9]*[^\\.d]; do mkdir -p \"target/cov/$(basename $file)\"; kcov --exclude-pattern=/.cargo,/usr/lib --verify \"target/cov/$(basename $file)\" \"$file\"; done'
                     echo "Uploading coverage..."
                     sh "curl -s https://codecov.io/bash | bash -s - -t $CODECOV_TOKEN"
                     echo "Uploaded code coverage!"

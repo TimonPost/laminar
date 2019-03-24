@@ -55,7 +55,7 @@ impl Default for Config {
             rtt_smoothing_factor: 0.10,
             rtt_max_value: 250,
             socket_event_buffer_size: 1024,
-            socket_polling_timeout: Some(Duration::from_millis(100)),
+            socket_polling_timeout: Some(Duration::from_millis(1)),
         }
     }
 }

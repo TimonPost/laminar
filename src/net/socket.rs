@@ -5,7 +5,7 @@ use crate::{
     packet::Packet,
 };
 use crossbeam_channel::{self, unbounded, Receiver, Sender};
-use log::error;
+use log::{debug, error};
 use std::{
     self, io,
     net::{SocketAddr, ToSocketAddrs, UdpSocket},
@@ -66,7 +66,7 @@ impl Socket {
                         };
                     }
                     None => {
-                        error!("Empty packet received");
+                        debug!("Empty packet received");
                     }
                 },
                 Err(e) => {
