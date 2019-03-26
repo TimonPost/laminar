@@ -95,5 +95,13 @@ pipeline {
                 }
             }
         }
+        stage('Publish book') {
+            when {
+                branch 'master'
+            }
+            steps{
+                echo 'Uploading book here'
+            }
+        }
     }
 }
