@@ -17,40 +17,55 @@ _UDP_
 - Unreliable.
 - No guarantee for delivery.
 - No guarantee for order.
-- No way of getting dropped packet.
+- No way of getting the dropped packet.
 - Duplication possible.
 - No [fragmentation](./../fragmentation.md).
 
-So handy would be if you somehow could specify which features you want on top of UDP. 
-You could say for example I want the guarantee for my packets to arrive, however they don't need to be in order. 
+So it would be useful if we could somehow specify the features we want on top of UDP. 
+Like that you say: I want the guarantee for my packets to arrive, however they don't need to be in order. 
+Or, I don't care if my packet arrives but I do want to receive only new ones.
 
-Laminar (will) provide(s) different kind of reliabilities as listed below:
+Please check out [ordering documentation](ordering.md), it describes what ordering and sequencing is.    
 
-### Unreliable Unordered
-Unreliable. Packets can be dropped, duplicated or arrive without order.
+Laminar provides 5 different ways for you to send your data:
 
- **Details**
+| Reliability Type                 | Packet Drop | Packet Duplication | Packet Order  | Packet Fragmentation |Packet Delivery|
+| :-------------:                  | :-------------: | :-------------:    | :-------------:  | :-------------:  | :-------------:
+|       **Unreliable**              |       Yes       |       Yes          |      No          |      No          |       No
+|       **Unreliable Sequenced**    |       Yes       |      No            |      Sequenced   |      No          |       No
+|       **Reliable Unordered**      |       No        |      No            |      No          |      Yes         |       Yes
+|       **Reliable Ordered**        |       No        |      No            |      Ordered     |      Yes         |       Yes
+|       **Reliable Sequenced**      |       No        |      No            |      Sequenced   |      Yes         |       Yes
+
+
+## Unreliable
+Unreliable: Packets can be dropped, duplicated or arrive without order.
+
+**Details**
 
 | Packet Drop     | Packet Duplication | Packet Order     | Packet Fragmentation | Packet Delivery |
 | :-------------: | :-------------:    | :-------------:  | :-------------:      | :-------------: |
 |       Yes       |        Yes         |      No          |      No              |       No        |
 
-Basically just bare UDP, free to be dropped, used for very unnecessary data, great for 'general' position 
+Basically just bare UDP. The packet may or may not be delivered.
 
-### Unreliable Ordered
-Unreliable. Packets can be dropped, duplicated or arrive with order.
+// todo: add use cases
 
-**Details**
+## Unreliable Sequenced
+Unreliable Sequenced: Packets can be dropped, but could not be duplicated and arrive in sequence.
 
-| Packet Drop      | Packet Duplication  | Packet Order      | Packet Fragmentation | Packet Delivery |
-| :-------------:  | :-------------:     | :-------------:  | :-------------:       | :-------------: |
-|      Yes        |    Yes               |      Yes          |      No              |       No        |
+*Details*
 
-Basically just bare UDP, free to be dropped, used for very unnecessary data, great for 'general' position updates but packets will be ordered.
+| Packet Drop     | Packet Duplication | Packet Order     | Packet Fragmentation | Packet Delivery |
+| :-------------: | :-------------:    | :-------------:  | :-------------:      | :-------------: |
+|       Yes       |        Yes         |      Sequenced          |      No              |       No        |
 
+Basically just bare UDP, free to be dropped, but has some sequencing to it so that only the newest packets are kept.
 
-### Reliable Unordered
-Reliable. All packets will be sent and received, but without order.
+// todo: add use cases
+
+## Reliable Unordered
+Reliable: All packets will be sent and received, but without order.
 
 *Details*
 
@@ -58,34 +73,35 @@ Reliable. All packets will be sent and received, but without order.
 | :-------------: | :-------------:    | :-------------:  | :-------------:      | :-------------: |
 |       No        |      No            |      No          |      Yes             |       Yes       |
 
-Basically this is almost TCP like without ordering of packets.
-Receive every packet and immediately give to application, order does not matter.
+Basically, this is almost TCP without ordering of packets.
 
-### Reliable Ordered
-Reliable. All packets will be sent and received, with order.
-
-*Details*
-
-|   Packet Drop   | Packet Duplication | Packet Order     | Packet Fragmentation | Packet Delivery |
-| :-------------: | :-------------:    | :-------------:  | :-------------:      | :-------------: |
-|       No        |      No            |      Yes         |      Yes             |       Yes       |
-
-Basically this is almost has all features TCP has.
-Receive every packet (file downloading for example) in order (any missing keeps the later ones buffered.
- 
-### Sequenced
-Unreliable. Packets can be dropped, but never duplicated and arrive in order.
+// todo: add use cases
+## Reliable Ordered
+Reliable; All packets will be sent and received, with order.
 
 *Details*
 
 |   Packet Drop   | Packet Duplication | Packet Order     | Packet Fragmentation | Packet Delivery |
 | :-------------: | :-------------:    | :-------------:  | :-------------:      | :-------------: |
-|       Yes       |      No            |      Yes         |      Yes             |       No        |
+|       No        |      No            |      Ordered     |      Yes             |       Yes       |
 
-Toss away any packets that are older than the most recent (like a position update, you don't care about older ones),
-packets may be dropped, just the application may not receive older ones if a newer one came in first.
- 
- -----------------------------------------------------------------------------------
- However all those options are listed above only a few will be supported for laminar version `0.1.0` like: UnreliableUnordered, ReliableUnordered, SequencedUnordered. 
- However for laminar version `0.2.0` we are planning to support: UnreliableOrdered, ReliableOrdered, SequencedOrdered also.
- 
+Basically this is almost like TCP.
+
+// todo: add use cases
+
+## Reliable Sequenced
+Reliable; All packets will be sent and received but arranged in sequence.
+Which means that only the newest packets will be let through, older packets will be received but they won't get to the user.
+
+*Details*
+
+|   Packet Drop   | Packet Duplication | Packet Order     | Packet Fragmentation | Packet Delivery |
+| :-------------: | :-------------:    | :-------------:  | :-------------:      | :-------------: |
+|       No        |      No            |      Sequenced     |      Yes             |       Yes       |
+
+Basically this is almost TCP-like but then sequencing instead of ordering.
+
+// todo: add use cases
+
+## Interesting Reads
+- [RakNet Reliability Types](http://www.jenkinssoftware.com/raknet/manual/reliabilitytypes.html)
