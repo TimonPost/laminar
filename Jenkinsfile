@@ -15,7 +15,8 @@ pipeline {
 
                 sh 'if [ ! -f $CARGO_HOME/bin/mdbook ]; then $CARGO_HOME/bin/cargo install mdbook; fi'
 
-                sh '$CARGO_HOME/bin/mdbook build'
+                sh 'cd '
+                sh '$CARGO_HOME/bin/mdbook build ./docs/md_book'
                 sh 'git add docs/md_book/book/'
                 sh 'git commit -m "Book Build"'
                 echo 'Uploading Book ...'
