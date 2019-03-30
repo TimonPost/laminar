@@ -15,8 +15,8 @@ pipeline {
 
                 sh 'if [ ! -f $CARGO_HOME/bin/mdbook ]; then $CARGO_HOME/bin/cargo install mdbook; fi'
 
-                sh 'rm -rf ./docs/md_book/book'
-                sh '$CARGO_HOME/bin/mdbook build ./docs/md_book'
+                sh 'rm -rf docs/md_book/book'
+                sh '$CARGO_HOME/bin/mdbook build docs/md_book'
                 sh 'git config user.email \"ops@amethyst-engine.org\"'
                 sh 'git config user.name \"Captain\"'
                 sh 'git add .'
