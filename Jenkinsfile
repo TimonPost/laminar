@@ -13,7 +13,7 @@ pipeline {
              steps {
                 echo 'Start building book ..'
                 sh '$CARGO_HOME/bin/cargo install mdbook'
-                sh 'mdbook build'
+                sh '$CARGO_HOME/bin/mdbook build'
                 sh 'git add docs/md_book/book/'
                 sh 'git commit -m "Book Build"'
                 echo 'Uploading Book ...'
