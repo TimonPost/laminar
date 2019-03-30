@@ -1,6 +1,25 @@
 pipeline {
     agent none
     stages {
+        stage('Build Book') {
+            environment {
+                CARGO_HOME = '/home/jenkins/.cargo'
+                RUSTUP_HOME = '/home/jenkins/.rustup'
+                RUSTFLAGS = "-D warnings"
+            }
+            agent {
+                label 'linux'
+            }
+             steps {
+                echo 'Start building book ..'
+                sh 'cargo install mdbook'
+                sh 'mdbook build'
+                sh 'git add docs/md_book/book/'
+                sh 'git commit -m "Book Build"'
+                echo 'Uploading Book ...'
+                sh 'git push'
+            }
+        }
         stage('Check Formatting') {
             environment {
                 CARGO_HOME = '/home/jenkins/.cargo'
