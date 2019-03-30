@@ -10,12 +10,10 @@
 //! - See [super-module](../index.html) description for more details.
 
 use super::{Arranging, ArrangingSystem};
-use std::{
-    collections::HashMap,
-    marker::PhantomData
-};
+use crate::packet::SequenceNumber;
+use std::{collections::HashMap, marker::PhantomData};
 
-/// An sequencing system that can arrange items in sequence on different streams.
+/// A sequencing system that can arrange items in sequence across different streams.
 ///
 /// Checkout [`SequencingStream`](./struct.SequencingStream.html), or module description for more details.
 ///
@@ -70,11 +68,13 @@ impl<T> ArrangingSystem for SequencingSystem<T> {
 /// - See [super-module](../index.html) for more information about streams.
 pub struct SequencingStream<T> {
     // the id of this stream.
-    stream_id: u8,
+    _stream_id: u8,
     // the highest seen item index.
     top_index: usize,
     // I need `PhantomData`, otherwise, I can't use a generic in the `Arranging` implementation because `T` is not constrained.
-    phantom: PhantomData<T>
+    phantom: PhantomData<T>,
+    // unique identifier which should be used for ordering on an other stream e.g. the remote endpoint.
+    unique_item_identifier: u16,
 }
 
 impl<T> SequencingStream<T> {
@@ -83,15 +83,23 @@ impl<T> SequencingStream<T> {
     /// The default stream will have a capacity of 32 items.
     pub fn new(stream_id: u8) -> SequencingStream<T> {
         SequencingStream {
-            stream_id,
+            _stream_id: stream_id,
             top_index: 0,
-            phantom: PhantomData
+            phantom: PhantomData,
+            unique_item_identifier: 0,
         }
     }
 
     /// Returns the identifier of this stream.
-    fn stream_id(&self) -> u8 {
-        self.stream_id
+    #[cfg(test)]
+    pub fn stream_id(&self) -> u8 {
+        self._stream_id
+    }
+
+    /// Returns the unique identifier which should be used for ordering on an other stream e.g. the remote endpoint.
+    pub fn new_item_identifier(&mut self) -> SequenceNumber {
+        self.unique_item_identifier = self.unique_item_identifier.wrapping_add(1);
+        self.unique_item_identifier
     }
 }
 

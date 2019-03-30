@@ -8,7 +8,7 @@ use std::{
 
 use clap::{load_yaml, App, AppSettings};
 use crossbeam_channel::Sender;
-use laminar::{Config, DeliveryMethod, Packet, Result, Socket, SocketEvent, ThroughputMonitoring};
+use laminar::{Config, Packet, Result, Socket, SocketEvent, ThroughputMonitoring};
 use log::{debug, error, info};
 
 fn main() {
@@ -167,11 +167,7 @@ fn run_client(config: ClientConfiguration) -> Result<()> {
 fn test_steady_stream(sender: &Sender<Packet>, config: ClientConfiguration) {
     info!("Beginning steady-state test");
 
-    let test_packet = Packet::new(
-        config.listen_host,
-        config.test_name.into_bytes().into_boxed_slice(),
-        DeliveryMethod::ReliableUnordered,
-    );
+    let test_packet = Packet::reliable_unordered(config.listen_host, config.test_name.into_bytes());
 
     let time_quantum = 1000 / config.packet_ps as u64;
     let start_time = Instant::now();

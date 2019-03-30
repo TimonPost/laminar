@@ -3,7 +3,7 @@ mod common;
 #[cfg(feature = "tester")]
 use common::{client_addr, Client, Server, ServerEvent};
 
-use laminar::{DeliveryMethod, Packet};
+use laminar::{DeliveryGuarantee, OrderingGuarantee, Packet};
 use log::debug;
 use std::net::SocketAddr;
 use std::{thread, time::Duration};
@@ -19,7 +19,8 @@ fn send_receive_fragment_packets() {
     let client = Client::new(Duration::from_millis(1), 5000);
 
     let assert_function = move |packet: Packet| {
-        assert_eq!(packet.delivery_method(), DeliveryMethod::ReliableUnordered);
+        assert_eq!(packet.order_guarantee(), OrderingGuarantee::None);
+        assert_eq!(packet.delivery_guarantee(), DeliveryGuarantee::Reliable);
         assert_eq!(packet.payload(), payload().as_slice());
     };
 

@@ -1,8 +1,9 @@
-mod channels;
-mod delivery_method;
+mod acknowlegement;
+mod congestion;
 mod fragmenter;
 
-pub use self::channels::Channel;
-pub use self::channels::{ReliableChannel, SequencedChannel, UnreliableChannel};
-pub use self::delivery_method::DeliveryMethod;
+pub mod arranging;
+
+pub use self::acknowlegement::AcknowledgementHandler;
+pub use self::congestion::CongestionHandler;
 pub use self::fragmenter::Fragmentation;

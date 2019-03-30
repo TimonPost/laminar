@@ -1,9 +1,10 @@
 use crate::net::constants::MAX_FRAGMENTS_DEFAULT;
+use crate::packet::SequenceNumber;
 
 #[derive(Clone)]
 /// This contains the information required to reassemble fragments.
 pub struct ReassemblyData {
-    pub sequence: u16,
+    pub sequence: SequenceNumber,
     pub num_fragments_received: u8,
     pub num_fragments_total: u8,
     pub buffer: Vec<u8>,
@@ -11,7 +12,7 @@ pub struct ReassemblyData {
 }
 
 impl ReassemblyData {
-    pub fn new(sequence: u16, num_fragments_total: u8, prealloc: usize) -> Self {
+    pub fn new(sequence: SequenceNumber, num_fragments_total: u8, prealloc: usize) -> Self {
         Self {
             sequence,
             num_fragments_received: 0,

@@ -39,10 +39,13 @@
 //! The game developer can indicate on which stream he can order his packets and how he wants to arrange them.
 //! For example, the game developer can say: "Let me set all chat messages to 'stream 1' and all motion packets to 'stream 2'.
 
-pub mod ordering;
-pub mod sequencing;
+mod ordering;
+mod sequencing;
 
-/// A trait which could be implemented for arranging operations.
+pub use self::ordering::{IterMut, OrderingStream, OrderingSystem};
+pub use self::sequencing::{SequencingStream, SequencingSystem};
+
+/// A trait which can be implemented for arranging operations.
 pub trait Arranging {
     type ArrangingItem;
 

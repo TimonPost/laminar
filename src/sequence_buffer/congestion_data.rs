@@ -1,14 +1,15 @@
+use crate::packet::SequenceNumber;
 use std::time::Instant;
 
 #[derive(Clone)]
 /// This contains the information required to reassemble fragments.
 pub struct CongestionData {
-    pub sequence: u16,
+    pub sequence: SequenceNumber,
     pub sending_time: Instant,
 }
 
 impl CongestionData {
-    pub fn new(sequence: u16, sending_time: Instant) -> Self {
+    pub fn new(sequence: SequenceNumber, sending_time: Instant) -> Self {
         CongestionData {
             sequence,
             sending_time,

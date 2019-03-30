@@ -2,10 +2,10 @@ use crate::{
     config::Config,
     error::{ErrorKind, Result},
     net::{connection::ActiveConnections, events::SocketEvent, link_conditioner::LinkConditioner},
-    packet::Packet,
+    packet::{Outgoing, Packet},
 };
 use crossbeam_channel::{self, unbounded, Receiver, Sender};
-use log::{debug, error};
+use log::error;
 use std::{
     self, io,
     net::{SocketAddr, ToSocketAddrs, UdpSocket},
@@ -55,23 +55,8 @@ impl Socket {
         // Nothing should break out of this loop!
         loop {
             // First we pull any newly arrived packets and handle them
-            match self.recv_from() {
-                Ok(result) => match result {
-                    Some(packet) => {
-                        match self.event_sender.send(SocketEvent::Packet(packet)) {
-                            Ok(_) => {}
-                            Err(e) => {
-                                error!("Error sending SocketEvent: {:?}", e);
-                            }
-                        };
-                    }
-                    None => {
-                        debug!("Empty packet received");
-                    }
-                },
-                Err(e) => {
-                    error!("Error receiving packet: {:?}", e);
-                }
+            if let Err(e) = self.recv_from() {
+                error!("Error receiving packet: {:?}", e);
             };
 
             // Now grab all the packets waiting to be sent and send them
@@ -100,34 +85,52 @@ impl Socket {
 
     // Serializes and sends a `Packet` on the socket. On success, returns the number of bytes written.
     fn send_to(&mut self, packet: Packet) -> Result<usize> {
-        let connection = self
-            .connections
-            .get_or_insert_connection(packet.addr(), &self.config);
-        let mut packet_data =
-            connection.process_outgoing(packet.payload(), packet.delivery_method())?;
+        let (dropped_packets, processed_packet) = {
+            let connection = self
+                .connections
+                .get_or_insert_connection(packet.addr(), &self.config);
+
+            let processed_packet = connection.process_outgoing(
+                packet.payload(),
+                packet.delivery_guarantee(),
+                packet.order_guarantee(),
+            )?;
+
+            (connection.gather_dropped_packets(), processed_packet)
+        };
+
         let mut bytes_sent = 0;
 
-        if let Some(link_conditioner) = &self.link_conditioner {
-            if link_conditioner.should_send() {
-                for payload in packet_data.parts() {
-                    bytes_sent += self.send_packet(&packet.addr(), &payload)?;
+        let should_send = if let Some(link_conditioner) = &self.link_conditioner {
+            link_conditioner.should_send()
+        } else {
+            true
+        };
+
+        if should_send {
+            match processed_packet {
+                Outgoing::Packet(outgoing) => {
+                    bytes_sent += self.send_packet(&packet.addr(), &outgoing.contents())?;
+                }
+                Outgoing::Fragments(packets) => {
+                    for outgoing in packets {
+                        bytes_sent += self.send_packet(&packet.addr(), &outgoing.contents())?;
+                    }
                 }
             }
-        } else {
-            for payload in connection.gather_dropped_packets() {
+
+            for payload in dropped_packets {
                 bytes_sent += self.send_packet(&packet.addr(), &payload)?;
             }
 
-            for payload in packet_data.parts() {
-                bytes_sent += self.send_packet(&packet.addr(), &payload)?;
-            }
+            return Ok(bytes_sent);
         }
 
-        Ok(bytes_sent)
+        Ok(0)
     }
 
-    // Receives a single message from the socket. On success, returns the packet containing origin and data.
-    fn recv_from(&mut self) -> Result<Option<Packet>> {
+    // On success the packet will be send on the `event_sender`
+    fn recv_from(&mut self) -> Result<()> {
         match self.socket.recv_from(&mut self.recv_buffer) {
             Ok((recv_len, address)) => {
                 if recv_len == 0 {
@@ -137,7 +140,7 @@ impl Socket {
                 let connection = self
                     .connections
                     .get_or_insert_connection(address, &self.config);
-                connection.process_incoming(received_payload)
+                connection.process_incoming(received_payload, &self.event_sender)?;
             }
             Err(e) => {
                 if e.kind() == io::ErrorKind::WouldBlock {
@@ -145,9 +148,10 @@ impl Socket {
                 } else {
                     error!("Encountered an error receiving data: {:?}", e);
                 }
-                Err(e.into())
+                return Err(e.into());
             }
         }
+        Ok(())
     }
 
     // Send a single packet over the UDP socket.

@@ -1,3 +1,4 @@
+use crate::packet::SequenceNumber;
 use std::clone::Clone;
 
 /// Collection to store data of any kind.
@@ -6,7 +7,7 @@ where
     T: Default + Clone + Send + Sync,
 {
     entries: Vec<T>,
-    entry_sequences: Vec<u16>,
+    entry_sequences: Vec<SequenceNumber>,
 }
 
 impl<T> SequenceBuffer<T>
@@ -28,7 +29,7 @@ where
     }
 
     /// Get mutable entry from collection by sequence number.
-    pub fn get_mut(&mut self, sequence: u16) -> Option<&mut T> {
+    pub fn get_mut(&mut self, sequence: SequenceNumber) -> Option<&mut T> {
         let index = self.index(sequence);
 
         if self.entry_sequences[index] != sequence {
@@ -39,7 +40,7 @@ where
     }
 
     /// Insert new entry into the collection.
-    pub fn insert(&mut self, data: T, sequence: u16) -> &mut T {
+    pub fn insert(&mut self, data: T, sequence: SequenceNumber) -> &mut T {
         let index = self.index(sequence);
 
         self.entries[index] = data;
@@ -49,7 +50,7 @@ where
     }
 
     /// Remove entry from collection.
-    pub fn remove(&mut self, sequence: u16) {
+    pub fn remove(&mut self, sequence: SequenceNumber) {
         // TODO: validity check
         let index = self.index(sequence);
         self.entries[index] = T::default();
@@ -57,7 +58,7 @@ where
     }
 
     /// checks if an certain entry exists.
-    pub fn exists(&self, sequence: u16) -> bool {
+    pub fn exists(&self, sequence: SequenceNumber) -> bool {
         let index = self.index(sequence);
         if self.entry_sequences[index] != sequence {
             return false;
@@ -73,7 +74,7 @@ where
     }
 
     /// converts an sequence number to an index that could be used for the inner storage.
-    fn index(&self, sequence: u16) -> usize {
+    fn index(&self, sequence: SequenceNumber) -> usize {
         sequence as usize % self.entries.len()
     }
 }
