@@ -15,15 +15,14 @@ pipeline {
 
                 sh 'if [ ! -f $CARGO_HOME/bin/mdbook ]; then $CARGO_HOME/bin/cargo install mdbook; fi'
 
+                sh 'rm -rf ./docs/md_book/book'
                 sh '$CARGO_HOME/bin/mdbook build ./docs/md_book'
                 sh 'git add docs/md_book/book/'
-
-
-               sh 'git config --global user.email "ops@amethyst-engine.org"'
-               sh 'git config --global user.name "Buildy McBuildyface"'
-               sh 'git commit -m "Build Book"'
-               echo 'Uploading Book ...'
-               sh 'git push'
+                sh 'git config user.email "ops@amethyst-engine.org"'
+                sh 'git config  user.name "Buildy McBuildyface"'
+                sh 'git commit -m "Build Book"'
+                echo 'Uploading Book ...'
+                sh 'git push'
             }
         }
         stage('Check Formatting') {
