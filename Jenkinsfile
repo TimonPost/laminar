@@ -20,8 +20,11 @@ pipeline {
                 sh 'rm -rf docs/md_book/book'
 
                 sh 'git status'
-                
+
                 sh '$CARGO_HOME/bin/mdbook build docs/md_book'
+
+                sh 'git status'
+
                 sh 'git config user.email \"ops@amethyst-engine.org\"'
                 sh 'git config user.name \"Captain\"'
                 sh 'git add .'
