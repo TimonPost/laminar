@@ -28,7 +28,7 @@ pipeline {
                 sh 'git config user.email \"ops@amethyst-engine.org\"'
                 sh 'git config user.name \"Captain\"'
                 sh 'git add .'
-                sh 'git commit -m \"Build Book\" || echo 'Commit failed. There is probably nothing to commit.''
+                sh 'git commit -m \"Build Book\" || echo 'Commit failed. There is probably nothing to commit.'
                 echo 'Uploading Book ...'
                 sh 'git push || echo 'Push failed'
             }
