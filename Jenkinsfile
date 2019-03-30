@@ -18,9 +18,12 @@ pipeline {
                 sh '$CARGO_HOME/bin/mdbook build ./docs/md_book'
                 sh 'git add docs/md_book/book/'
 
-                sh 'git commit --author="Buildy McBuildyface <ops@amethyst-engine.org>" -m "Build Book"'
-                echo 'Uploading Book ...'
-                sh 'git push'
+
+               sh 'git config --global user.email "ops@amethyst-engine.org"'
+               sh 'git config --global user.name "Buildy McBuildyface"'
+               sh 'git commit -m "Build Book"'
+               echo 'Uploading Book ...'
+               sh 'git push'
             }
         }
         stage('Check Formatting') {
