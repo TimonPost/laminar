@@ -19,7 +19,8 @@ pipeline {
                 sh '$CARGO_HOME/bin/mdbook build ./docs/md_book'
                 sh 'git config user.email \"ops@amethyst-engine.org\"'
                 sh 'git config user.name \"Captain\"'
-                sh 'git commit -am \"Build Book\"'
+                sh 'git add .'
+                sh 'git commit -m \"Build Book\"'
                 echo 'Uploading Book ...'
                 sh 'git push'
             }
