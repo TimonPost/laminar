@@ -13,7 +13,7 @@ pipeline {
              steps {
                 echo 'Start building book ..'
 
-                sh 'if [ ! -f $CARGO_HOME/bin/ ]; then $CARGO_HOME/bin/cargo install mdbook fi'
+                sh 'if [ ! -f $CARGO_HOME/bin/ ]; then $CARGO_HOME/bin/cargo install mdbook; fi'
 
                 sh '$CARGO_HOME/bin/mdbook build'
                 sh 'git add docs/md_book/book/'
