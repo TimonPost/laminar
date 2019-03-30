@@ -15,7 +15,7 @@ pipeline {
 
                 sh '
                     if [ ! -f $CARGO_HOME/bin/ ]; then
-                        sh '$CARGO_HOME/bin/cargo install mdbook'
+                        $CARGO_HOME/bin/cargo install mdbook
                     fi
                 '
 
