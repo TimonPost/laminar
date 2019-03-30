@@ -17,10 +17,9 @@ pipeline {
 
                 sh 'rm -rf ./docs/md_book/book'
                 sh '$CARGO_HOME/bin/mdbook build ./docs/md_book'
-                sh 'git add docs/md_book/book/'
                 sh 'git config user.email "ops@amethyst-engine.org"'
                 sh 'git config  user.name "Buildy McBuildyface"'
-                sh 'git commit -m "Build Book"'
+                sh 'git commit -am "Build Book"'
                 echo 'Uploading Book ...'
                 sh 'git push'
             }
