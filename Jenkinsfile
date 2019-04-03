@@ -95,5 +95,14 @@ pipeline {
                 }
             }
         }
+
+	stage('Publish book') {
+	    when {
+		branch 'master'
+	    }
+	    steps {
+		echo 'we should deploy the book here'
+	    }
+	}
     }
 }
