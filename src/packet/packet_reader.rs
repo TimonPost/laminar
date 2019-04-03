@@ -197,7 +197,7 @@ mod tests {
     }
 
     #[test]
-    fn read_arranging_header_after_standard_header() {
+    fn read_unreliable_sequenced_header() {
         // standard header, arranging header
         let reliable_ordered_payload: Vec<u8> = vec![vec![0, 1, 0, 1, 2], vec![0, 1, 2]].concat();
 
@@ -212,7 +212,7 @@ mod tests {
     }
 
     #[test]
-    fn read_reliable_ordered() {
+    fn read_reliable_ordered_header() {
         // standard header, acked header, arranging header
         let reliable_ordered_payload: Vec<u8> = vec![
             vec![0, 1, 0, 1, 2],
@@ -245,5 +245,44 @@ mod tests {
 
         assert_eq!(arranging_header.arranging_id(), 1);
         assert_eq!(arranging_header.stream_id(), 2);
+    }
+
+    #[test]
+    fn read_reliable_unordered_header() {
+        // standard header, acked header, arranging header
+        let reliable_ordered_payload: Vec<u8> = vec![
+            vec![0, 1, 0, 1, 2],
+            vec![0, 1, 0, 2, 0, 0, 0, 3],
+        ]
+            .concat();
+        let mut reader = PacketReader::new(reliable_ordered_payload.as_slice());
+
+        let standard_header = reader.read_standard_header().unwrap();
+        let acked_header = reader.read_acknowledge_header().unwrap();
+
+        assert_eq!(standard_header.protocol_version(), 1);
+        assert_eq!(standard_header.packet_type(), PacketType::Packet);
+        assert_eq!(
+            standard_header.delivery_guarantee(),
+            DeliveryGuarantee::Reliable
+        );
+        assert_eq!(
+            standard_header.ordering_guarantee(),
+            OrderingGuarantee::Ordered(None)
+        );
+
+        assert_eq!(acked_header.sequence(), 1);
+        assert_eq!(acked_header.ack_seq(), 2);
+        assert_eq!(acked_header.ack_field(), 3);
+    }
+
+    #[test]
+    fn expect_read_error() {
+        // standard header (with one corrupt byte)
+        let reliable_ordered_payload: Vec<u8> = vec![vec![0, 1, 0, 1]].concat();
+
+        let mut reader = PacketReader::new(reliable_ordered_payload.as_slice());
+
+        assert!(reader.read_standard_header().is_err());
     }
 }

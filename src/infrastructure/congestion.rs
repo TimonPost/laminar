@@ -40,3 +40,28 @@ impl CongestionHandler {
             .insert(CongestionData::new(seq, Instant::now()), seq);
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::infrastructure::CongestionHandler;
+    use crate::Config;
+
+    #[test]
+    fn congestion_entry_created() {
+        let mut congestion_handler = CongestionHandler::new(&Config::default());
+
+        congestion_handler.process_outgoing(1);
+
+        assert_eq!(congestion_handler.congestion_data.exists(1), true);
+    }
+
+    #[test]
+    fn rtt_value_is_updated() {
+        let mut congestion_handler = CongestionHandler::new(&Config::default());
+
+        assert_eq!(congestion_handler.rtt_measurer.get_rtt(), 0.);
+        congestion_handler.process_outgoing(1);
+        congestion_handler.process_incoming(1);
+        assert_eq!(congestion_handler.rtt_measurer.get_rtt() != 0., true);
+    }
+}

@@ -183,24 +183,26 @@ mod tests {
         thread::spawn(move || client.start_polling());
         thread::spawn(move || server.start_polling());
 
-        packet_sender
-            .send(Packet::unreliable(
-                "127.0.0.1:12345".parse::<SocketAddr>().unwrap(),
-                vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
-            ))
-            .unwrap();
-        packet_sender
-            .send(Packet::unreliable(
-                "127.0.0.1:12345".parse::<SocketAddr>().unwrap(),
-                vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
-            ))
-            .unwrap();
-        packet_sender
-            .send(Packet::unreliable(
-                "127.0.0.1:12345".parse::<SocketAddr>().unwrap(),
-                vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
-            ))
-            .unwrap();
+        for _ in 0..3 {
+            packet_sender
+                .send(Packet::unreliable(
+                    "127.0.0.1:12345".parse::<SocketAddr>().unwrap(),
+                    vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+                ))
+                .unwrap();
+            packet_sender
+                .send(Packet::unreliable(
+                    "127.0.0.1:12345".parse::<SocketAddr>().unwrap(),
+                    vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+                ))
+                .unwrap();
+            packet_sender
+                .send(Packet::unreliable(
+                    "127.0.0.1:12345".parse::<SocketAddr>().unwrap(),
+                    vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+                ))
+                .unwrap();
+        }
 
         let mut iter = packet_receiver.iter();
 
