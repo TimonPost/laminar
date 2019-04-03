@@ -1,6 +1,5 @@
 //! This module contains the laminar error handling logic.
 
-
 use crate::SocketEvent;
 use crossbeam_channel::SendError;
 use std::{
