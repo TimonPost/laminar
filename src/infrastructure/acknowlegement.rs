@@ -48,3 +48,46 @@ impl AcknowledgementHandler {
         self.waiting_packets.enqueue(self.seq_num, &payload);
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::infrastructure::AcknowledgementHandler;
+
+    #[test]
+    fn packet_is_not_acket() {
+        let mut handler = AcknowledgementHandler::new();
+
+        handler.seq_num = 0;
+        handler.process_outgoing(vec![1, 2, 3].as_slice());
+        handler.seq_num = 40;
+        handler.process_outgoing(vec![1, 2, 4].as_slice());
+
+        handler.process_incoming(40);
+
+        assert_eq!(handler.dropped_packets, vec![vec![1, 2, 3].into_boxed_slice()]);
+    }
+
+    #[test]
+    fn acking_500_packets_without_packet_drop() {
+        let mut handler = AcknowledgementHandler::new();
+
+        for i in 0..500 {
+            handler.seq_num = i;
+            handler.process_outgoing(vec![1, 2, 3].as_slice());
+
+            handler.process_incoming(i);
+        }
+
+        assert_eq!(handler.dropped_packets.len(), 0);
+    }
+
+    #[test]
+    fn last_seq_will_be_updated() {
+        let mut handler = AcknowledgementHandler::new();
+        assert_eq!(handler.last_seq(), 0);
+        handler.process_incoming(1);
+        assert_eq!(handler.last_seq(), 1);
+        handler.process_incoming(2);
+        assert_eq!(handler.last_seq(), 2);
+    }
+}
