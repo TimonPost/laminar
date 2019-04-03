@@ -1,4 +1,5 @@
 use std::io::Cursor;
+
 /// Trait that supports reading a Header from a packet
 pub trait HeaderReader {
     /// Associated type for the HeaderReader, since it reads it from a Header

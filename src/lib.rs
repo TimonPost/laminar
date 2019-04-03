@@ -1,49 +1,42 @@
-//! Laminar semi-reliable UDP protocol for multiplayer games. This library implements wraps around a UDP
-//! and provides light weight stream based interface that provides certain guarantees like reliability.
+//! Laminar is a semi-reliable UDP-based protocol for multiplayer games. This library implements wrappers around the UDP-protocol,
+//! and provides a lightweight, message-based interface which provides certain guarantees like reliability and ordering.
 //!
-//! Laminar was designed to be used within the [Amethyst][amethyst] game engine.
+//! Laminar was designed to be used within the [Amethyst][amethyst] game engine but is usable without it.
 //!
 //! [amethyst]: https://github.com/amethyst/amethyst
 //!
 //! # Concepts
 //!
-//! This library is mostly based off of [Gaffer on Games][gog] and shares features with RakNet. The idea is to provide a low level
-//! UDP protocol that supports the use cases of video games that require multilayer features. The library
-//! itself provides a few low level types of packets that provides different types of guarantees. The most
-//! basic are unreliable and reliable packets. This generally correlates to state update packets that do not
-//! require to be synced, meaning the packet can get dropped without harm to the game. The other is used for
-//! example score updates, where you want to make sure that the data is received on the other end even in case
-//! of a packet drop. For more information, read the projects [README.md][readme]
+//! This library is loosely based off of [Gaffer on Games][gog] and has features similar to RakNet, Steam Socket, and netcode.io.
+//! The idea is to provide a native Rust low-level UDP-protocol which supports the use of cases of video games that require multiplayer features.
+//! The library itself provides a few low-level types of packets that provide different types of guarantees. The most
+//! basic are unreliable and reliable packets. Ordering, sequencing can be done on multiple streams.
+//! For more information, read the projects [README.md][readme], [book][book], [docs][docs] or [examples][examples].
 //!
 //! [gog]: https://gafferongames.com/
 //! [readme]: https://github.com/amethyst/laminar/blob/master/README.md
-//!
-//! # Example
-//!
+//! [book]: https://github.com/amethyst/laminar/tree/master/docs/md_book
+//! [docs]: https://docs.rs/laminar/
+//! [examples]: https://github.com/amethyst/laminar/tree/master/examples
 
 #![warn(missing_docs)]
 #![allow(clippy::trivially_copy_pass_by_ref)]
+
+mod config;
+mod error;
 mod infrastructure;
+mod net;
 mod packet;
 mod protocol_version;
 mod sequence_buffer;
+
 #[cfg(feature = "tester")]
 mod throughput;
-
-/// Contains networking related configuration
-mod config;
-/// All internal error handling logic
-mod error;
-/// Networking modules
-mod net;
 
 #[cfg(feature = "tester")]
 pub use self::throughput::ThroughputMonitoring;
 
 pub use self::config::Config;
 pub use self::error::{ErrorKind, Result};
-pub use self::net::Socket;
-pub use self::net::SocketEvent;
-pub use self::net::VirtualConnection;
+pub use self::net::{Socket, SocketEvent};
 pub use self::packet::{DeliveryGuarantee, OrderingGuarantee, Packet};
-pub use self::protocol_version::ProtocolVersion;

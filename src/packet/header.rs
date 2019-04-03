@@ -1,3 +1,6 @@
+//! This module provides parses and readers for the headers that could be appended to any packet.
+//! We use headers to control reliability, fragmentation, and ordering.
+
 mod acked_packet_header;
 mod arranging_header;
 mod fragment_header;

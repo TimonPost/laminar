@@ -14,6 +14,7 @@ pub struct ProtocolVersion;
 impl ProtocolVersion {
     /// Get the current protocol version.
     #[inline]
+    #[cfg(test)]
     pub fn get_version() -> &'static str {
         PROTOCOL_VERSION
     }
