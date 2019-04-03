@@ -31,13 +31,13 @@ pipeline {
         }
         stage('Run Tests') {
             parallel {
-                stage("Test on Windows") {                    
+                stage("Test on Windows") {
                     environment {
                         CARGO_HOME = 'C:\\Users\\root\\.cargo'
                         RUSTUP_HOME = 'C:\\Users\\root\\.rustup'
                     }
-                    agent { 
-                        label 'windows' 
+                    agent {
+                        label 'windows'
                     }
                     steps {
                         echo 'Beginning tests...'
@@ -96,13 +96,13 @@ pipeline {
             }
         }
 
-	stage('Publish book') {
-	    when {
-		branch 'master'
-	    }
-	    steps {
-		echo 'we should deploy the book here'
-	    }
-	}
-    }
+    	stage('Publish book') {
+    	    when {
+    		    branch 'master'
+    	    }
+    	    steps {
+    		    echo 'we should deploy the book here'
+    	    }
+    	}
+   }
 }
