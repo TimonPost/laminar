@@ -1,4 +1,5 @@
-/// Contains code dealing with Packet Headers
+//! This module provides all the logic around the packet, such as reading, parsing, and constructing headers.
+
 pub mod header;
 
 mod enums;

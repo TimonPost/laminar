@@ -77,6 +77,6 @@ impl ClientHandle {
 
     /// Wait until the client has sent all of its packets.
     pub fn wait_until_finished(self) {
-        self.thread_handle.join();
+        self.thread_handle.join().unwrap();
     }
 }

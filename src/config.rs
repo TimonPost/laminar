@@ -2,44 +2,46 @@ use crate::net::constants::{DEFAULT_MTU, FRAGMENT_SIZE_DEFAULT, MAX_FRAGMENTS_DE
 use std::{default::Default, time::Duration};
 
 #[derive(Clone)]
-/// Struct that contains config values for various aspects of the network
+/// Contains the configuration options to configure laminar for special use-cases.
 pub struct Config {
-    /// The maximal amount of time to keep `VirtualConnection`s around before cleaning them up.
+    /// Value which can specify the amount of time that can pass without hearing from a client before considering them disconnected
     pub idle_connection_timeout: Duration,
-    /// This is the maximal size a packet can get with all its fragments.
+    /// Value which can specify the maximum size a packet can be in bytes. This value is inclusive of fragmenting; if a packet is fragmented, the total size of the fragments cannot exceed this value.
     ///
     /// Recommended value: 16384
     pub max_packet_size: usize,
-    /// These are the maximal fragments a packet could be divided into.
+    /// Value which can specify the maximal allowed fragments.
     ///
     /// Why can't I have more than 255 (u8)?
     /// This is because you don't want to send more then 256 fragments over UDP, with high amounts of fragments the chance for an invalid packet is very high.
     /// Use TCP instead (later we will probably support larger ranges but every fragment packet then needs to be resent if it doesn't get an acknowledgement).
     ///
-    /// Recommended value: 16 but keep in mind that lower is better.
+    /// default: 16 but keep in mind that lower is better.
     pub max_fragments: u8,
-    /// This is the size of a fragment.
-    /// If a packet is too large it needs to be split in fragments.
+    /// Value which can specify the size of a fragment.
     ///
-    /// Recommended value: +- 1450 (1500 is the default MTU)
+    /// This is the maximum size of each fragment. It defaults to `1450` bytes, due to the default MTU on most network devices being `1500`.
     pub fragment_size: u16,
-    /// This is the size of the buffer that queues up fragments ready to be reassembled once the whole packet arrives.
+    /// Value which can specify the size of the buffer that queues up fragments ready to be reassembled once all fragments have arrived.```
     pub fragment_reassembly_buffer_size: usize,
-    /// This is the size of the buffer the UDP socket reads it data into.
+    /// Value that specifies the size of the buffer the UDP data will be read into. Defaults to `1450` bytes.
     pub receive_buffer_max_size: usize,
-    /// This is the factor which will smooth out network jitter. So that if one packet is not arrived fast we don't wan't to directly transform to an bad network.
+    /// Value which can specify the factor which will smooth out network jitter.
     ///
-    /// Recommended value: 10% of the rtt time.
-    /// Value is a ratio (0 = 0% and 1 = 100%)
+    /// use-case: If one packet hast not arrived we don't directly want to transform to a bad network state.
+    /// Value that specifies the factor used to smooth out network jitter. It defaults to 10% of the round-trip time. It is expressed as a ratio, with 0 equal to 0% and 1 equal to 100%. This helps prevent flapping of `VirtualConnections`
     pub rtt_smoothing_factor: f32,
-    /// This is the maximal round trip time (rtt) for packet.
+    /// Value which can specify the maximal round trip time (rtt) for packet.
     ///
-    /// Recommend value: 250 ms
-    /// Value is represented in milliseconds.
+    /// Value which specifies the maximum round trip time before we consider it a problem. This is expressed in milliseconds.
     pub rtt_max_value: u16,
-    /// This is the size of the event buffer we read socket events from `mio::Poll` into.
+    /// Value which can specify the event buffer we read socket events into.
+    ///
+    /// Value that specifies the size of the event buffer into which we receive socket events, in bytes. Defaults to 1024.
     pub socket_event_buffer_size: usize,
-    /// Optional duration specifying how long we should block polling for socket events.
+    /// Value which can specify how long we should block polling for socket events.
+    ///
+    /// Value that specifies how long we should block polling for socket events, in milliseconds. Defaults to `1ms`.
     pub socket_polling_timeout: Option<Duration>,
 }
 

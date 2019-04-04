@@ -143,7 +143,7 @@ impl ServerHandle {
 
     /// Wait until this server is finished, if no shutdown signal is send or no error has been thrown then this will be a blocking call.
     pub fn wait_until_finished(self) {
-        self.server_handle.join();
+        self.server_handle.join().unwrap();
     }
 
     /// Iterate over the events that have happened on the server.
@@ -151,6 +151,7 @@ impl ServerHandle {
         self.events_rx.try_iter()
     }
 
+    #[allow(unused)]
     pub fn event_receiver(&self) -> Receiver<ServerEvent> {
         self.events_rx.clone()
     }

@@ -1,4 +1,4 @@
-use crate::net::{ExternalAcks, LocalAckRecord};
+use crate::infrastructure::{ExternalAcks, LocalAckRecord};
 
 /// Type responsible for handling the acknowledgement of packets.
 pub struct AcknowledgementHandler {

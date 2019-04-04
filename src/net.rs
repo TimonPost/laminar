@@ -1,15 +1,16 @@
+//! This module provides the logic between the low-level abstract types and the types that the user will be interacting with.
+//! You can think of the socket, connection management, congestion control.
+
 mod connection;
 mod events;
-mod external_ack;
 mod link_conditioner;
-mod local_ack;
+mod quality;
 mod socket;
+mod virtual_connection;
 
-/// Contains useful constants
 pub mod constants;
 
-pub use self::connection::{NetworkQuality, RttMeasurer, VirtualConnection};
 pub use self::events::SocketEvent;
-pub use self::external_ack::ExternalAcks;
-pub use self::local_ack::LocalAckRecord;
+pub use self::quality::{NetworkQuality, RttMeasurer};
 pub use self::socket::Socket;
+pub use self::virtual_connection::VirtualConnection;

@@ -1,8 +1,4 @@
-mod quality;
-mod virtual_connection;
-
-pub use self::quality::{NetworkQuality, RttMeasurer};
-pub use self::virtual_connection::VirtualConnection;
+pub use crate::net::{NetworkQuality, RttMeasurer, VirtualConnection};
 
 use crate::config::Config;
 use std::{collections::HashMap, net::SocketAddr, time::Duration};

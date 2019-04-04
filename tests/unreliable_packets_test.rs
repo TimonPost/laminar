@@ -74,36 +74,32 @@ fn send_receive_unreliable_packets_muliple_clients() {
 
     let received = server_handle.event_receiver();
 
-    let handle = thread::spawn(move || {
-        let mut counter = 0;
-        loop {
-            match received.recv() {
-                Ok(event) => {
-                    match event {
-                        ServerEvent::Throughput(throughput) => {
-                            counter += throughput;
-                            info!("Throughput: {}", throughput);
-                        }
-                        ServerEvent::AverageThroughput(avg_throughput) => {
-                            info!("Avg. Throughput: {}", avg_throughput);
-                        }
-                        ServerEvent::TotalSent(total) => {
-                            info!("Total Received: {}", total);
-                        }
-                        _ => panic!("Not handled!"),
-                    };
-                }
-                Err(_) => {
-                    error!("Stopped receiving events; closing event handler.");
-                    return;
-                }
+    let handle = thread::spawn(move || loop {
+        match received.recv() {
+            Ok(event) => {
+                match event {
+                    ServerEvent::Throughput(throughput) => {
+                        info!("Throughput: {}", throughput);
+                    }
+                    ServerEvent::AverageThroughput(avg_throughput) => {
+                        info!("Avg. Throughput: {}", avg_throughput);
+                    }
+                    ServerEvent::TotalSent(total) => {
+                        info!("Total Received: {}", total);
+                    }
+                    _ => panic!("Not handled!"),
+                };
+            }
+            Err(_) => {
+                error!("Stopped receiving events; closing event handler.");
+                return;
             }
         }
     });
 
     let mut clients = Vec::new();
 
-    for i in 0..10 {
+    for _ in 0..10 {
         clients.push(client.run_instance(packet_factory, client_addr()));
         info!("Client started.");
     }
@@ -120,7 +116,7 @@ fn send_receive_unreliable_packets_muliple_clients() {
     server_handle.shutdown();
     server_handle.wait_until_finished();
     info!("Server is stopped");
-    handle.join();
+    handle.join().unwrap();
 }
 
 pub fn payload() -> Vec<u8> {
