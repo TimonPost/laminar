@@ -181,7 +181,7 @@ mod tests {
     use std::net::SocketAddr;
 
     #[test]
-    fn create_unreliable() {
+    fn assure_creation_unreliable_packet() {
         let packet = Packet::unreliable(test_addr(), test_payload());
 
         assert_eq!(packet.addr(), test_addr());
@@ -191,7 +191,7 @@ mod tests {
     }
 
     #[test]
-    fn create_unreliable_sequenced() {
+    fn assure_creation_unreliable_sequenced() {
         let packet = Packet::unreliable_sequenced(test_addr(), test_payload(), Some(1));
 
         assert_eq!(packet.addr(), test_addr());
@@ -204,7 +204,7 @@ mod tests {
     }
 
     #[test]
-    fn create_reliable() {
+    fn assure_creation_reliable() {
         let packet = Packet::reliable_unordered(test_addr(), test_payload());
 
         assert_eq!(packet.addr(), test_addr());
@@ -214,7 +214,7 @@ mod tests {
     }
 
     #[test]
-    fn create_reliable_ordered() {
+    fn assure_creation_reliable_ordered() {
         let packet = Packet::reliable_ordered(test_addr(), test_payload(), Some(1));
 
         assert_eq!(packet.addr(), test_addr());
@@ -227,7 +227,7 @@ mod tests {
     }
 
     #[test]
-    fn create_reliable_sequence() {
+    fn assure_creation_reliable_sequence() {
         let packet = Packet::reliable_sequenced(test_addr(), test_payload(), Some(1));
 
         assert_eq!(packet.addr(), test_addr());

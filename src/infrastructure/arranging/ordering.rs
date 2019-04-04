@@ -329,7 +329,7 @@ mod tests {
     }
 
     #[test]
-    fn iter_mut() {
+    fn can_iterate() {
         let mut system: OrderingSystem<Packet> = OrderingSystem::new();
 
         system.get_or_create_stream(1);
@@ -426,7 +426,7 @@ mod tests {
     }
 
     #[test]
-    fn ordering_test() {
+    fn expect_right_order() {
         // we order on stream 1
         assert_order!([1, 3, 5, 4, 2], [1, 2, 3, 4, 5], 1);
         assert_order!([1, 5, 4, 3, 2], [1, 2, 3, 4, 5], 1);
@@ -439,7 +439,7 @@ mod tests {
     }
 
     #[test]
-    fn multiple_stream_ordering_test() {
+    fn order_on_multiple_streams() {
         // we order on streams [1...8]
         assert_order!([1, 3, 5, 4, 2], [1, 2, 3, 4, 5], 1);
         assert_order!([1, 5, 4, 3, 2], [1, 2, 3, 4, 5], 2);
