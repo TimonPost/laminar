@@ -496,7 +496,7 @@ mod tests {
     }
 
     #[test]
-    fn assure_right_outgoing_processing() {
+    fn assure_correct_outgoing_processing() {
         let mut connection = create_virtual_connection();
 
         let buffer = vec![1; 1000];
