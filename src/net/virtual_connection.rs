@@ -16,7 +16,6 @@ use crate::{
     SocketEvent,
 };
 
-use crate::error::ErrorKind::PacketError;
 use crossbeam_channel::{self, Sender};
 use std::fmt;
 use std::net::SocketAddr;
