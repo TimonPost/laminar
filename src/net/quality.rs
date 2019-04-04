@@ -34,7 +34,6 @@ impl RttMeasurer {
         self.rtt = self.get_smoothed_rtt(congestion_data);
     }
 
-    /// Get the measured RTT value.
     #[cfg(test)]
     pub fn get_rtt(&self) -> f32 {
         return self.rtt;
