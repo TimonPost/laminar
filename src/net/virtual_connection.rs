@@ -641,7 +641,7 @@ mod tests {
     }
 
     #[test]
-    fn assure_right_processing_of_incoming() {
+    fn assure_correct_processing_of_incoming() {
         let mut connection = create_virtual_connection();
 
         assert_incoming_without_order(
