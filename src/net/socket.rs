@@ -205,7 +205,7 @@ mod tests {
     #[test]
     fn sending_large_unreliable_packet_should_fail() {
         let (mut server, _, packet_receiver) = Socket::bind(
-            "127.0.0.1:0".parse::<SocketAddr>().unwrap(),
+            "127.0.0.1:12370".parse::<SocketAddr>().unwrap(),
             Config::default(),
         )
         .unwrap();
@@ -213,7 +213,7 @@ mod tests {
         assert_eq!(
             server
                 .send_to(Packet::unreliable(
-                    "127.0.0.1:12346".parse().unwrap(),
+                    "127.0.0.1:12360".parse().unwrap(),
                     vec![1; 5000]
                 ))
                 .is_err(),
@@ -224,7 +224,7 @@ mod tests {
     #[test]
     fn send_returns_right_size() {
         let (mut server, _, packet_receiver) = Socket::bind(
-            "127.0.0.1:0".parse::<SocketAddr>().unwrap(),
+            "127.0.0.1:12371".parse::<SocketAddr>().unwrap(),
             Config::default(),
         )
         .unwrap();
@@ -232,7 +232,7 @@ mod tests {
         assert_eq!(
             server
                 .send_to(Packet::unreliable(
-                    "127.0.0.1:0".parse().unwrap(),
+                    "127.0.0.1:12361".parse().unwrap(),
                     vec![1; 1024]
                 ))
                 .unwrap(),
@@ -243,7 +243,7 @@ mod tests {
     #[test]
     fn fragmentation_send_returns_right_size() {
         let (mut server, _, packet_receiver) = Socket::bind(
-            "127.0.0.1:12346".parse::<SocketAddr>().unwrap(),
+            "127.0.0.1:12372".parse::<SocketAddr>().unwrap(),
             Config::default(),
         )
         .unwrap();
@@ -254,7 +254,7 @@ mod tests {
         assert_eq!(
             server
                 .send_to(Packet::reliable_unordered(
-                    "127.0.0.1:0".parse().unwrap(),
+                    "127.0.0.1:12362".parse().unwrap(),
                     vec![1; 4000]
                 ))
                 .unwrap(),
