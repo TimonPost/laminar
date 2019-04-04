@@ -64,7 +64,10 @@ mod test {
 
         handler.process_incoming(40);
 
-        assert_eq!(handler.dropped_packets, vec![vec![1, 2, 3].into_boxed_slice()]);
+        assert_eq!(
+            handler.dropped_packets,
+            vec![vec![1, 2, 3].into_boxed_slice()]
+        );
     }
 
     #[test]

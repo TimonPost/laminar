@@ -250,11 +250,8 @@ mod tests {
     #[test]
     fn read_reliable_unordered_header() {
         // standard header, acked header, arranging header
-        let reliable_ordered_payload: Vec<u8> = vec![
-            vec![0, 1, 0, 1, 2],
-            vec![0, 1, 0, 2, 0, 0, 0, 3],
-        ]
-            .concat();
+        let reliable_ordered_payload: Vec<u8> =
+            vec![vec![0, 1, 0, 1, 2], vec![0, 1, 0, 2, 0, 0, 0, 3]].concat();
         let mut reader = PacketReader::new(reliable_ordered_payload.as_slice());
 
         let standard_header = reader.read_standard_header().unwrap();
