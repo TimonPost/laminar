@@ -115,7 +115,7 @@ mod tests {
     }
 
     #[test]
-    fn remove_not_existing_connection() {
+    fn remove_non_existent_connection() {
         let mut connections = ActiveConnections::new();
 
         let address = &ADDRESS.parse().unwrap();
