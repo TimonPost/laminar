@@ -4,8 +4,8 @@
 
 [s1]: https://img.shields.io/crates/v/laminar.svg
 [l1]: https://crates.io/crates/laminar
-[s2]: https://travis-ci.org/amethyst/laminar.svg?branch=master
-[l2]: https://travis-ci.org/amethyst/laminar
+[s2]: https://jenkins.amethyst-engine.org/buildStatus/icon?job=laminar%2Fmaster
+[l2]: https://jenkins.amethyst-engine.org/job/laminar/job/master/badge/icon
 [s3]: https://img.shields.io/badge/license-MIT%2FApache-blue.svg
 [l3]: docs/LICENSE-MIT
 [s4]: https://docs.rs/laminar/badge.svg
