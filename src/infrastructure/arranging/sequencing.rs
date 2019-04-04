@@ -220,7 +220,7 @@ mod tests {
 
     // This will assert a bunch of ranges to a correct sequenced range.
     #[test]
-    fn sequencing_test() {
+    fn can_sequence() {
         assert_sequence!([1, 3, 5, 4, 2], [1, 3, 5], 1);
         assert_sequence!([1, 5, 4, 3, 2], [1, 5], 1);
         assert_sequence!([5, 3, 4, 2, 1], [5], 1);
@@ -232,7 +232,7 @@ mod tests {
 
     // This will assert a bunch of ranges to a correct sequenced range.
     #[test]
-    fn multiple_stream_sequencing_test() {
+    fn sequence_on_multiple_streams() {
         assert_sequence!([1, 3, 5, 4, 2], [1, 3, 5], 1);
         assert_sequence!([1, 5, 4, 3, 2], [1, 5], 2);
         assert_sequence!([5, 3, 4, 2, 1], [5], 3);

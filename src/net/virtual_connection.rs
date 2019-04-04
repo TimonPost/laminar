@@ -1,6 +1,6 @@
 use crate::{
     config::Config,
-    error::{ErrorKind, Result},
+    error::{ErrorKind, PacketErrorKind, Result},
     infrastructure::{
         arranging::{Arranging, ArrangingSystem, OrderingSystem, SequencingSystem},
         AcknowledgementHandler, CongestionHandler, Fragmentation,
@@ -16,6 +16,7 @@ use crate::{
     SocketEvent,
 };
 
+use crate::error::ErrorKind::PacketError;
 use crossbeam_channel::{self, Sender};
 use std::fmt;
 use std::net::SocketAddr;
@@ -68,22 +69,28 @@ impl VirtualConnection {
     ) -> Result<Outgoing<'a>> {
         match delivery_guarantee {
             DeliveryGuarantee::Unreliable => {
-                let mut builder = OutgoingPacketBuilder::new(payload).with_default_header(
-                    PacketType::Packet,
-                    delivery_guarantee,
-                    ordering_guarantee,
-                );
+                if payload.len() <= self.config.receive_buffer_max_size {
+                    let mut builder = OutgoingPacketBuilder::new(payload).with_default_header(
+                        PacketType::Packet,
+                        delivery_guarantee,
+                        ordering_guarantee,
+                    );
 
-                if let OrderingGuarantee::Sequenced(stream_id) = ordering_guarantee {
-                    let item_identifier = self
-                        .sequencing_system
-                        .get_or_create_stream(stream_id.unwrap_or(DEFAULT_SEQUENCING_STREAM))
-                        .new_item_identifier();
+                    if let OrderingGuarantee::Sequenced(stream_id) = ordering_guarantee {
+                        let item_identifier = self
+                            .sequencing_system
+                            .get_or_create_stream(stream_id.unwrap_or(DEFAULT_SEQUENCING_STREAM))
+                            .new_item_identifier();
 
-                    builder = builder.with_sequencing_header(item_identifier as u16, stream_id);
-                };
+                        builder = builder.with_sequencing_header(item_identifier as u16, stream_id);
+                    };
 
-                Ok(Outgoing::Packet(builder.build()))
+                    Ok(Outgoing::Packet(builder.build()))
+                } else {
+                    Err(ErrorKind::PacketError(
+                        PacketErrorKind::ExceededMaxPacketSize,
+                    ))
+                }
             }
             DeliveryGuarantee::Reliable => {
                 let payload_length = payload.len() as u16;
@@ -490,10 +497,10 @@ mod tests {
     }
 
     #[test]
-    fn assure_outgoing_processing_goes_right() {
+    fn assure_right_outgoing_processing() {
         let mut connection = create_virtual_connection();
 
-        let buffer = vec![1; 4000];
+        let buffer = vec![1; 1000];
 
         connection
             .process_outgoing(
@@ -635,7 +642,7 @@ mod tests {
     }
 
     #[test]
-    fn assure_right_processing_of_incoming_packets() {
+    fn assure_right_processing_of_incoming() {
         let mut connection = create_virtual_connection();
 
         assert_incoming_without_order(

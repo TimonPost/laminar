@@ -168,7 +168,7 @@ mod test {
     use super::Fragmentation;
 
     #[test]
-    pub fn total_fragments_needed_test() {
+    pub fn expect_right_number_of_fragments() {
         let fragment_number = Fragmentation::fragments_needed(4000, 1024);
         let fragment_number1 = Fragmentation::fragments_needed(500, 1024);
 

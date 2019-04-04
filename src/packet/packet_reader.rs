@@ -117,7 +117,7 @@ mod tests {
     use crate::packet::{DeliveryGuarantee, OrderingGuarantee, PacketReader, PacketType};
 
     #[test]
-    fn can_read_test() {
+    fn can_read_bytes() {
         let buffer = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
         let reader = PacketReader::new(buffer.as_slice());
@@ -126,7 +126,7 @@ mod tests {
     }
 
     #[test]
-    fn read_standard_header() {
+    fn assure_read_standard_header() {
         // standard header
         let reliable_ordered_payload: Vec<u8> = vec![vec![0, 1, 0, 1, 2]].concat();
 
@@ -147,7 +147,7 @@ mod tests {
     }
 
     #[test]
-    fn read_acknowledgement_header() {
+    fn assure_read_acknowledgement_header() {
         // standard header, acked header
         let reliable_ordered_payload: Vec<u8> =
             vec![vec![0, 1, 0, 1, 2], vec![0, 1, 0, 2, 0, 0, 0, 3]].concat();
@@ -162,7 +162,7 @@ mod tests {
     }
 
     #[test]
-    fn read_fragment_header() {
+    fn assure_read_fragment_header() {
         // standard header, acked header, arranging header
         let reliable_ordered_payload: Vec<u8> = vec![
             vec![0, 1, 0, 1, 2],
@@ -197,7 +197,7 @@ mod tests {
     }
 
     #[test]
-    fn read_unreliable_sequenced_header() {
+    fn assure_read_unreliable_sequenced_header() {
         // standard header, arranging header
         let reliable_ordered_payload: Vec<u8> = vec![vec![0, 1, 0, 1, 2], vec![0, 1, 2]].concat();
 
@@ -212,7 +212,7 @@ mod tests {
     }
 
     #[test]
-    fn read_reliable_ordered_header() {
+    fn assure_read_reliable_ordered_header() {
         // standard header, acked header, arranging header
         let reliable_ordered_payload: Vec<u8> = vec![
             vec![0, 1, 0, 1, 2],
@@ -248,7 +248,7 @@ mod tests {
     }
 
     #[test]
-    fn read_reliable_unordered_header() {
+    fn assure_read_reliable_unordered_header() {
         // standard header, acked header, arranging header
         let reliable_ordered_payload: Vec<u8> =
             vec![vec![0, 1, 0, 1, 2], vec![0, 1, 0, 2, 0, 0, 0, 3]].concat();

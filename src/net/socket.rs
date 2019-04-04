@@ -163,12 +163,15 @@ impl Socket {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Config, Packet, Socket};
+    use crate::{
+        net::constants::{ACKED_PACKET_HEADER, FRAGMENT_HEADER_SIZE, STANDARD_HEADER_SIZE},
+        Config, Packet, Socket,
+    };
     use std::net::SocketAddr;
     use std::thread;
 
     #[test]
-    fn test_send_receive() {
+    fn can_send_and_receive() {
         let (mut server, _, packet_receiver) = Socket::bind(
             "127.0.0.1:12345".parse::<SocketAddr>().unwrap(),
             Config::default(),
@@ -190,18 +193,6 @@ mod tests {
                     vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
                 ))
                 .unwrap();
-            packet_sender
-                .send(Packet::unreliable(
-                    "127.0.0.1:12345".parse::<SocketAddr>().unwrap(),
-                    vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
-                ))
-                .unwrap();
-            packet_sender
-                .send(Packet::unreliable(
-                    "127.0.0.1:12345".parse::<SocketAddr>().unwrap(),
-                    vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
-                ))
-                .unwrap();
         }
 
         let mut iter = packet_receiver.iter();
@@ -209,5 +200,65 @@ mod tests {
         assert!(iter.next().is_some());
         assert!(iter.next().is_some());
         assert!(iter.next().is_some());
+    }
+
+    #[test]
+    fn sending_large_unreliable_packet_should_fail() {
+        let (mut server, _, packet_receiver) = Socket::bind(
+            "127.0.0.1:0".parse::<SocketAddr>().unwrap(),
+            Config::default(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            server
+                .send_to(Packet::unreliable(
+                    "127.0.0.1:12346".parse().unwrap(),
+                    vec![1; 5000]
+                ))
+                .is_err(),
+            true
+        );
+    }
+
+    #[test]
+    fn send_returns_right_size() {
+        let (mut server, _, packet_receiver) = Socket::bind(
+            "127.0.0.1:0".parse::<SocketAddr>().unwrap(),
+            Config::default(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            server
+                .send_to(Packet::unreliable(
+                    "127.0.0.1:0".parse().unwrap(),
+                    vec![1; 1024]
+                ))
+                .unwrap(),
+            1024 + STANDARD_HEADER_SIZE as usize
+        );
+    }
+
+    #[test]
+    fn fragmentation_send_returns_right_size() {
+        let (mut server, _, packet_receiver) = Socket::bind(
+            "127.0.0.1:12346".parse::<SocketAddr>().unwrap(),
+            Config::default(),
+        )
+        .unwrap();
+
+        let fragment_packet_size = STANDARD_HEADER_SIZE + FRAGMENT_HEADER_SIZE;
+
+        // the first fragment of an sequence of fragments contains also the acknowledgement header.
+        assert_eq!(
+            server
+                .send_to(Packet::reliable_unordered(
+                    "127.0.0.1:0".parse().unwrap(),
+                    vec![1; 4000]
+                ))
+                .unwrap(),
+            4000 + (fragment_packet_size * 4 + ACKED_PACKET_HEADER) as usize
+        );
     }
 }
