@@ -1,7 +1,10 @@
 use crate::{
     config::Config,
     error::{ErrorKind, Result},
-    net::{connection::ActiveConnections, events::SocketEvent, link_conditioner::LinkConditioner, constants::DEFAULT_MTU},
+    net::{
+        connection::ActiveConnections, constants::DEFAULT_MTU, events::SocketEvent,
+        link_conditioner::LinkConditioner,
+    },
     packet::{Outgoing, Packet},
 };
 use crossbeam_channel::{self, unbounded, Receiver, Sender};
@@ -178,14 +181,10 @@ mod tests {
 
     #[test]
     fn can_send_and_receive() {
-        let (mut server, _, packet_receiver) = Socket::bind(
-            "127.0.0.1:12345".parse::<SocketAddr>().unwrap()
-        )
-        .unwrap();
-        let (mut client, packet_sender, _) = Socket::bind(
-            "127.0.0.1:12344".parse::<SocketAddr>().unwrap()
-        )
-        .unwrap();
+        let (mut server, _, packet_receiver) =
+            Socket::bind("127.0.0.1:12345".parse::<SocketAddr>().unwrap()).unwrap();
+        let (mut client, packet_sender, _) =
+            Socket::bind("127.0.0.1:12344".parse::<SocketAddr>().unwrap()).unwrap();
 
         thread::spawn(move || client.start_polling());
         thread::spawn(move || server.start_polling());
@@ -208,10 +207,8 @@ mod tests {
 
     #[test]
     fn sending_large_unreliable_packet_should_fail() {
-        let (mut server, _, packet_receiver) = Socket::bind(
-            "127.0.0.1:12370".parse::<SocketAddr>().unwrap()
-        )
-        .unwrap();
+        let (mut server, _, packet_receiver) =
+            Socket::bind("127.0.0.1:12370".parse::<SocketAddr>().unwrap()).unwrap();
 
         assert_eq!(
             server
@@ -226,10 +223,8 @@ mod tests {
 
     #[test]
     fn send_returns_right_size() {
-        let (mut server, _, packet_receiver) = Socket::bind(
-            "127.0.0.1:12371".parse::<SocketAddr>().unwrap()
-        )
-        .unwrap();
+        let (mut server, _, packet_receiver) =
+            Socket::bind("127.0.0.1:12371".parse::<SocketAddr>().unwrap()).unwrap();
 
         assert_eq!(
             server
@@ -244,10 +239,8 @@ mod tests {
 
     #[test]
     fn fragmentation_send_returns_right_size() {
-        let (mut server, _, packet_receiver) = Socket::bind(
-            "127.0.0.1:12372".parse::<SocketAddr>().unwrap()
-        )
-        .unwrap();
+        let (mut server, _, packet_receiver) =
+            Socket::bind("127.0.0.1:12372".parse::<SocketAddr>().unwrap()).unwrap();
 
         let fragment_packet_size = STANDARD_HEADER_SIZE + FRAGMENT_HEADER_SIZE;
 

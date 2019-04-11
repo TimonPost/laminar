@@ -42,8 +42,7 @@ impl Server {
     where
         F: Fn(Packet) + Send + Sized + 'static,
     {
-        let (mut socket, _, packet_receiver) =
-            Socket::bind(self.listening_host).unwrap();
+        let (mut socket, _, packet_receiver) = Socket::bind(self.listening_host).unwrap();
 
         let _ = thread::spawn(move || socket.start_polling());
 

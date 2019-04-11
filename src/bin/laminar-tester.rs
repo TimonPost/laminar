@@ -123,8 +123,7 @@ fn process_client_subcommand(m: clap::ArgMatches<'_>) {
 }
 
 fn run_server(server_config: ServerConfiguration) -> Result<()> {
-    let (mut socket, _packet_sender, event_receiver) =
-        Socket::bind(server_config.listen_host)?;
+    let (mut socket, _packet_sender, event_receiver) = Socket::bind(server_config.listen_host)?;
 
     let _thread = thread::spawn(move || socket.start_polling());
 
