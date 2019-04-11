@@ -8,7 +8,7 @@ use std::{
 
 use clap::{load_yaml, App, AppSettings};
 use crossbeam_channel::Sender;
-use laminar::{Config, Packet, Result, Socket, SocketEvent, ThroughputMonitoring};
+use laminar::{Packet, Result, Socket, SocketEvent, ThroughputMonitoring};
 use log::{debug, error, info};
 
 fn main() {
