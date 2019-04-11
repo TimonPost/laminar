@@ -8,8 +8,13 @@ use std::thread;
 
 const SERVER: &str = "127.0.0.1:12351";
 
+
+fn test() {
+
+}
+
 fn server() -> Result<(), ErrorKind> {
-    let (mut socket, packet_sender, event_receiver) = Socket::bind(SERVER, Config::default())?;
+    let (mut socket, packet_sender, event_receiver) = Socket::bind(SERVER)?;
     let _thread = thread::spawn(move || socket.start_polling());
 
     println!("Listening for connections to {}", SERVER);
@@ -47,7 +52,7 @@ fn server() -> Result<(), ErrorKind> {
 
 fn client() -> Result<(), ErrorKind> {
     let addr = "127.0.0.1:12352";
-    let (mut socket, packet_sender, event_receiver) = Socket::bind(addr, Config::default())?;
+    let (mut socket, packet_sender, event_receiver) = Socket::bind(addr)?;
     println!("Connected on {}", addr);
     let _thread = thread::spawn(move || socket.start_polling());
 

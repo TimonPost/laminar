@@ -1,7 +1,7 @@
 use crate::{
     config::Config,
     error::{ErrorKind, Result},
-    net::{connection::ActiveConnections, events::SocketEvent, link_conditioner::LinkConditioner},
+    net::{connection::ActiveConnections, events::SocketEvent, link_conditioner::LinkConditioner, constants::DEFAULT_MTU},
     packet::{Outgoing, Packet},
 };
 use crossbeam_channel::{self, unbounded, Receiver, Sender};
@@ -28,7 +28,6 @@ impl Socket {
     /// endpoint by looking to see if they are still sending packets or not
     pub fn bind<A: ToSocketAddrs>(
         addresses: A,
-        config: Config,
     ) -> Result<(Self, Sender<Packet>, Receiver<SocketEvent>)> {
         let socket = UdpSocket::bind(addresses)?;
         socket.set_nonblocking(true)?;
@@ -36,9 +35,9 @@ impl Socket {
         let (packet_sender, packet_receiver) = unbounded();
         Ok((
             Socket {
-                recv_buffer: vec![0; config.receive_buffer_max_size],
+                recv_buffer: vec![0; DEFAULT_MTU as usize],
                 socket,
-                config,
+                config: Config::default(),
                 connections: ActiveConnections::new(),
                 link_conditioner: None,
                 event_sender,
@@ -47,6 +46,13 @@ impl Socket {
             packet_sender,
             event_receiver,
         ))
+    }
+
+    /// Configure the socket with the passed configuration.
+    pub fn with_config(mut self, config: Config) -> Socket {
+        self.recv_buffer = vec![0; config.receive_buffer_max_size];
+        self.config = config;
+        self
     }
 
     /// Entry point to the run loop. This should run in a spawned thread since calls to `poll.poll`
@@ -173,13 +179,11 @@ mod tests {
     #[test]
     fn can_send_and_receive() {
         let (mut server, _, packet_receiver) = Socket::bind(
-            "127.0.0.1:12345".parse::<SocketAddr>().unwrap(),
-            Config::default(),
+            "127.0.0.1:12345".parse::<SocketAddr>().unwrap()
         )
         .unwrap();
         let (mut client, packet_sender, _) = Socket::bind(
-            "127.0.0.1:12344".parse::<SocketAddr>().unwrap(),
-            Config::default(),
+            "127.0.0.1:12344".parse::<SocketAddr>().unwrap()
         )
         .unwrap();
 
@@ -205,8 +209,7 @@ mod tests {
     #[test]
     fn sending_large_unreliable_packet_should_fail() {
         let (mut server, _, packet_receiver) = Socket::bind(
-            "127.0.0.1:12370".parse::<SocketAddr>().unwrap(),
-            Config::default(),
+            "127.0.0.1:12370".parse::<SocketAddr>().unwrap()
         )
         .unwrap();
 
@@ -224,8 +227,7 @@ mod tests {
     #[test]
     fn send_returns_right_size() {
         let (mut server, _, packet_receiver) = Socket::bind(
-            "127.0.0.1:12371".parse::<SocketAddr>().unwrap(),
-            Config::default(),
+            "127.0.0.1:12371".parse::<SocketAddr>().unwrap()
         )
         .unwrap();
 
@@ -243,8 +245,7 @@ mod tests {
     #[test]
     fn fragmentation_send_returns_right_size() {
         let (mut server, _, packet_receiver) = Socket::bind(
-            "127.0.0.1:12372".parse::<SocketAddr>().unwrap(),
-            Config::default(),
+            "127.0.0.1:12372".parse::<SocketAddr>().unwrap()
         )
         .unwrap();
 
