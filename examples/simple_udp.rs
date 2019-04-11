@@ -79,7 +79,6 @@ struct Server {
 }
 
 impl Server {
-    #[allow(unused_must_use)]
     pub fn new() -> Self {
         // setup an udp socket and bind it to the client address.
         let (mut socket, packet_sender, event_receiver) = Socket::bind(server_address()).unwrap();
@@ -143,7 +142,6 @@ struct Client {
 }
 
 impl Client {
-    #[allow(unused_must_use)]
     pub fn new() -> Self {
         // setup an udp socket and bind it to the client address.
         let (mut socket, packet_sender, event_receiver) = Socket::bind(client_address()).unwrap();
@@ -156,7 +154,6 @@ impl Client {
         }
     }
 
-    #[allow(unused_must_use)]
     pub fn send(&mut self, data_type: DataType) {
         let serialized = serialize(&data_type);
 
