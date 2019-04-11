@@ -1,10 +1,7 @@
 use crate::{
     config::Config,
     error::{ErrorKind, Result},
-    net::{
-        connection::ActiveConnections, constants::DEFAULT_MTU, events::SocketEvent,
-        link_conditioner::LinkConditioner,
-    },
+    net::{connection::ActiveConnections, events::SocketEvent, link_conditioner::LinkConditioner},
     packet::{Outgoing, Packet},
 };
 use crossbeam_channel::{self, unbounded, Receiver, Sender};
@@ -32,15 +29,27 @@ impl Socket {
     pub fn bind<A: ToSocketAddrs>(
         addresses: A,
     ) -> Result<(Self, Sender<Packet>, Receiver<SocketEvent>)> {
+        Socket::bind_with_config(addresses, Config::default())
+    }
+
+    /// Binds to the socket and then sets up `ActiveConnections` to manage the "connections".
+    /// Because UDP connections are not persistent, we can only infer the status of the remote
+    /// endpoint by looking to see if they are still sending packets or not
+    ///
+    /// This function allows you to configure laminar with the passed configuration.
+    pub fn bind_with_config<A: ToSocketAddrs>(
+        addresses: A,
+        config: Config,
+    ) -> Result<(Self, Sender<Packet>, Receiver<SocketEvent>)> {
         let socket = UdpSocket::bind(addresses)?;
         socket.set_nonblocking(true)?;
         let (event_sender, event_receiver) = unbounded();
         let (packet_sender, packet_receiver) = unbounded();
         Ok((
             Socket {
-                recv_buffer: vec![0; DEFAULT_MTU as usize],
+                recv_buffer: vec![0; config.receive_buffer_max_size],
                 socket,
-                config: Config::default(),
+                config,
                 connections: ActiveConnections::new(),
                 link_conditioner: None,
                 event_sender,
@@ -49,13 +58,6 @@ impl Socket {
             packet_sender,
             event_receiver,
         ))
-    }
-
-    /// Configure the socket with the passed configuration.
-    pub fn with_config(mut self, config: Config) -> Socket {
-        self.recv_buffer = vec![0; config.receive_buffer_max_size];
-        self.config = config;
-        self
     }
 
     /// Entry point to the run loop. This should run in a spawned thread since calls to `poll.poll`
