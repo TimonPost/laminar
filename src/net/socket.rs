@@ -86,6 +86,7 @@ impl Socket {
     // Serializes and sends a `Packet` on the socket. On success, returns the number of bytes written.
     fn send_to(&mut self, packet: Packet) -> Result<usize> {
         let (dropped_packets, processed_packet) = {
+
             let connection = self
                 .connections
                 .get_or_insert_connection(packet.addr(), &self.config);
@@ -137,9 +138,15 @@ impl Socket {
                     return Err(ErrorKind::ReceivedDataToShort)?;
                 }
                 let received_payload = &self.recv_buffer[..recv_len];
+
+                if !self.connections.exists(&address) {
+                    self.event_sender.send(SocketEvent::Connect(address))?;
+                }
+
                 let connection = self
                     .connections
                     .get_or_insert_connection(address, &self.config);
+
                 connection.process_incoming(received_payload, &self.event_sender)?;
             }
             Err(e) => {

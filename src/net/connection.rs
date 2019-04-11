@@ -17,7 +17,7 @@ impl ActiveConnections {
     }
 
     /// Try to get a `VirtualConnection` by address. If the connection does not exist, it will be
-    /// inserted and returned.
+    /// inserted and returned. TrueIf the connection did not exist
     pub fn get_or_insert_connection(
         &mut self,
         address: SocketAddr,
@@ -45,7 +45,12 @@ impl ActiveConnections {
             .collect()
     }
 
-    /// Get the number of connected clients.
+    /// Returns true if the given connection exists.
+    pub fn exists(&self, address: &SocketAddr) -> bool {
+        self.connections.contains_key(&address)
+    }
+
+    /// Returns the number of connected clients.
     #[cfg(test)]
     pub fn count(&self) -> usize {
         self.connections.len()
