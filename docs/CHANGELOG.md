@@ -1,6 +1,17 @@
 # Change Log
 This document contains information about the releases of this crate.
 
+## [0.2.0] - 2019-04-13
+- Introduced Ordering, Sequencing of packets
+- Packets can be arranged on different streams.
+- A channel-based API, ready to switch over to MIO
+- Removed all locking and reference counters
+- Increased Unit Test coverage
+- Removed some dependencies
+- Introduced socket events: connect, timeout, packet
+- Bug fixes
+- Restructured code for better organization
+
 ## [0.1.0] - 2018-11-12
 The Networking team is happy to announce the release of `0.1.0`` of the [laminar crate](https://github.com/amethyst/laminar). 
 It provides UDP networking modified for the needs of game networking. 
