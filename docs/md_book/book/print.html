@@ -1,0 +1,397 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Laminar</title>
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link href="https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800" rel="stylesheet" type="text/css">
+        <link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:500" rel="stylesheet" type="text/css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+
+        
+    </head>
+    <body class="light">
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { } 
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            document.body.className = theme;
+            document.querySelector('html').className = theme + ' js';
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <ol class="chapter"><li><a href="intro.html"><strong aria-hidden="true">1.</strong> Intro</a></li><li><a href="protocols.html"><strong aria-hidden="true">2.</strong> Protocols</a></li><li><a href="congestion_avoidence/congestion_avoidance.html"><strong aria-hidden="true">3.</strong> Congestion Avoidance</a></li><li><ol class="section"><li><a href="congestion_avoidence/rtt.html"><strong aria-hidden="true">3.1.</strong> Whit RTT</a></li><li><a href="congestion_avoidence/packet_loss.html"><strong aria-hidden="true">3.2.</strong> Whit Packet loss</a></li></ol></li><li><a href="fragmentation.html"><strong aria-hidden="true">4.</strong> Fragmentation</a></li><li><a href="reliability/basicis.html"><strong aria-hidden="true">5.</strong> Reliability</a></li><li><ol class="section"><li><a href="reliability/basicis.html"><strong aria-hidden="true">5.1.</strong> Basics</a></li><li><a href="reliability/reliability.html"><strong aria-hidden="true">5.2.</strong> Reliability</a></li></ol></li></ol>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar" class="menu-bar">
+                    <div id="menu-bar-sticky-container">
+                        <div class="left-buttons">
+                            <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                                <i class="fa fa-bars"></i>
+                            </button>
+                            <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                                <i class="fa fa-paint-brush"></i>
+                            </button>
+                            <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                                <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                            </ul>
+                            
+                            <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                                <i class="fa fa-search"></i>
+                            </button>
+                            
+                        </div>
+
+                        <h1 class="menu-title">Laminar</h1> 
+
+                        <div class="right-buttons">
+                            <a href="print.html" title="Print this book" aria-label="Print this book">
+                                <i id="print-button" class="fa fa-print"></i>
+                            </a>
+                            
+                        </div>
+                    </div>
+                </div>
+
+                
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" name="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <p>#This book is still in development and is just a draft. And much needs to be changed.</p>
+<a class="header" href="#introduction" id="introduction"><h2>Introduction</h2></a>
+<p>Welcome! This book will teach you everything you need to know about of the networking in laminar.
+We will discuss important parts of network programming, why we made certain decisions and some explanations about networking concepts in general.</p>
+<p>Laminar is free and open source software, distributed under a dual license of <a href="https://github.com/amethyst/laminar/blob/master/docs/LICENSE-MIT">MIT</a>
+and <a href="https://github.com/amethyst/laminar/blob/master/docs/LICENSE-APACHE">Apache</a>. This means that the engine is given to you at no cost
+and its source code is completely yours to tinker with. The code is available on
+<a href="https://github.com/amethyst/laminar/tree/master">GitHub</a>. Contributions and feature requests will always be welcomed!</p>
+<a class="header" href="#motivation" id="motivation"><h2>Motivation</h2></a>
+<p>some decisions about why we are working on this like the rust safety compared to other implementations out there etc.
+And that there are not really good implementations yet which for fill all or needs.</p>
+<a class="header" href="#contributing" id="contributing"><h2>Contributing</h2></a>
+<p>We are always happy to welcome new contributors!</p>
+<p>If you want to contribute, or have questions, let us know either on <a href="https://github.com/amethyst/laminar/">GitHub</a>, or on <a href="https://discord.gg/amethyst">Discord</a>.</p>
+<a class="header" href="#networking-protocols" id="networking-protocols"><h1>Networking protocols</h1></a>
+<p>So first and possibly the important one is which protocol to use and when. Let’s first take a look at TCP and UDP.</p>
+<a class="header" href="#ip" id="ip"><h2>IP</h2></a>
+<p>All communication over the internet is happening over IP (Internet Protocol).
+This protocol only passes packets across the network without any guarantee that it will arrive at the destination.
+Sometimes IP passes along multiple copies of the same packet and these packets make their way to the destination via different paths, causing packets to arrive out of order and in duplicate.</p>
+<p>So to be able to communicate over the network we make use of existing protocols that provides some more certainty.
+We will first take a look at TCP where after we checkout UPD.</p>
+<a class="header" href="#tcpip" id="tcpip"><h2>TCP/IP</h2></a>
+<p>TCP stands for “transmission control protocol”. IP stands for “internet protocol”.
+Together they form the backbone for almost everything you do online, from web browsing to IRC to email, it’s all built on top of TCP/IP.</p>
+<p>TCP is a connection-oriented protocol, which means a connection is established and maintained until the application programs at each end have finished exchanging messages.
+TCP provides full reliable, ordered communication between two machines. The data you send is guaranteed to arrive and in order.
+The TCP protocol will also split up and reassemble packets if those are too large.</p>
+<p><strong>Characteristics</strong></p>
+<ul>
+<li>Reliable</li>
+<li>Ordered</li>
+<li>Automatic <a href="LINK">fragmentation</a> of packets</li>
+<li>Stream based</li>
+<li>Control Flow (<a href="congestion_avoidence/congestion_avoidance.html">Congestion Avoidance</a>)</li>
+</ul>
+<a class="header" href="#udp" id="udp"><h2>UDP</h2></a>
+<p>UDP stands for “user datagram protocol” and it’s another protocol built on top of IP, but unlike TCP, instead of adding lots of features and complexity, UDP is a very thin layer over IP.</p>
+<p>Like IP, UDP is an unreliable protocol. In practice however, most packets that are sent will get through, but you’ll usually have around 1-5% packet loss, and occasionally you’ll get periods where no packets get through at all (remember there are lots of computers between you and your destination where things can go wrong…)</p>
+<p><strong>Characteristics</strong></p>
+<ul>
+<li>Not Reliable</li>
+<li>Not Ordered</li>
+<li>No <a href="fragmentation.html">fragmentation</a> of packets</li>
+<li>No control flow (<a href="congestion_avoidence/congestion_avoidance.html">Congestion Avoidance</a>)</li>
+<li>Packet loss could happen.</li>
+<li>Message based</li>
+</ul>
+<a class="header" href="#why-udp-and-not-tcp--more" id="why-udp-and-not-tcp--more"><h2>Why UDP and not TCP | More</h2></a>
+<p>Those of you familiar with TCP know that it already has its own concept of connection, reliability-ordering and congestion avoidance, so why are we rewriting our own mini version of TCP on top of UDP?</p>
+<p>The issue is that multilayer action games rely on a steady stream of packets sent at rates of 10 to 30 packets per second, and for the most part, the data contained in these packets is so time sensitive that only the most recent data is useful.
+This includes data such as player inputs, the position, orientation and velocity of each player character, and the state of physics objects in the world.</p>
+<p>The problem with TCP is that it abstracts data delivery as a reliable ordered stream. Because of this, if a packet is lost, TCP has to stop and wait for that packet to be resent.
+This interrupts the steady stream of packets because more recent packets must wait in a queue until the resent packet arrives, so packets are received in the same order they were sent.</p>
+<p>What we need is a different type of reliability.</p>
+<p>Instead of having all data treated as a reliable ordered stream, we want to send packets at a steady rate and get notified when packets are received by the other computer.
+This allows time sensitive data to get through without waiting for resent packets, while letting us make our own decision about how to handle packet loss at the application level.</p>
+<p>What TCP does is maintain a sliding window where the ACK sent is the sequence number of the next packet it expects to receive, in order. If TCP does not receive an ACK for a given packet, it stops and re-sends a packet with that sequence number again. This is exactly the behavior we want to avoid!</p>
+<p>It is not possible to implement a reliability system with these properties using TCP, so we have no choice but to roll our own reliability on top of UDP. TCP itself is built on UDP.</p>
+<a class="header" href="#when-use-tcp" id="when-use-tcp"><h2>When use TCP</h2></a>
+<p>Of course there could be use-cases for TCP like chat, asset streaming, etc. We can setup a TCP socket for this that is distinct from UDP.</p>
+<p>We could also make our UDP channel reliable as described below so when we detect package lost on the client we could construct a new package</p>
+<a class="header" href="#congestion-avoidance" id="congestion-avoidance"><h1>Congestion Avoidance</h1></a>
+<p>So let's start at what this congestion avoidance is if we send just packets without caring about the internet speed of the client we can flood the network.
+Since the router tries to deliver all packages it buffers up all packets in the cache.
+We do not want the router to buffer up packets instead it should drop them.
+We need to try to avoid sending too much bandwidth in the first place, and then if we detect congestion, we attempt to back off and send even less.</p>
+<p>There are a few methods we can implement to defeat congestion.</p>
+<ol>
+<li>With <a href="congestion_avoidence/./rtt.html">RTT</a></li>
+<li>With packet loss</li>
+</ol>
+<a class="header" href="#round-trip-time-rtt" id="round-trip-time-rtt"><h1>Round Trip Time (RTT)</h1></a>
+<p>The time between you sending the packet and you receiving an acknowledgment from the other side is called RTT.
+To avoid congestion we first need to find a way to calculate the <code>RTT</code> value of our connection so we can decide on top of that value if we have bad or good internet speeds.</p>
+<p><em>Smoothing factor</em></p>
+<p>So you could say: &quot;very simple, measure the time between sending and receiving you got the <code>RTT</code> and you're done right?&quot; No! This is because a packet can travel any path over the internet the <code>RTT</code> can always defer every time you calculate it. And imagine a short internet lag we will directly get a huge RTT back. So we need to smooth out that RTT factor by some amount. Gaffer says that 10% of the RTT will be just fine. With this smoothed RTT we will be able to add it to our current RTT.</p>
+<p><em>Allowed RTT value</em></p>
+<p>So now we have the smoothed RTT and or current RTT, GREAT! But RTT on its own is not bad. So there may be some max allowed RTT. We need to subtract that amount from our measured RTT multiplied by the smoothing factor.</p>
+<p>The formula would look like the following:</p>
+<pre><code>// rtt_max_value is in ms
+// rtt_smoothing_factor is in %
+let new_rtt_value = (rtt - rtt_max_value) * rtt_smoothing_factor.
+</code></pre>
+<p>Lets look at an example with numbers. The RTT values are in milliseconds.</p>
+<p><em>bad internet</em></p>
+<pre><code>// this will result into: 5
+let new_rtt_value = (300 - 250) * 0.10.
+</code></pre>
+<p><em>good internet</em></p>
+<pre><code>// this will result into: -15
+let new_rtt_value = (100 - 250) * 0.10.
+</code></pre>
+<p>As you see when or calculation is under 250ms we get a negative result, which is in this case positive.
+When or calculation is above 250ms it will be positive, which is in this case negative.</p>
+<p>So each time we receive an acknowledgment we can add our result, of the above formula, to the RTT time saved in the connection.</p>
+<a class="header" href="#interesting-reads" id="interesting-reads"><h2>Interesting Reads</h2></a>
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/Round-trip_delay_time">Wikipedia</a> </li>
+</ul>
+<a class="header" href="#whit-packet-loss" id="whit-packet-loss"><h1>Whit Packet loss</h1></a>
+<a class="header" href="#fragmentation" id="fragmentation"><h1>Fragmentation</h1></a>
+<p>Fragmentation is dividing large packets into smaller fragments so that it can be sent over the network.</p>
+<p>TCP will automatically divide packets into smaller parts if you send large amounts of data. But UDP doesn't support fragmentation out-of-the-box.
+Fortunately, laminar does.</p>
+<p>Fragmentation will be applied to packets larger than the <a href="https://en.wikipedia.org/wiki/Maximum_transmission_unit">MTU</a> with the following reliability types <code>Reliable Unordered</code>, <code>Reliable Ordered</code>, <code>Reliable Sequenced</code>.</p>
+<p>What is this <a href="https://en.wikipedia.org/wiki/Maximum_transmission_unit">MTU</a>? This stands for 'maximum transmission unit'.
+On the Internet today (2016, IPv4) the real-world MTU is 1500 bytes.
+When a packet is larger than 1500 bytes we need to split it up into different fragments.
+Why 1500? That’s the default MTU for MacOS X and Windows.</p>
+<p>You should take note that each fragment will not be acknowledged with our implementation.
+So if you would send 200.000 bytes (+- 133 fragments) the risk of one fragment being dropped will be huge.
+If you really want to send large amounts of data over the line go for TCP instead, since that protocol is built for reliability and large data.</p>
+<p>When sending small packets with the size of about 4000 bytes (4 fragments) this method will work fine. And won't probably cause any problems.
+We are planning to support also <a href="https://gafferongames.com/post/sending_large_blocks_of_data/">sending larger packets</a> with acknowledgments.</p>
+<a class="header" href="#interesting-reads-1" id="interesting-reads-1"><h2>Interesting Reads</h2></a>
+<ul>
+<li><a href="https://gafferongames.com/post/packet_fragmentation_and_reassembly/">Gaffer about Fragmentation</a></li>
+<li><a href="https://en.wikipedia.org/wiki/IP_fragmentation">Wikipedia</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Maximum_transmission_unit">MTU</a></li>
+</ul>
+<a class="header" href="#reliability" id="reliability"><h1>Reliability</h1></a>
+<a class="header" href="#reliability-1" id="reliability-1"><h1>Reliability</h1></a>
+<a class="header" href="#reliability-2" id="reliability-2"><h1>Reliability</h1></a>
+<p>So let's talk about reliability.
+This is a very important concept which could be at first sight difficult but which will be very handy later on.</p>
+<p>As you know we have two opposites, TCP on one hand and UDP on the other.
+TCP has a lot of feature UDP does not have, like shown below.</p>
+<p><em>TCP</em></p>
+<ul>
+<li>Guarantee of delivery.</li>
+<li>Guarantee for order.</li>
+<li>Packets will not be dropped.</li>
+<li>Duplication not possible.</li>
+<li>Automatic <a href="reliability/./../fragmentation.html">fragmentation</a>.</li>
+</ul>
+<p><em>UDP</em></p>
+<ul>
+<li>Unreliable.</li>
+<li>No guarantee for delivery.</li>
+<li>No guarantee for order.</li>
+<li>No way of getting the dropped packet.</li>
+<li>Duplication possible.</li>
+<li>No <a href="reliability/./../fragmentation.html">fragmentation</a>.</li>
+</ul>
+<p>So it would be useful if we could somehow specify the features we want on top of UDP.
+Like that you say: I want the guarantee for my packets to arrive, however they don't need to be in order.
+Or, I don't care if my packet arrives but I do want to receive only new ones.</p>
+<p>Please check out <a href="reliability/ordering.html">ordering documentation</a>, it describes what ordering and sequencing is.</p>
+<p>Laminar provides 5 different ways for you to send your data:</p>
+<table><thead><tr><th align="center"> Reliability Type                 </th><th align="center"> Packet Drop </th><th align="center"> Packet Duplication </th><th align="center"> Packet Order  </th><th align="center"> Packet Fragmentation </th><th align="center">Packet Delivery</th></tr></thead><tbody>
+<tr><td align="center">       <strong>Unreliable</strong>              </td><td align="center">       Yes       </td><td align="center">       Yes          </td><td align="center">      No          </td><td align="center">      No          </td><td align="center">       No</td></tr>
+<tr><td align="center">       <strong>Unreliable Sequenced</strong>    </td><td align="center">       Yes       </td><td align="center">      No            </td><td align="center">      Sequenced   </td><td align="center">      No          </td><td align="center">       No</td></tr>
+<tr><td align="center">       <strong>Reliable Unordered</strong>      </td><td align="center">       No        </td><td align="center">      No            </td><td align="center">      No          </td><td align="center">      Yes         </td><td align="center">       Yes</td></tr>
+<tr><td align="center">       <strong>Reliable Ordered</strong>        </td><td align="center">       No        </td><td align="center">      No            </td><td align="center">      Ordered     </td><td align="center">      Yes         </td><td align="center">       Yes</td></tr>
+<tr><td align="center">       <strong>Reliable Sequenced</strong>      </td><td align="center">       No        </td><td align="center">      No            </td><td align="center">      Sequenced   </td><td align="center">      Yes         </td><td align="center">       Yes</td></tr>
+</tbody></table>
+<a class="header" href="#unreliable" id="unreliable"><h2>Unreliable</h2></a>
+<p>Unreliable: Packets can be dropped, duplicated or arrive without order.</p>
+<p><strong>Details</strong></p>
+<table><thead><tr><th> Packet Drop     </th><th> Packet Duplication </th><th> Packet Order     </th><th> Packet Fragmentation </th><th> Packet Delivery </th></tr></thead><tbody>
+<tr><td align="center">       Yes       </td><td align="center">        Yes         </td><td align="center">      No          </td><td align="center">      No              </td><td align="center">       No        </td></tr>
+</tbody></table>
+<p>Basically just bare UDP. The packet may or may not be delivered.</p>
+<p>// todo: add use cases</p>
+<a class="header" href="#unreliable-sequenced" id="unreliable-sequenced"><h2>Unreliable Sequenced</h2></a>
+<p>Unreliable Sequenced: Packets can be dropped, but could not be duplicated and arrive in sequence.</p>
+<p><em>Details</em></p>
+<table><thead><tr><th> Packet Drop     </th><th> Packet Duplication </th><th> Packet Order     </th><th> Packet Fragmentation </th><th> Packet Delivery </th></tr></thead><tbody>
+<tr><td align="center">       Yes       </td><td align="center">        Yes         </td><td align="center">      Sequenced          </td><td align="center">      No              </td><td align="center">       No        </td></tr>
+</tbody></table>
+<p>Basically just bare UDP, free to be dropped, but has some sequencing to it so that only the newest packets are kept.</p>
+<p>// todo: add use cases</p>
+<a class="header" href="#reliable-unordered" id="reliable-unordered"><h2>Reliable Unordered</h2></a>
+<p>Reliable: All packets will be sent and received, but without order.</p>
+<p><em>Details</em></p>
+<table><thead><tr><th>   Packet Drop   </th><th> Packet Duplication </th><th> Packet Order     </th><th> Packet Fragmentation </th><th> Packet Delivery </th></tr></thead><tbody>
+<tr><td align="center">       No        </td><td align="center">      No            </td><td align="center">      No          </td><td align="center">      Yes             </td><td align="center">       Yes       </td></tr>
+</tbody></table>
+<p>Basically, this is almost TCP without ordering of packets.</p>
+<p>// todo: add use cases</p>
+<a class="header" href="#reliable-ordered" id="reliable-ordered"><h2>Reliable Ordered</h2></a>
+<p>Reliable; All packets will be sent and received, with order.</p>
+<p><em>Details</em></p>
+<table><thead><tr><th>   Packet Drop   </th><th> Packet Duplication </th><th> Packet Order     </th><th> Packet Fragmentation </th><th> Packet Delivery </th></tr></thead><tbody>
+<tr><td align="center">       No        </td><td align="center">      No            </td><td align="center">      Ordered     </td><td align="center">      Yes             </td><td align="center">       Yes       </td></tr>
+</tbody></table>
+<p>Basically this is almost like TCP.</p>
+<p>// todo: add use cases</p>
+<a class="header" href="#reliable-sequenced" id="reliable-sequenced"><h2>Reliable Sequenced</h2></a>
+<p>Reliable; All packets will be sent and received but arranged in sequence.
+Which means that only the newest packets will be let through, older packets will be received but they won't get to the user.</p>
+<p><em>Details</em></p>
+<table><thead><tr><th>   Packet Drop   </th><th> Packet Duplication </th><th> Packet Order     </th><th> Packet Fragmentation </th><th> Packet Delivery </th></tr></thead><tbody>
+<tr><td align="center">       No        </td><td align="center">      No            </td><td align="center">      Sequenced     </td><td align="center">      Yes             </td><td align="center">       Yes       </td></tr>
+</tbody></table>
+<p>Basically this is almost TCP-like but then sequencing instead of ordering.</p>
+<p>// todo: add use cases</p>
+<a class="header" href="#interesting-reads-2" id="interesting-reads-2"><h2>Interesting Reads</h2></a>
+<ul>
+<li><a href="http://www.jenkinssoftware.com/raknet/manual/reliabilitytypes.html">RakNet Reliability Types</a></li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        
+
+                        
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+
+                
+            </nav>
+
+        </div>
+
+        
+
+        
+
+        
+
+        
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+
+        
+        
+        <script type="text/javascript">
+        window.addEventListener('load', function() {
+            window.setTimeout(window.print, 100);
+        });
+        </script>
+        
+        
+
+    </body>
+</html>

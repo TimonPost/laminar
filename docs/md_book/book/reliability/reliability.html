@@ -1,0 +1,274 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Reliability - Laminar</title>
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link href="https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800" rel="stylesheet" type="text/css">
+        <link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:500" rel="stylesheet" type="text/css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+
+        
+    </head>
+    <body class="light">
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "../";
+            var default_theme = "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { } 
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            document.body.className = theme;
+            document.querySelector('html').className = theme + ' js';
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <ol class="chapter"><li><a href="../intro.html"><strong aria-hidden="true">1.</strong> Intro</a></li><li><a href="../protocols.html"><strong aria-hidden="true">2.</strong> Protocols</a></li><li><a href="../congestion_avoidence/congestion_avoidance.html"><strong aria-hidden="true">3.</strong> Congestion Avoidance</a></li><li><ol class="section"><li><a href="../congestion_avoidence/rtt.html"><strong aria-hidden="true">3.1.</strong> Whit RTT</a></li><li><a href="../congestion_avoidence/packet_loss.html"><strong aria-hidden="true">3.2.</strong> Whit Packet loss</a></li></ol></li><li><a href="../fragmentation.html"><strong aria-hidden="true">4.</strong> Fragmentation</a></li><li><a href="../reliability/basicis.html"><strong aria-hidden="true">5.</strong> Reliability</a></li><li><ol class="section"><li><a href="../reliability/basicis.html"><strong aria-hidden="true">5.1.</strong> Basics</a></li><li><a href="../reliability/reliability.html" class="active"><strong aria-hidden="true">5.2.</strong> Reliability</a></li></ol></li></ol>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar" class="menu-bar">
+                    <div id="menu-bar-sticky-container">
+                        <div class="left-buttons">
+                            <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                                <i class="fa fa-bars"></i>
+                            </button>
+                            <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                                <i class="fa fa-paint-brush"></i>
+                            </button>
+                            <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                                <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                            </ul>
+                            
+                            <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                                <i class="fa fa-search"></i>
+                            </button>
+                            
+                        </div>
+
+                        <h1 class="menu-title">Laminar</h1> 
+
+                        <div class="right-buttons">
+                            <a href="../print.html" title="Print this book" aria-label="Print this book">
+                                <i id="print-button" class="fa fa-print"></i>
+                            </a>
+                            
+                        </div>
+                    </div>
+                </div>
+
+                
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" name="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <a class="header" href="#reliability" id="reliability"><h1>Reliability</h1></a>
+<p>So let's talk about reliability.
+This is a very important concept which could be at first sight difficult but which will be very handy later on.</p>
+<p>As you know we have two opposites, TCP on one hand and UDP on the other.
+TCP has a lot of feature UDP does not have, like shown below.</p>
+<p><em>TCP</em></p>
+<ul>
+<li>Guarantee of delivery.</li>
+<li>Guarantee for order.</li>
+<li>Packets will not be dropped.</li>
+<li>Duplication not possible.</li>
+<li>Automatic <a href="./../fragmentation.html">fragmentation</a>.</li>
+</ul>
+<p><em>UDP</em></p>
+<ul>
+<li>Unreliable.</li>
+<li>No guarantee for delivery.</li>
+<li>No guarantee for order.</li>
+<li>No way of getting the dropped packet.</li>
+<li>Duplication possible.</li>
+<li>No <a href="./../fragmentation.html">fragmentation</a>.</li>
+</ul>
+<p>So it would be useful if we could somehow specify the features we want on top of UDP.
+Like that you say: I want the guarantee for my packets to arrive, however they don't need to be in order.
+Or, I don't care if my packet arrives but I do want to receive only new ones.</p>
+<p>Please check out <a href="ordering.html">ordering documentation</a>, it describes what ordering and sequencing is.</p>
+<p>Laminar provides 5 different ways for you to send your data:</p>
+<table><thead><tr><th align="center"> Reliability Type                 </th><th align="center"> Packet Drop </th><th align="center"> Packet Duplication </th><th align="center"> Packet Order  </th><th align="center"> Packet Fragmentation </th><th align="center">Packet Delivery</th></tr></thead><tbody>
+<tr><td align="center">       <strong>Unreliable</strong>              </td><td align="center">       Yes       </td><td align="center">       Yes          </td><td align="center">      No          </td><td align="center">      No          </td><td align="center">       No</td></tr>
+<tr><td align="center">       <strong>Unreliable Sequenced</strong>    </td><td align="center">       Yes       </td><td align="center">      No            </td><td align="center">      Sequenced   </td><td align="center">      No          </td><td align="center">       No</td></tr>
+<tr><td align="center">       <strong>Reliable Unordered</strong>      </td><td align="center">       No        </td><td align="center">      No            </td><td align="center">      No          </td><td align="center">      Yes         </td><td align="center">       Yes</td></tr>
+<tr><td align="center">       <strong>Reliable Ordered</strong>        </td><td align="center">       No        </td><td align="center">      No            </td><td align="center">      Ordered     </td><td align="center">      Yes         </td><td align="center">       Yes</td></tr>
+<tr><td align="center">       <strong>Reliable Sequenced</strong>      </td><td align="center">       No        </td><td align="center">      No            </td><td align="center">      Sequenced   </td><td align="center">      Yes         </td><td align="center">       Yes</td></tr>
+</tbody></table>
+<a class="header" href="#unreliable" id="unreliable"><h2>Unreliable</h2></a>
+<p>Unreliable: Packets can be dropped, duplicated or arrive without order.</p>
+<p><strong>Details</strong></p>
+<table><thead><tr><th> Packet Drop     </th><th> Packet Duplication </th><th> Packet Order     </th><th> Packet Fragmentation </th><th> Packet Delivery </th></tr></thead><tbody>
+<tr><td align="center">       Yes       </td><td align="center">        Yes         </td><td align="center">      No          </td><td align="center">      No              </td><td align="center">       No        </td></tr>
+</tbody></table>
+<p>Basically just bare UDP. The packet may or may not be delivered.</p>
+<p>// todo: add use cases</p>
+<a class="header" href="#unreliable-sequenced" id="unreliable-sequenced"><h2>Unreliable Sequenced</h2></a>
+<p>Unreliable Sequenced: Packets can be dropped, but could not be duplicated and arrive in sequence.</p>
+<p><em>Details</em></p>
+<table><thead><tr><th> Packet Drop     </th><th> Packet Duplication </th><th> Packet Order     </th><th> Packet Fragmentation </th><th> Packet Delivery </th></tr></thead><tbody>
+<tr><td align="center">       Yes       </td><td align="center">        Yes         </td><td align="center">      Sequenced          </td><td align="center">      No              </td><td align="center">       No        </td></tr>
+</tbody></table>
+<p>Basically just bare UDP, free to be dropped, but has some sequencing to it so that only the newest packets are kept.</p>
+<p>// todo: add use cases</p>
+<a class="header" href="#reliable-unordered" id="reliable-unordered"><h2>Reliable Unordered</h2></a>
+<p>Reliable: All packets will be sent and received, but without order.</p>
+<p><em>Details</em></p>
+<table><thead><tr><th>   Packet Drop   </th><th> Packet Duplication </th><th> Packet Order     </th><th> Packet Fragmentation </th><th> Packet Delivery </th></tr></thead><tbody>
+<tr><td align="center">       No        </td><td align="center">      No            </td><td align="center">      No          </td><td align="center">      Yes             </td><td align="center">       Yes       </td></tr>
+</tbody></table>
+<p>Basically, this is almost TCP without ordering of packets.</p>
+<p>// todo: add use cases</p>
+<a class="header" href="#reliable-ordered" id="reliable-ordered"><h2>Reliable Ordered</h2></a>
+<p>Reliable; All packets will be sent and received, with order.</p>
+<p><em>Details</em></p>
+<table><thead><tr><th>   Packet Drop   </th><th> Packet Duplication </th><th> Packet Order     </th><th> Packet Fragmentation </th><th> Packet Delivery </th></tr></thead><tbody>
+<tr><td align="center">       No        </td><td align="center">      No            </td><td align="center">      Ordered     </td><td align="center">      Yes             </td><td align="center">       Yes       </td></tr>
+</tbody></table>
+<p>Basically this is almost like TCP.</p>
+<p>// todo: add use cases</p>
+<a class="header" href="#reliable-sequenced" id="reliable-sequenced"><h2>Reliable Sequenced</h2></a>
+<p>Reliable; All packets will be sent and received but arranged in sequence.
+Which means that only the newest packets will be let through, older packets will be received but they won't get to the user.</p>
+<p><em>Details</em></p>
+<table><thead><tr><th>   Packet Drop   </th><th> Packet Duplication </th><th> Packet Order     </th><th> Packet Fragmentation </th><th> Packet Delivery </th></tr></thead><tbody>
+<tr><td align="center">       No        </td><td align="center">      No            </td><td align="center">      Sequenced     </td><td align="center">      Yes             </td><td align="center">       Yes       </td></tr>
+</tbody></table>
+<p>Basically this is almost TCP-like but then sequencing instead of ordering.</p>
+<p>// todo: add use cases</p>
+<a class="header" href="#interesting-reads" id="interesting-reads"><h2>Interesting Reads</h2></a>
+<ul>
+<li><a href="http://www.jenkinssoftware.com/raknet/manual/reliabilitytypes.html">RakNet Reliability Types</a></li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        
+                            <a rel="prev" href="../reliability/basicis.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                        
+
+                        
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+                    <a href="../reliability/basicis.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                
+
+                
+            </nav>
+
+        </div>
+
+        
+
+        
+
+        
+
+        
+        <script src="../elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+
+        <script src="../clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+
+        
+
+    </body>
+</html>
