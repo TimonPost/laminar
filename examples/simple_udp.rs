@@ -79,14 +79,9 @@ struct Server {
 }
 
 impl Server {
-    #[allow(unused_must_use)]
     pub fn new() -> Self {
-        // you can change the config but if you want just go for the default.
-        let config = Config::default();
-
         // setup an udp socket and bind it to the client address.
-        let (mut socket, packet_sender, event_receiver) =
-            Socket::bind(server_address(), config).unwrap();
+        let (mut socket, packet_sender, event_receiver) = Socket::bind(server_address()).unwrap();
         let polling_thread = thread::spawn(move || socket.start_polling());
         Server {
             _packet_sender: packet_sender,
@@ -147,14 +142,9 @@ struct Client {
 }
 
 impl Client {
-    #[allow(unused_must_use)]
     pub fn new() -> Self {
-        // you can change the config but if you want just go for the default.
-        let config = Config::default();
-
         // setup an udp socket and bind it to the client address.
-        let (mut socket, packet_sender, event_receiver) =
-            Socket::bind(client_address(), config).unwrap();
+        let (mut socket, packet_sender, event_receiver) = Socket::bind(client_address()).unwrap();
         let polling_thread = thread::spawn(move || socket.start_polling());
 
         Client {
@@ -164,7 +154,6 @@ impl Client {
         }
     }
 
-    #[allow(unused_must_use)]
     pub fn send(&mut self, data_type: DataType) {
         let serialized = serialize(&data_type);
 

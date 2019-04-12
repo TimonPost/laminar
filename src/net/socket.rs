@@ -28,6 +28,17 @@ impl Socket {
     /// endpoint by looking to see if they are still sending packets or not
     pub fn bind<A: ToSocketAddrs>(
         addresses: A,
+    ) -> Result<(Self, Sender<Packet>, Receiver<SocketEvent>)> {
+        Socket::bind_with_config(addresses, Config::default())
+    }
+
+    /// Binds to the socket and then sets up `ActiveConnections` to manage the "connections".
+    /// Because UDP connections are not persistent, we can only infer the status of the remote
+    /// endpoint by looking to see if they are still sending packets or not
+    ///
+    /// This function allows you to configure laminar with the passed configuration.
+    pub fn bind_with_config<A: ToSocketAddrs>(
+        addresses: A,
         config: Config,
     ) -> Result<(Self, Sender<Packet>, Receiver<SocketEvent>)> {
         let socket = UdpSocket::bind(addresses)?;
@@ -172,16 +183,10 @@ mod tests {
 
     #[test]
     fn can_send_and_receive() {
-        let (mut server, _, packet_receiver) = Socket::bind(
-            "127.0.0.1:12345".parse::<SocketAddr>().unwrap(),
-            Config::default(),
-        )
-        .unwrap();
-        let (mut client, packet_sender, _) = Socket::bind(
-            "127.0.0.1:12344".parse::<SocketAddr>().unwrap(),
-            Config::default(),
-        )
-        .unwrap();
+        let (mut server, _, packet_receiver) =
+            Socket::bind("127.0.0.1:12345".parse::<SocketAddr>().unwrap()).unwrap();
+        let (mut client, packet_sender, _) =
+            Socket::bind("127.0.0.1:12344".parse::<SocketAddr>().unwrap()).unwrap();
 
         thread::spawn(move || client.start_polling());
         thread::spawn(move || server.start_polling());
@@ -204,11 +209,8 @@ mod tests {
 
     #[test]
     fn sending_large_unreliable_packet_should_fail() {
-        let (mut server, _, packet_receiver) = Socket::bind(
-            "127.0.0.1:12370".parse::<SocketAddr>().unwrap(),
-            Config::default(),
-        )
-        .unwrap();
+        let (mut server, _, packet_receiver) =
+            Socket::bind("127.0.0.1:12370".parse::<SocketAddr>().unwrap()).unwrap();
 
         assert_eq!(
             server
@@ -223,11 +225,8 @@ mod tests {
 
     #[test]
     fn send_returns_right_size() {
-        let (mut server, _, packet_receiver) = Socket::bind(
-            "127.0.0.1:12371".parse::<SocketAddr>().unwrap(),
-            Config::default(),
-        )
-        .unwrap();
+        let (mut server, _, packet_receiver) =
+            Socket::bind("127.0.0.1:12371".parse::<SocketAddr>().unwrap()).unwrap();
 
         assert_eq!(
             server
@@ -242,11 +241,8 @@ mod tests {
 
     #[test]
     fn fragmentation_send_returns_right_size() {
-        let (mut server, _, packet_receiver) = Socket::bind(
-            "127.0.0.1:12372".parse::<SocketAddr>().unwrap(),
-            Config::default(),
-        )
-        .unwrap();
+        let (mut server, _, packet_receiver) =
+            Socket::bind("127.0.0.1:12372".parse::<SocketAddr>().unwrap()).unwrap();
 
         let fragment_packet_size = STANDARD_HEADER_SIZE + FRAGMENT_HEADER_SIZE;
 

@@ -8,7 +8,7 @@ use std::{
 
 use clap::{load_yaml, App, AppSettings};
 use crossbeam_channel::Sender;
-use laminar::{Config, Packet, Result, Socket, SocketEvent, ThroughputMonitoring};
+use laminar::{Packet, Result, Socket, SocketEvent, ThroughputMonitoring};
 use log::{debug, error, info};
 
 fn main() {
@@ -123,8 +123,7 @@ fn process_client_subcommand(m: clap::ArgMatches<'_>) {
 }
 
 fn run_server(server_config: ServerConfiguration) -> Result<()> {
-    let (mut socket, _packet_sender, event_receiver) =
-        Socket::bind(server_config.listen_host, Config::default())?;
+    let (mut socket, _packet_sender, event_receiver) = Socket::bind(server_config.listen_host)?;
 
     let _thread = thread::spawn(move || socket.start_polling());
 
@@ -146,7 +145,7 @@ fn run_server(server_config: ServerConfiguration) -> Result<()> {
 }
 
 fn run_client(config: ClientConfiguration) -> Result<()> {
-    let (mut socket, packet_sender, _) = Socket::bind(config.listen_host, Config::default())?;
+    let (mut socket, packet_sender, _) = Socket::bind(config.listen_host)?;
 
     let _thread = thread::spawn(move || socket.start_polling());
 

@@ -32,7 +32,7 @@ impl Client {
         let packets_to_send = self.packets_to_send;
 
         let handle = thread::spawn(move || {
-            let (mut socket, packet_sender, _) = Socket::bind(endpoint, Config::default()).unwrap();
+            let (mut socket, packet_sender, _) = Socket::bind(endpoint).unwrap();
 
             let _thread = thread::spawn(move || socket.start_polling());
 

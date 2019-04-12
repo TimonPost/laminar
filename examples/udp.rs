@@ -22,12 +22,8 @@ fn server_address() -> SocketAddr {
 
 /// This is an example of how to send data to an specific address.
 pub fn send_data() {
-    // you can change the config but if you want just go for the default.
-    let config = Config::default();
-
-    // setup an udp socket and bind it to the client address.
-    let (mut socket, packet_sender, _event_receiver) =
-        Socket::bind(client_address(), config).unwrap();
+    // Setup a udp socket and bind it to the client address.
+    let (mut socket, packet_sender, _event_receiver) = Socket::bind(client_address()).unwrap();
     let _thread = thread::spawn(move || socket.start_polling());
 
     let packet = construct_packet();
@@ -38,12 +34,8 @@ pub fn send_data() {
 
 /// This is an example of how to receive data over udp on an specific socket address.
 pub fn receive_data() {
-    // you can change the config but if you want just go for the default.
-    let config = Config::default();
-
     // setup an udp socket and bind it to the client address.
-    let (mut socket, _packet_sender, event_receiver) =
-        Socket::bind(server_address(), config).unwrap();
+    let (mut socket, _packet_sender, event_receiver) = Socket::bind(server_address()).unwrap();
     let _thread = thread::spawn(move || socket.start_polling());
 
     // Next start receiving.
