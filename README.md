@@ -32,7 +32,7 @@ For more information, read the projects [README.md][readme], [book][book], [docs
 
 [gog]: https://gafferongames.com/
 [readme]: https://github.com/amethyst/laminar/blob/master/README.md
-[book]: https://github.com/amethyst/laminar/tree/master/docs/md_book
+[book]: https://amethyst.github.io/laminar/docs/index.html
 [docs]: https://docs.rs/laminar/
 [examples]: https://github.com/amethyst/laminar/tree/master/examples
 
@@ -76,6 +76,7 @@ laminar = "0.2"
 - [Crates.io](https://crates.io/crates/laminar)
 - [Examples](https://github.com/amethyst/laminar/tree/master/examples)
 - [Contributing](https://github.com/amethyst/laminar/blob/master/docs/CONTRIBUTING)
+- [Book](https://amethyst.github.io/laminar/docs/index.html)
 
 ## Examples
 Please check out our [examples](https://github.com/amethyst/laminar/tree/master/examples) for more information.
