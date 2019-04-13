@@ -48,7 +48,9 @@ fn send_receive_unreliable_packets() {
             ServerEvent::TotalSent(total) => {
                 debug!("Total Packets Received {}", total);
             }
-            _ => error!("Not handled!"),
+            ServerEvent::SocketEvent(event) => {
+                info!("Socket Event: {:?}", event);
+            }
         }
     }
 
@@ -87,7 +89,9 @@ fn send_receive_unreliable_packets_muliple_clients() {
                     ServerEvent::TotalSent(total) => {
                         info!("Total Received: {}", total);
                     }
-                    _ => panic!("Not handled!"),
+                    ServerEvent::SocketEvent(event) => {
+                        info!("Socket Event: {:?}", event);
+                    }
                 };
             }
             Err(_) => {

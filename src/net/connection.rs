@@ -45,7 +45,12 @@ impl ActiveConnections {
             .collect()
     }
 
-    /// Get the number of connected clients.
+    /// Returns true if the given connection exists.
+    pub fn exists(&self, address: &SocketAddr) -> bool {
+        self.connections.contains_key(&address)
+    }
+
+    /// Returns the number of connected clients.
     #[cfg(test)]
     pub fn count(&self) -> usize {
         self.connections.len()
