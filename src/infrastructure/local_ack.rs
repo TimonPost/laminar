@@ -36,21 +36,30 @@ impl LocalAckRecord {
         let mut acked_packets = Vec::new();
 
         for key in self.packets.keys() {
-//            println!("Checking {:#?}", key);
+            // println!("Checking {:#?}", key);
             let diff = seq.wrapping_sub(*key);
             if diff == 0 {
-//                println!("Acking packet {:#?}", key);
+                // This packet (ack)
+                // println!("Acking packet {:#?}", key);
                 acked_packets.push(*key);
             } else if diff <= 32 {
+                // seq > key, so it's old packet
+                // within last 32 so checkable within bitfield
                 let field_acked = (seq_field & (1 << (diff - 1)) != 0);
                 if field_acked {
                     acked_packets.push(*key);
+                } else {
+                    dropped_packets.push(*key);
                 }
-//                println!("Field_acked is: {:#?}", field_acked);
+                // println!("Field_acked is: {:#?}", field_acked);
             } else if diff < 32000 {
-//                println!("Adding a dropped packet: {:#?}", key);
+                // Old packet that's not within 32, so can't be acked
+                // ASSUME DROPPED
+                // println!("dropping old packet: {:#?}", key);
                 dropped_packets.push(*key);
             }
+            // otherwise, wrapped around, so key > seq (new)
+            // New packet (don't drop or ack)
         }
 
         for seq_number in &acked_packets {
@@ -127,7 +136,7 @@ mod test {
         let dropped = record.ack(16, !0);
 
         assert_eq!(dropped.len(), 0);
-        assert!(record.is_empty());
+        assert_eq!(record.len(), 0);
     }
 
     #[test]
