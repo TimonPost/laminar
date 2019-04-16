@@ -17,7 +17,6 @@ impl ExternalAcks {
     /// Acks a packet
     pub fn ack(&mut self, seq_num: u16) {
         if !self.initialized {
-            // println!("ExternalAcks is not initialized. Initializing with: {:#?}", seq_num);
             self.last_seq = seq_num;
             self.initialized = true;
             return;
@@ -26,7 +25,6 @@ impl ExternalAcks {
         let pos_diff = seq_num.wrapping_sub(self.last_seq);
         let neg_diff = self.last_seq.wrapping_sub(seq_num);
 
-        // println!("Pos_diff is: {:#?}, Neg_diff is: {:#?}", pos_diff, neg_diff);
         if pos_diff == 0 {
             return;
         }
@@ -34,7 +32,6 @@ impl ExternalAcks {
         if pos_diff < 32000 {
             if pos_diff <= 32 {
                 self.field = ((self.field << 1) | 1) << (pos_diff - 1);
-            // println!("pos_diff is less than 32. Field is: {:#?}", self.field);
             } else {
                 self.field = 0;
             }
