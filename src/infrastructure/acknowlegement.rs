@@ -39,12 +39,12 @@ impl AcknowledgementHandler {
         self.their_acks.ack(incoming_seq);
 
         let dropped_packets = self.waiting_packets.ack(incoming_seq, self.bit_mask());
-
-        self.dropped_packets = dropped_packets.into_iter().map(|(_, p)| p).collect();
+        self.dropped_packets.extend(dropped_packets.into_iter().map(|(_, p)| p));
     }
 
     /// Enqueue the outgoing packet for acknowledgement.
     pub fn process_outgoing(&mut self, payload: &[u8]) {
+        println!("Dropped packets are: {:#?}", self.dropped_packets);
         self.waiting_packets.enqueue(self.seq_num, &payload);
     }
 }
@@ -82,6 +82,27 @@ mod test {
         }
 
         assert_eq!(handler.dropped_packets.len(), 0);
+    }
+
+    #[test]
+    fn acking_500_packets_with_packet_drop() {
+        let mut handler = AcknowledgementHandler::new();
+
+        let mut count = 0;
+
+        for i in 0..200 {
+            handler.seq_num = i;
+            handler.process_outgoing(vec![1, 2, 3].as_slice());
+
+            if i % 4 != 0 {
+                handler.process_incoming(i);
+            }else {
+                count += 1;
+            }
+        }
+
+        println!("{}", count);
+        assert_eq!(handler.dropped_packets.len(), 25);
     }
 
     #[test]

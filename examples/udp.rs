@@ -6,6 +6,7 @@ use laminar::{Config, Packet, Socket, SocketEvent};
 
 use std::net::SocketAddr;
 use std::thread;
+use crossbeam_channel::Sender;
 
 /// The socket address of where the server is located.
 const SERVER_ADDR: &'static str = "127.0.0.1:12345";
@@ -21,15 +22,10 @@ fn server_address() -> SocketAddr {
 }
 
 /// This is an example of how to send data to an specific address.
-pub fn send_data() {
-    // Setup a udp socket and bind it to the client address.
-    let (mut socket, packet_sender, _event_receiver) = Socket::bind(client_address()).unwrap();
-    let _thread = thread::spawn(move || socket.start_polling());
-
+pub fn send_data(sender: &Sender<Packet>) {
     let packet = construct_packet();
-
     // next send or packet to the endpoint we earlier putted into the packet.
-    packet_sender.send(packet).unwrap();
+    sender.send(packet).unwrap();
 }
 
 /// This is an example of how to receive data over udp on an specific socket address.
@@ -38,25 +34,29 @@ pub fn receive_data() {
     let (mut socket, _packet_sender, event_receiver) = Socket::bind(server_address()).unwrap();
     let _thread = thread::spawn(move || socket.start_polling());
 
-    // Next start receiving.
-    let result = event_receiver.recv();
+    let mut count = 0;
 
-    match result {
-        Ok(SocketEvent::Packet(packet)) => {
-            let endpoint: SocketAddr = packet.addr();
-            let received_data: &[u8] = packet.payload();
+    loop {
+        // Next start receiving.
+        let result = event_receiver.recv();
 
-            // you can here deserialize your bytes into the data you have passed it when sending.
+        match result {
+            Ok(SocketEvent::Packet(packet)) => {
+                let endpoint: SocketAddr = packet.addr();
+                let received_data: &[u8] = packet.payload();
 
-            println!(
-                "Received packet from: {:?} with length {}",
-                endpoint,
-                received_data.len()
-            );
-        }
-        Ok(_) => {}
-        Err(e) => {
-            println!("Something went wrong when receiving, error: {:?}", e);
+                // you can here deserialize your bytes into the data you have passed it when sending.
+                println!(
+                    "Received {}",
+                    count
+                );
+
+                count+=1;
+            }
+            Ok(_) => {}
+            Err(e) => {
+                println!("Something went wrong when receiving, error: {:?}", e);
+            }
         }
     }
 }
@@ -76,4 +76,19 @@ pub fn construct_packet() -> Packet {
 }
 
 // TODO: Use functions in example
-fn main() {}
+fn main() {
+
+    let handle = thread::spawn(move || {
+        receive_data();
+    });
+
+    let (mut socket, packet_sender, _event_receiver) = Socket::bind(client_address()).unwrap();
+    // Setup a udp socket and bind it to the client address.
+    let _thread = thread::spawn(move || socket.start_polling());
+
+    for i in 0..10000 {
+        send_data(&packet_sender);
+    }
+
+    handle.join();
+}
