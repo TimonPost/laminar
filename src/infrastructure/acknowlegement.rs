@@ -45,7 +45,6 @@ impl AcknowledgementHandler {
 
     /// Enqueue the outgoing packet for acknowledgement.
     pub fn process_outgoing(&mut self, payload: &[u8]) {
-        println!("Dropped packets are: {:#?}", self.dropped_packets);
         self.waiting_packets.enqueue(self.seq_num, &payload);
     }
 }
