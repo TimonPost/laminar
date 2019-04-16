@@ -90,19 +90,18 @@ mod test {
 
         let mut count = 0;
 
-        for i in 0..200 {
+        for i in 0..500 {
             handler.seq_num = i;
-            handler.process_outgoing(vec![1, 2, 3].as_slice());
+            handler.process_outgoing(vec![i as u8, 2, 3].as_slice());
 
             if i % 4 != 0 {
                 handler.process_incoming(i);
-            }else {
+            } else {
                 count += 1;
             }
         }
 
-        println!("{}", count);
-        assert_eq!(handler.dropped_packets.len(), 25);
+        assert_eq!(handler.dropped_packets.len(), count);
     }
 
     #[test]
