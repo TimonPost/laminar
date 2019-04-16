@@ -88,20 +88,22 @@ mod test {
     fn acking_500_packets_with_packet_drop() {
         let mut handler = AcknowledgementHandler::new();
 
-        let mut count = 0;
+        let mut drop_count = 0;
 
-        for i in 0..500 {
+        for i in 0..100 {
+            handler.process_outgoing(vec![1, 2, 3].as_slice());
             handler.seq_num = i;
-            handler.process_outgoing(vec![i as u8, 2, 3].as_slice());
 
-            if i % 4 != 0 {
-                handler.process_incoming(i);
+            // dropping every 4th with modulo's
+            if i % 4 == 0 {
+                println!("Dropping packet: {}", drop_count);
+                drop_count += 1;
             } else {
-                count += 1;
+                handler.process_incoming(i);
             }
         }
 
-        assert_eq!(handler.dropped_packets.len(), count);
+        assert_eq!(handler.dropped_packets.len(), 25);
     }
 
     #[test]
