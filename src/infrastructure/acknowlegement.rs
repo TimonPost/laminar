@@ -39,7 +39,8 @@ impl AcknowledgementHandler {
         self.their_acks.ack(incoming_seq);
 
         let dropped_packets = self.waiting_packets.ack(incoming_seq, self.bit_mask());
-        self.dropped_packets.extend(dropped_packets.into_iter().map(|(_, p)| p));
+        self.dropped_packets
+            .extend(dropped_packets.into_iter().map(|(_, p)| p));
     }
 
     /// Enqueue the outgoing packet for acknowledgement.

@@ -46,12 +46,12 @@ impl LocalAckRecord {
                 // seq > key, so it's old packet
                 // within last 32 so checkable within bitfield
                 let field_acked = (seq_field & (1 << (diff - 1)) != 0);
+                // println!("Field_acked is: {:#?}", field_acked);
                 if field_acked {
                     acked_packets.push(*key);
                 } else {
                     dropped_packets.push(*key);
                 }
-                // println!("Field_acked is: {:#?}", field_acked);
             } else if diff < 32000 {
                 // Old packet that's not within 32, so can't be acked
                 // ASSUME DROPPED

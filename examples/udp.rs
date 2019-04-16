@@ -4,9 +4,9 @@
 //! 3. constructing the packet for sending.
 use laminar::{Config, Packet, Socket, SocketEvent};
 
+use crossbeam_channel::Sender;
 use std::net::SocketAddr;
 use std::thread;
-use crossbeam_channel::Sender;
 
 /// The socket address of where the server is located.
 const SERVER_ADDR: &'static str = "127.0.0.1:12345";
@@ -46,12 +46,9 @@ pub fn receive_data() {
                 let received_data: &[u8] = packet.payload();
 
                 // you can here deserialize your bytes into the data you have passed it when sending.
-                println!(
-                    "Received {}",
-                    count
-                );
+                println!("Received {}", count);
 
-                count+=1;
+                count += 1;
             }
             Ok(_) => {}
             Err(e) => {
@@ -77,7 +74,6 @@ pub fn construct_packet() -> Packet {
 
 // TODO: Use functions in example
 fn main() {
-
     let handle = thread::spawn(move || {
         receive_data();
     });
