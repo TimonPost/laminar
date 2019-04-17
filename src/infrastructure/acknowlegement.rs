@@ -3,7 +3,7 @@ use crate::infrastructure::{ExternalAcks, LocalAckRecord};
 /// Type responsible for handling the acknowledgement of packets.
 pub struct AcknowledgementHandler {
     waiting_packets: LocalAckRecord,
-    our_acks: ExternalAcks,
+    acks_of_received: ExternalAcks,
     pub seq_num: u16,
     pub dropped_packets: Vec<Box<[u8]>>,
 }
@@ -14,21 +14,21 @@ impl AcknowledgementHandler {
         AcknowledgementHandler {
             seq_num: 0,
             waiting_packets: Default::default(),
-            our_acks: Default::default(),
+            acks_of_received: Default::default(),
             dropped_packets: Vec::new(),
         }
     }
 }
 
 impl AcknowledgementHandler {
-    /// Returns the bit mask that contains the packets who WE'VE receieved.
+    /// Returns the bit mask that contains the packets that we have receieved
     pub fn bit_mask(&self) -> u32 {
-        self.our_acks.field
+        self.acks_of_received.field
     }
 
-    /// Returns the last acknowledged sequence number WE'VE received.
+    /// Returns the last sequence number in a packet we've received
     pub fn last_seq(&self) -> u16 {
-        self.our_acks.last_seq
+        self.acks_of_received.last_seq
     }
 
     /// Process the incoming sequence number.
@@ -36,7 +36,7 @@ impl AcknowledgementHandler {
     /// - Acknowledge the incoming sequence number
     /// - Update dropped packets
     pub fn process_incoming(&mut self, new_packet_seq: u16, ack_seq: u16, ack_field: u32) {
-        self.our_acks.ack(new_packet_seq);
+        self.acks_of_received.ack(new_packet_seq);
 
         let dropped_packets = self.waiting_packets.ack(ack_seq, ack_field);
         self.dropped_packets
@@ -52,6 +52,7 @@ impl AcknowledgementHandler {
 #[cfg(test)]
 mod test {
     use crate::infrastructure::AcknowledgementHandler;
+    use log::debug;
 
     #[test]
     fn packet_is_not_acket() {
@@ -100,7 +101,7 @@ mod test {
 
             // dropping every 4th with modulo's
             if i % 4 == 0 {
-                println!("Dropping packet: {}", drop_count);
+                debug!("Dropping packet: {}", drop_count);
                 drop_count += 1;
             } else {
                 // We send them a packet
