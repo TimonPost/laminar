@@ -260,7 +260,9 @@ impl VirtualConnection {
                             self.congestion_handler
                                 .process_incoming(acked_header.sequence());
                             self.acknowledge_handler
-                                .process_incoming(acked_header.sequence());
+                                .process_incoming(acked_header.sequence(),
+                                                 acked_header.ack_seq(),
+                                                 acked_header.ack_field());
                         }
                     }
                 } else {
@@ -337,7 +339,9 @@ impl VirtualConnection {
                     self.congestion_handler
                         .process_incoming(acked_header.sequence());
                     self.acknowledge_handler
-                        .process_incoming(acked_header.sequence());
+                        .process_incoming(acked_header.sequence(),
+                                         acked_header.ack_seq(),
+                                         acked_header.ack_field());
                 }
             }
         }

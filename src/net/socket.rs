@@ -131,13 +131,13 @@ impl Socket {
             }
 
             for payload in dropped_packets {
-                bytes_sent += self.send_packet(&packet.addr(), &payload)?;
+                bytes_sent += self.send_to(Packet::new(packet.addr(), payload, packet.delivery_guarantee(), packet.order_guarantee()))?;
             }
 
-            return Ok(bytes_sent);
+            Ok(bytes_sent)
+        } else {
+            Ok(0)
         }
-
-        Ok(0)
     }
 
     // On success the packet will be send on the `event_sender`

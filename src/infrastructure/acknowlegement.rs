@@ -3,7 +3,7 @@ use crate::infrastructure::{ExternalAcks, LocalAckRecord};
 /// Type responsible for handling the acknowledgement of packets.
 pub struct AcknowledgementHandler {
     waiting_packets: LocalAckRecord,
-    their_acks: ExternalAcks,
+    our_acks: ExternalAcks,
     pub seq_num: u16,
     pub dropped_packets: Vec<Box<[u8]>>,
 }
@@ -14,31 +14,31 @@ impl AcknowledgementHandler {
         AcknowledgementHandler {
             seq_num: 0,
             waiting_packets: Default::default(),
-            their_acks: Default::default(),
+            our_acks: Default::default(),
             dropped_packets: Vec::new(),
         }
     }
 }
 
 impl AcknowledgementHandler {
-    /// Returns the bit mask that contains the packets who are acknowledged.
+    /// Returns the bit mask that contains the packets who WE'VE receieved.
     pub fn bit_mask(&self) -> u32 {
-        self.their_acks.field
+        self.our_acks.field
     }
 
-    /// Returns the last acknowledged sequence number by the other endpoint.
+    /// Returns the last acknowledged sequence number WE'VE received.
     pub fn last_seq(&self) -> u16 {
-        self.their_acks.last_seq
+        self.our_acks.last_seq
     }
 
     /// Process the incoming sequence number.
     ///
     /// - Acknowledge the incoming sequence number
     /// - Update dropped packets
-    pub fn process_incoming(&mut self, incoming_seq: u16) {
-        self.their_acks.ack(incoming_seq);
+    pub fn process_incoming(&mut self, new_packet_seq: u16, ack_seq: u16, ack_field: u32) {
+        self.our_acks.ack(new_packet_seq);
 
-        let dropped_packets = self.waiting_packets.ack(incoming_seq, self.bit_mask());
+        let dropped_packets = self.waiting_packets.ack(ack_seq, ack_field);
         self.dropped_packets
             .extend(dropped_packets.into_iter().map(|(_, p)| p));
     }
@@ -62,7 +62,8 @@ mod test {
         handler.seq_num = 40;
         handler.process_outgoing(vec![1, 2, 4].as_slice());
 
-        handler.process_incoming(40);
+        static ARBITRARY: u16 = 23;
+        handler.process_incoming(ARBITRARY, 40, 0);
 
         assert_eq!(
             handler.dropped_packets,
@@ -73,24 +74,27 @@ mod test {
     #[test]
     fn acking_500_packets_without_packet_drop() {
         let mut handler = AcknowledgementHandler::new();
+        let mut other = AcknowledgementHandler::new();
 
         for i in 0..500 {
             handler.seq_num = i;
             handler.process_outgoing(vec![1, 2, 3].as_slice());
 
-            handler.process_incoming(i);
+            other.process_incoming(i, handler.last_seq(), handler.bit_mask());
+            handler.process_incoming(i, other.last_seq(), other.bit_mask());
         }
 
         assert_eq!(handler.dropped_packets.len(), 0);
     }
 
     #[test]
-    fn acking_500_packets_with_packet_drop() {
+    fn acking_2000_packets_with_packet_drop() {
         let mut handler = AcknowledgementHandler::new();
+        let mut other = AcknowledgementHandler::new();
 
         let mut drop_count = 0;
 
-        for i in 0..100 {
+        for i in 0..2000 {
             handler.process_outgoing(vec![1, 2, 3].as_slice());
             handler.seq_num = i;
 
@@ -99,20 +103,24 @@ mod test {
                 println!("Dropping packet: {}", drop_count);
                 drop_count += 1;
             } else {
-                handler.process_incoming(i);
+                // We send them a packet
+                other.process_incoming(i, handler.last_seq(), handler.bit_mask());
+                // Skipped: other.process_outgoing
+                // And it makes it back
+                handler.process_incoming(i, other.last_seq(), other.bit_mask());
             }
         }
 
-        assert_eq!(handler.dropped_packets.len(), 25);
+        assert_eq!(handler.dropped_packets.len(), 500);
     }
 
     #[test]
     fn last_seq_will_be_updated() {
         let mut handler = AcknowledgementHandler::new();
         assert_eq!(handler.last_seq(), 0);
-        handler.process_incoming(1);
+        handler.process_incoming(1, 0, 0);
         assert_eq!(handler.last_seq(), 1);
-        handler.process_incoming(2);
+        handler.process_incoming(2, 0, 0);
         assert_eq!(handler.last_seq(), 2);
     }
 }

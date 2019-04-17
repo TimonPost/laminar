@@ -30,7 +30,10 @@ impl ExternalAcks {
         }
 
         if pos_diff < 32000 {
+            // New
             if pos_diff <= 32 {
+                // Push the old packets back, and add this one
+                // Add the final (from implicit, seq_num) and push back
                 self.field = ((self.field << 1) | 1) << (pos_diff - 1);
             } else {
                 self.field = 0;
@@ -38,6 +41,7 @@ impl ExternalAcks {
             // If the packet is more recent, we update the remote sequence to be equal to the sequence number of the packet.
             self.last_seq = seq_num;
         } else if neg_diff <= 32 {
+            // Old, but less than 32 bits old
             self.field |= 1 << (neg_diff - 1);
         }
     }
@@ -64,7 +68,7 @@ mod test {
         acks.ack(2);
 
         assert_eq!(acks.last_seq, 2);
-        assert_eq!(acks.field, 1 | (1 << 1));
+        assert_eq!(acks.field, 0b11);
     }
 
     #[test]
@@ -75,7 +79,7 @@ mod test {
         acks.ack(2);
 
         assert_eq!(acks.last_seq, 2);
-        assert_eq!(acks.field, 1 | (1 << 1));
+        assert_eq!(acks.field, 0b11);
     }
 
     #[test]
@@ -180,14 +184,6 @@ mod test {
         acks.ack(6);
         acks.ack(4);
         assert_eq!(acks.last_seq, 6);
-        assert_eq!(
-            acks.field,
-            0        | // 5 (missing)
-                       (1 << 1) | // 4 (present)
-                       (0 << 2) | // 3 (missing)
-                       (0 << 3) | // 2 (missing)
-                       (1 << 4) | // 1 (present)
-                       (1 << 5) // 0 (present)
-        );
+        assert_eq!(acks.field, 0b110010);
     }
 }
