@@ -131,7 +131,12 @@ impl Socket {
             }
 
             for payload in dropped_packets {
-                bytes_sent += self.send_to(Packet::new(packet.addr(), payload, packet.delivery_guarantee(), packet.order_guarantee()))?;
+                bytes_sent += self.send_to(Packet::new(
+                    packet.addr(),
+                    payload,
+                    packet.delivery_guarantee(),
+                    packet.order_guarantee(),
+                ))?;
             }
 
             Ok(bytes_sent)
