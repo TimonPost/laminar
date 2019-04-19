@@ -68,7 +68,7 @@ mod test {
         acks.ack(2);
 
         assert_eq!(acks.last_seq, 2);
-        assert_eq!(acks.field, 0b11);
+        assert_eq!(acks.field, 1 | (1 << 1));
     }
 
     #[test]
@@ -79,7 +79,7 @@ mod test {
         acks.ack(2);
 
         assert_eq!(acks.last_seq, 2);
-        assert_eq!(acks.field, 0b11);
+        assert_eq!(acks.field, 1 | (1 << 1));
     }
 
     #[test]
@@ -184,6 +184,14 @@ mod test {
         acks.ack(6);
         acks.ack(4);
         assert_eq!(acks.last_seq, 6);
-        assert_eq!(acks.field, 0b110010);
+        assert_eq!(
+            acks.field,
+            0        | // 5 (missing)
+                       (1 << 1) | // 4 (present)
+                       (0 << 2) | // 3 (missing)
+                       (0 << 3) | // 2 (missing)
+                       (1 << 4) | // 1 (present)
+                       (1 << 5) // 0 (present)
+        );
     }
 }
