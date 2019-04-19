@@ -106,13 +106,13 @@ mod test {
     }
 
     #[test]
-    fn acking_2000_packets_with_packet_drop() {
+    fn acking_many_packets_with_packet_drop() {
         let mut handler = AcknowledgementHandler::new();
         let mut other = AcknowledgementHandler::new();
 
         let mut drop_count = 0;
 
-        for i in 0..2000 {
+        for i in 0..100 {
             handler.process_outgoing(vec![1, 2, 3].as_slice(), OrderingGuarantee::None);
             handler.seq_num = i;
 
@@ -129,7 +129,7 @@ mod test {
             }
         }
 
-        assert_eq!(handler.dropped_packets.len(), 500);
+        assert_eq!(handler.dropped_packets.len(), 25);
     }
 
     #[test]
