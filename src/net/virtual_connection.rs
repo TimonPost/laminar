@@ -3,7 +3,7 @@ use crate::{
     error::{ErrorKind, PacketErrorKind, Result},
     infrastructure::{
         arranging::{Arranging, ArrangingSystem, OrderingSystem, SequencingSystem},
-        AcknowledgementHandler, CongestionHandler, Fragmentation,
+        AcknowledgementHandler, CongestionHandler, Fragmentation, WaitingPacket,
     },
     net::constants::{
         ACKED_PACKET_HEADER, DEFAULT_ORDERING_STREAM, DEFAULT_SEQUENCING_STREAM,
@@ -174,7 +174,8 @@ impl VirtualConnection {
 
                 self.congestion_handler
                     .process_outgoing(self.acknowledge_handler.seq_num);
-                self.acknowledge_handler.process_outgoing(payload);
+                self.acknowledge_handler
+                    .process_outgoing(payload, ordering_guarantee);
 
                 self.acknowledge_handler.seq_num = self.acknowledge_handler.seq_num.wrapping_add(1);
 
@@ -259,8 +260,11 @@ impl VirtualConnection {
                         if let Some(acked_header) = acked_header {
                             self.congestion_handler
                                 .process_incoming(acked_header.sequence());
-                            self.acknowledge_handler
-                                .process_incoming(acked_header.sequence());
+                            self.acknowledge_handler.process_incoming(
+                                acked_header.sequence(),
+                                acked_header.ack_seq(),
+                                acked_header.ack_field(),
+                            );
                         }
                     }
                 } else {
@@ -336,8 +340,11 @@ impl VirtualConnection {
 
                     self.congestion_handler
                         .process_incoming(acked_header.sequence());
-                    self.acknowledge_handler
-                        .process_incoming(acked_header.sequence());
+                    self.acknowledge_handler.process_incoming(
+                        acked_header.sequence(),
+                        acked_header.ack_seq(),
+                        acked_header.ack_field(),
+                    );
                 }
             }
         }
@@ -364,7 +371,7 @@ impl VirtualConnection {
     /// This will gather dropped packets from the reliable channels.
     ///
     /// Note that after requesting dropped packets the dropped packets will be removed from this client.
-    pub fn gather_dropped_packets(&mut self) -> Vec<Box<[u8]>> {
+    pub fn gather_dropped_packets(&mut self) -> Vec<WaitingPacket> {
         self.acknowledge_handler.dropped_packets.drain(..).collect()
     }
 }

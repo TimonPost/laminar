@@ -2,7 +2,7 @@ use crate::{
     config::Config,
     error::{ErrorKind, Result},
     net::{connection::ActiveConnections, events::SocketEvent, link_conditioner::LinkConditioner},
-    packet::{Outgoing, Packet},
+    packet::{DeliveryGuarantee, Outgoing, Packet},
 };
 use crossbeam_channel::{self, unbounded, Receiver, Sender};
 use log::error;
@@ -130,14 +130,22 @@ impl Socket {
                 }
             }
 
-            for payload in dropped_packets {
-                bytes_sent += self.send_packet(&packet.addr(), &payload)?;
+            for dropped_packet in dropped_packets {
+                bytes_sent += self.send_to(Packet::new(
+                    // This is sent from virtual channel, address must be the same
+                    packet.addr(),
+                    dropped_packet.payload,
+                    // Because a delivery guarantee is only sent with reliable packets
+                    DeliveryGuarantee::Reliable,
+                    // This is storted with the dropped packet because they could be mixed
+                    dropped_packet.ordering_guarantee,
+                ))?;
             }
 
-            return Ok(bytes_sent);
+            Ok(bytes_sent)
+        } else {
+            Ok(0)
         }
-
-        Ok(0)
     }
 
     // On success the packet will be send on the `event_sender`

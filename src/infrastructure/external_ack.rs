@@ -30,7 +30,10 @@ impl ExternalAcks {
         }
 
         if pos_diff < 32000 {
+            // New
             if pos_diff <= 32 {
+                // Push the old packets back, and add this one
+                // Add the final (from implicit, seq_num) and push back
                 self.field = ((self.field << 1) | 1) << (pos_diff - 1);
             } else {
                 self.field = 0;
@@ -38,6 +41,7 @@ impl ExternalAcks {
             // If the packet is more recent, we update the remote sequence to be equal to the sequence number of the packet.
             self.last_seq = seq_num;
         } else if neg_diff <= 32 {
+            // Old, but less than 32 bits old
             self.field |= 1 << (neg_diff - 1);
         }
     }
