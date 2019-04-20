@@ -195,7 +195,7 @@ impl Socket {
 mod tests {
     use crate::{
         net::constants::{ACKED_PACKET_HEADER, FRAGMENT_HEADER_SIZE, STANDARD_HEADER_SIZE},
-        Config, Packet, Socket, SocketEvent,
+        Packet, Socket,
     };
     use std::net::SocketAddr;
     use std::thread;

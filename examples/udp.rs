@@ -2,7 +2,7 @@
 //! 1. sending data
 //! 2. receiving data
 //! 3. constructing the packet for sending.
-use laminar::{Config, Packet, Socket, SocketEvent};
+use laminar::{Packet, Socket, SocketEvent};
 
 use std::net::SocketAddr;
 use std::thread;
