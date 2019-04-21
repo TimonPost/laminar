@@ -18,7 +18,7 @@ impl CongestionHandler {
     pub fn new(config: &Config) -> CongestionHandler {
         CongestionHandler {
             rtt_measurer: RttMeasurer::new(config),
-            congestion_data: SequenceBuffer::with_capacity(<u16>::max_value() as usize),
+            congestion_data: SequenceBuffer::with_capacity(<u16>::max_value()),
             _quality: NetworkQuality::Good,
         }
     }
@@ -37,7 +37,7 @@ impl CongestionHandler {
     /// Once we process incoming sequence numbers we can calculate the `RTT` time.
     pub fn process_outgoing(&mut self, seq: u16) {
         self.congestion_data
-            .insert(CongestionData::new(seq, Instant::now()), seq);
+            .insert(seq, CongestionData::new(seq, Instant::now()));
     }
 }
 

@@ -59,7 +59,7 @@ impl VirtualConnection {
         now.duration_since(self.last_heard)
     }
 
-    /// This pre-process the given buffer to be send over the network.
+    /// This will pre-process the given buffer to be sent over the network.
     pub fn process_outgoing<'a>(
         &mut self,
         payload: &'a [u8],
@@ -104,9 +104,9 @@ impl VirtualConnection {
                         );
 
                         builder = builder.with_acknowledgement_header(
-                            self.acknowledge_handler.seq_num,
-                            self.acknowledge_handler.last_seq(),
-                            self.acknowledge_handler.bit_mask(),
+                            self.acknowledge_handler.local_seq_num(),
+                            self.acknowledge_handler.remote_seq_num(),
+                            self.acknowledge_handler.ack_bitfield(),
                         );
 
                         if let OrderingGuarantee::Ordered(stream_id) = ordering_guarantee {
@@ -152,16 +152,16 @@ impl VirtualConnection {
                                         );
 
                                     builder = builder.with_fragment_header(
-                                        self.acknowledge_handler.seq_num,
+                                        self.acknowledge_handler.local_seq_num(),
                                         fragment_id as u8,
                                         fragments_needed,
                                     );
 
                                     if fragment_id == 0 {
                                         builder = builder.with_acknowledgement_header(
-                                            self.acknowledge_handler.seq_num,
-                                            self.acknowledge_handler.last_seq(),
-                                            self.acknowledge_handler.bit_mask(),
+                                            self.acknowledge_handler.local_seq_num(),
+                                            self.acknowledge_handler.remote_seq_num(),
+                                            self.acknowledge_handler.ack_bitfield(),
                                         );
                                     }
 
@@ -173,11 +173,9 @@ impl VirtualConnection {
                 };
 
                 self.congestion_handler
-                    .process_outgoing(self.acknowledge_handler.seq_num);
+                    .process_outgoing(self.acknowledge_handler.local_seq_num());
                 self.acknowledge_handler
                     .process_outgoing(payload, ordering_guarantee);
-
-                self.acknowledge_handler.seq_num = self.acknowledge_handler.seq_num.wrapping_add(1);
 
                 Ok(outgoing)
             }

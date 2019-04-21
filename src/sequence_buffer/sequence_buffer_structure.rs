@@ -2,81 +2,112 @@ use crate::packet::SequenceNumber;
 use std::clone::Clone;
 
 /// Collection to store data of any kind.
-pub struct SequenceBuffer<T>
-where
-    T: Default + Clone + Send + Sync,
-{
-    entries: Vec<T>,
-    entry_sequences: Vec<SequenceNumber>,
+pub struct SequenceBuffer<T: Clone + Default> {
+    sequence_num: SequenceNumber,
+    entry_sequences: Box<[Option<SequenceNumber>]>,
+    entries: Box<[T]>,
 }
 
-impl<T> SequenceBuffer<T>
-where
-    T: Default + Clone + Send + Sync,
-{
-    /// Create collection with a specific capacity.
-    pub fn with_capacity(size: usize) -> Self {
-        let mut entries = Vec::with_capacity(size);
-        let mut entry_sequences = Vec::with_capacity(size);
-
-        entries.resize(size, T::default());
-        entry_sequences.resize(size, 0xFFFF);
-
-        SequenceBuffer {
-            entries,
-            entry_sequences,
+impl<T: Clone + Default> SequenceBuffer<T> {
+    /// Create a SequenceBuffer with a desired capacity.
+    pub fn with_capacity(size: u16) -> Self {
+        Self {
+            sequence_num: 0,
+            entry_sequences: vec![None; size as usize].into_boxed_slice(),
+            entries: vec![T::default(); size as usize].into_boxed_slice(),
         }
     }
 
-    /// Get mutable entry from collection by sequence number.
-    pub fn get_mut(&mut self, sequence: SequenceNumber) -> Option<&mut T> {
-        let index = self.index(sequence);
+    /// Returns the most recently stored sequence number.
+    pub fn sequence_num(&self) -> SequenceNumber {
+        return self.sequence_num;
+    }
 
-        if self.entry_sequences[index] != sequence {
+    /// Returns a mutable reference to the entry with the given sequence number.
+    pub fn get_mut(&mut self, sequence_num: SequenceNumber) -> Option<&mut T> {
+        if self.exists(sequence_num) {
+            let index = self.index(sequence_num);
+            return Some(&mut self.entries[index]);
+        }
+        None
+    }
+
+    /// Insert the entry data into the sequence buffer. If the requested sequence number is "too
+    /// old", the entry will not be inserted and no reference will be returned.
+    pub fn insert(&mut self, sequence_num: SequenceNumber, entry: T) -> Option<&mut T> {
+        // Sequence number is too old to insert into the buffer
+        if sequence_less_than(
+            sequence_num,
+            self.sequence_num
+                .wrapping_sub(self.entry_sequences.len() as u16),
+        ) {
             return None;
         }
 
+        self.advance_sequence(sequence_num);
+
+        let index = self.index(sequence_num);
+        self.entry_sequences[index] = Some(sequence_num);
+        self.entries[index] = entry;
         Some(&mut self.entries[index])
     }
 
-    /// Insert new entry into the collection.
-    pub fn insert(&mut self, data: T, sequence: SequenceNumber) -> &mut T {
-        let index = self.index(sequence);
-
-        self.entries[index] = data;
-        self.entry_sequences[index] = sequence;
-
-        &mut self.entries[index]
+    /// Returns whether or not we have previously inserted an entry for the given sequence number.
+    pub fn exists(&self, sequence_num: SequenceNumber) -> bool {
+        let index = self.index(sequence_num);
+        if let Some(s) = self.entry_sequences[index] {
+            return s == sequence_num;
+        }
+        false
     }
 
-    /// Remove entry from collection.
-    pub fn remove(&mut self, sequence: SequenceNumber) {
-        // TODO: validity check
-        let index = self.index(sequence);
-        self.entries[index] = T::default();
-        self.entry_sequences[index] = 0xFFFF;
+    /// Removes an entry from the sequence buffer
+    pub fn remove(&mut self, sequence_num: SequenceNumber) {
+        if self.exists(sequence_num) {
+            let index = self.index(sequence_num);
+            self.entries[index] = T::default();
+            self.entry_sequences[index] = None;
+        }
     }
 
-    /// checks if an certain entry exists.
-    pub fn exists(&self, sequence: SequenceNumber) -> bool {
-        let index = self.index(sequence);
-        if self.entry_sequences[index] != sequence {
-            return false;
+    // Advances the sequence number while removing older entries.
+    fn advance_sequence(&mut self, sequence_num: SequenceNumber) {
+        if sequence_greater_than(sequence_num.wrapping_add(1), self.sequence_num) {
+            self.remove_entries(sequence_num as u32);
+            self.sequence_num = sequence_num.wrapping_add(1);
+        }
+    }
+
+    fn remove_entries(&mut self, mut finish_sequence: u32) {
+        let start_sequence = self.sequence_num as u32;
+        if finish_sequence < start_sequence {
+            finish_sequence += 65536;
         }
 
-        true
+        if finish_sequence - start_sequence < self.entry_sequences.len() as u32 {
+            for sequence in start_sequence..finish_sequence {
+                self.remove(sequence as u16);
+            }
+        } else {
+            for index in 0..self.entry_sequences.len() {
+                self.entries[index] = T::default();
+                self.entry_sequences[index] = None;
+            }
+        }
     }
 
-    /// Get the length of the collection.
-    #[allow(dead_code)]
-    pub fn len(&self) -> usize {
-        self.entries.len()
-    }
-
-    /// converts an sequence number to an index that could be used for the inner storage.
+    // Generates an index for use in `entry_sequences` and `entries`.
     fn index(&self, sequence: SequenceNumber) -> usize {
-        sequence as usize % self.entries.len()
+        sequence as usize % self.entry_sequences.len()
     }
+}
+
+fn sequence_greater_than(s1: u16, s2: u16) -> bool {
+    ((s1 > s2) && (s1 - s2 <= 32768)) || ((s1 < s2) && (s2 - s1 > 32768))
+}
+
+fn sequence_less_than(s1: u16, s2: u16) -> bool {
+    sequence_greater_than(s2, s1)
 }
 
 #[cfg(test)]
@@ -87,25 +118,50 @@ mod tests {
     struct DataStub;
 
     #[test]
-    fn insert_into_fragment_buffer_test() {
-        let mut fragment_buffer = SequenceBuffer::with_capacity(2);
-        fragment_buffer.insert(DataStub, 1);
-        assert!(fragment_buffer.exists(1));
+    fn max_sequence_number_exists() {
+        let buffer: SequenceBuffer<DataStub> = SequenceBuffer::with_capacity(2);
+        assert!(!buffer.exists(u16::max_value()));
     }
 
     #[test]
-    fn remove_from_fragment_buffer_test() {
-        let mut fragment_buffer = SequenceBuffer::with_capacity(2);
-        fragment_buffer.insert(DataStub, 1);
-        fragment_buffer.remove(1);
-        assert!(!fragment_buffer.exists(1));
+    fn ensure_entries_and_entry_sequences_are_the_same_size() {
+        let buffer: SequenceBuffer<DataStub> = SequenceBuffer::with_capacity(2);
+        assert_eq!(buffer.entry_sequences.len(), buffer.entries.len());
     }
 
     #[test]
-    fn fragment_buffer_len_test() {
-        let mut fragment_buffer = SequenceBuffer::with_capacity(2);
-        fragment_buffer.insert(DataStub, 1);
-        fragment_buffer.insert(DataStub, 2);
-        assert_eq!(fragment_buffer.len(), 2);
+    fn insert_into_buffer_test() {
+        let mut buffer = SequenceBuffer::with_capacity(2);
+        buffer.insert(0, DataStub);
+        assert!(buffer.exists(0));
     }
+
+    #[test]
+    fn remove_from_buffer_test() {
+        let mut buffer = SequenceBuffer::with_capacity(2);
+        buffer.insert(0, DataStub);
+        buffer.remove(0);
+        assert!(!buffer.exists(0));
+    }
+
+    #[test]
+    fn insert_into_buffer_old_entry_test() {
+        let mut buffer = SequenceBuffer::with_capacity(2);
+        buffer.insert(2, DataStub);
+        buffer.insert(0, DataStub);
+        assert!(!buffer.exists(0));
+    }
+
+    #[test]
+    fn new_sequence_nums_evict_old_ones() {
+        let mut buffer = SequenceBuffer::with_capacity(2);
+        for i in 0..3 {
+            buffer.insert(i, DataStub);
+        }
+        assert!(!buffer.exists(0));
+        assert!(buffer.exists(1));
+        assert!(buffer.exists(2));
+    }
+
+    // TODO: Add a bunch of tests...
 }

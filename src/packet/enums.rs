@@ -38,6 +38,12 @@ pub enum OrderingGuarantee {
     Ordered(Option<u8>),
 }
 
+impl Default for OrderingGuarantee {
+    fn default() -> Self {
+        OrderingGuarantee::None
+    }
+}
+
 impl EnumConverter for OrderingGuarantee {
     type Enum = OrderingGuarantee;
 

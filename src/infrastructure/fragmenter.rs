@@ -158,7 +158,7 @@ impl Fragmentation {
             );
 
             self.fragments
-                .insert(reassembly_data, fragment_header.sequence());
+                .insert(fragment_header.sequence(), reassembly_data);
         }
     }
 }
