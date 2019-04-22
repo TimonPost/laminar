@@ -4,7 +4,7 @@
 //! 3. serialize data to send and deserialize when received.
 use bincode::{deserialize, serialize};
 use crossbeam_channel::{Receiver, Sender};
-use laminar::{Config, ErrorKind, Packet, Socket, SocketEvent};
+use laminar::{ErrorKind, Packet, Socket, SocketEvent};
 use serde_derive::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::{thread, time};
@@ -160,7 +160,7 @@ impl Client {
         match serialized {
             Ok(raw_data) => {
                 self.packet_sender
-                    .send(Packet::reliable_unordered(server_address(), raw_data));
+                    .send(Packet::reliable_unordered(server_address(), raw_data)).expect("Should be fine");
             }
             Err(e) => println!("Some error occurred: {:?}", e),
         }
