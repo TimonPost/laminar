@@ -3,15 +3,11 @@
 
 mod acknowlegement;
 mod congestion;
-mod external_ack;
 mod fragmenter;
-mod local_ack;
 
 pub mod arranging;
 
 pub use self::acknowlegement::AcknowledgementHandler;
 pub use self::acknowlegement::SentPacket;
 pub use self::congestion::CongestionHandler;
-pub use self::external_ack::ExternalAcks;
 pub use self::fragmenter::Fragmentation;
-pub use self::local_ack::LocalAckRecord;

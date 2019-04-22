@@ -12,7 +12,8 @@ pub struct AcknowledgementHandler {
     // Using a Hashmap to track every packet we send out so we can ensure that we can resend when
     // dropped.
     sent_packets: HashMap<u16, SentPacket>,
-    // However, we can only reasonably ack up to 32 + 1 packets on each message we send so
+    // However, we can only reasonably ack up to REDUNDANT_PACKET_ACKS_SIZE + 1 packets on each
+    // message we send so this should be REDUNDANT_PACKET_ACKS_SIZE large.
     received_packets: SequenceBuffer<ReceivedPacket>,
 
     pub dropped_packets: Vec<SentPacket>,
@@ -86,18 +87,15 @@ impl AcknowledgementHandler {
             remote_ack_field >>= 1;
         }
 
+        // Finally, iterate the sent packets and push dropped_packets
         let sent_sequences: Vec<SequenceNumber> = self.sent_packets.keys().map(|s| *s).collect();
-        let very_old_packets: Vec<SentPacket> = sent_sequences
-            .into_iter()
-            .flat_map(|seq| {
-                if remote_ack_seq.wrapping_sub(seq) > REDUNDANT_PACKET_ACKS_SIZE {
-                    self.sent_packets.remove(&seq)
-                } else {
-                    None
+        sent_sequences.into_iter()
+            .filter(|s| remote_ack_seq.wrapping_sub(*s) > REDUNDANT_PACKET_ACKS_SIZE)
+            .for_each(|s| {
+                if let Some(dropped) = self.sent_packets.remove(&s) {
+                    self.dropped_packets.push(dropped);
                 }
-            })
-            .collect();
-        self.dropped_packets.extend(very_old_packets);
+            });
     }
 
     /// Enqueue the outgoing packet for acknowledgement.
