@@ -23,6 +23,7 @@ impl AcknowledgementHandler {
         AcknowledgementHandler {
             local_seq_num: 0,
             remote_seq_num: 0,
+            // TODO: This should be configurable.
             sent_packets: SequenceBuffer::with_capacity(REDUNDANT_PACKET_ACKS_SIZE),
             received_packets: SequenceBuffer::with_capacity(REDUNDANT_PACKET_ACKS_SIZE),
             dropped_packets: Vec::new(),
