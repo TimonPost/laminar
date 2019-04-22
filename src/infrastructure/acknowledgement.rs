@@ -128,7 +128,7 @@ mod test {
     use crate::infrastructure::{AcknowledgementHandler, SentPacket};
     use crate::packet::OrderingGuarantee;
     use log::debug;
-    use crate::infrastructure::acknowlegement::ReceivedPacket;
+    use crate::infrastructure::acknowledgement::ReceivedPacket;
 
     #[test]
     fn increment_local_seq_num_on_process_outgoing() {
@@ -217,11 +217,9 @@ mod test {
                 drop_count += 1;
             } else {
                 // We send them a packet
-                print!("Other Process: ");
                 other.process_incoming(i, handler.remote_sequence_num(), handler.ack_bitfield());
                 // Skipped: other.process_outgoing
                 // And it makes it back
-                print!("Handler Process: ");
                 handler.process_incoming(i, other.remote_sequence_num(), other.ack_bitfield());
             }
         }
