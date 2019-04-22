@@ -1,4 +1,4 @@
-use crate::infrastructure::WaitingPacket;
+use crate::infrastructure::SentPacket;
 use std::collections::HashMap;
 
 /// Packets waiting for an ack
@@ -9,7 +9,7 @@ use std::collections::HashMap;
 #[derive(Debug, Default)]
 pub struct LocalAckRecord {
     // packets waiting for acknowledgement.
-    packets: HashMap<u16, WaitingPacket>,
+    packets: HashMap<u16, SentPacket>,
 }
 
 impl LocalAckRecord {
@@ -26,13 +26,13 @@ impl LocalAckRecord {
     }
 
     /// Adds a packet to the queue awaiting for an acknowledgement.
-    pub fn enqueue(&mut self, seq: u16, packet: WaitingPacket) {
+    pub fn enqueue(&mut self, seq: u16, packet: SentPacket) {
         self.packets.insert(seq, packet);
     }
 
     /// Finds and removes acked packets, returning dropped packets
     #[allow(unused_parens)]
-    pub fn ack(&mut self, seq: u16, seq_field: u32) -> Vec<(u16, WaitingPacket)> {
+    pub fn ack(&mut self, seq: u16, seq_field: u32) -> Vec<(u16, SentPacket)> {
         let mut dropped_packets = Vec::new();
         let mut acked_packets = Vec::new();
 
@@ -72,11 +72,11 @@ impl LocalAckRecord {
 
 #[cfg(test)]
 mod test {
-    use crate::infrastructure::{LocalAckRecord, WaitingPacket};
+    use crate::infrastructure::{LocalAckRecord, SentPacket};
     use crate::packet::OrderingGuarantee;
 
-    fn get_empty() -> WaitingPacket {
-        WaitingPacket {
+    fn get_empty() -> SentPacket {
+        SentPacket {
             payload: Box::new([]),
             ordering_guarantee: OrderingGuarantee::None,
         }

@@ -8,6 +8,7 @@ use crate::packet::SequenceNumber;
 use std::clone::Clone;
 
 /// Collection to store data of any kind.
+#[derive(Debug)]
 pub struct SequenceBuffer<T: Clone + Default> {
     sequence_num: SequenceNumber,
     entry_sequences: Box<[Option<SequenceNumber>]>,
@@ -26,7 +27,7 @@ impl<T: Clone + Default> SequenceBuffer<T> {
 
     /// Returns the most recently stored sequence number.
     pub fn sequence_num(&self) -> SequenceNumber {
-        return self.sequence_num;
+        self.sequence_num
     }
 
     /// Returns a mutable reference to the entry with the given sequence number.

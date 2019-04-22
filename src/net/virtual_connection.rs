@@ -3,7 +3,7 @@ use crate::{
     error::{ErrorKind, PacketErrorKind, Result},
     infrastructure::{
         arranging::{Arranging, ArrangingSystem, OrderingSystem, SequencingSystem},
-        AcknowledgementHandler, CongestionHandler, Fragmentation, WaitingPacket,
+        AcknowledgementHandler, CongestionHandler, Fragmentation, SentPacket,
     },
     net::constants::{
         ACKED_PACKET_HEADER, DEFAULT_ORDERING_STREAM, DEFAULT_SEQUENCING_STREAM,
@@ -104,8 +104,8 @@ impl VirtualConnection {
                         );
 
                         builder = builder.with_acknowledgement_header(
-                            self.acknowledge_handler.local_seq_num(),
-                            self.acknowledge_handler.remote_seq_num(),
+                            self.acknowledge_handler.local_sequence_num(),
+                            self.acknowledge_handler.remote_sequence_num(),
                             self.acknowledge_handler.ack_bitfield(),
                         );
 
@@ -152,15 +152,15 @@ impl VirtualConnection {
                                         );
 
                                     builder = builder.with_fragment_header(
-                                        self.acknowledge_handler.local_seq_num(),
+                                        self.acknowledge_handler.local_sequence_num(),
                                         fragment_id as u8,
                                         fragments_needed,
                                     );
 
                                     if fragment_id == 0 {
                                         builder = builder.with_acknowledgement_header(
-                                            self.acknowledge_handler.local_seq_num(),
-                                            self.acknowledge_handler.remote_seq_num(),
+                                            self.acknowledge_handler.local_sequence_num(),
+                                            self.acknowledge_handler.remote_sequence_num(),
                                             self.acknowledge_handler.ack_bitfield(),
                                         );
                                     }
@@ -173,7 +173,7 @@ impl VirtualConnection {
                 };
 
                 self.congestion_handler
-                    .process_outgoing(self.acknowledge_handler.local_seq_num());
+                    .process_outgoing(self.acknowledge_handler.local_sequence_num());
                 self.acknowledge_handler
                     .process_outgoing(payload, ordering_guarantee);
 
@@ -369,7 +369,7 @@ impl VirtualConnection {
     /// This will gather dropped packets from the reliable channels.
     ///
     /// Note that after requesting dropped packets the dropped packets will be removed from this client.
-    pub fn gather_dropped_packets(&mut self) -> Vec<WaitingPacket> {
+    pub fn gather_dropped_packets(&mut self) -> Vec<SentPacket> {
         self.acknowledge_handler.dropped_packets.drain(..).collect()
     }
 }

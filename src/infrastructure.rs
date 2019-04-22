@@ -10,7 +10,7 @@ mod local_ack;
 pub mod arranging;
 
 pub use self::acknowlegement::AcknowledgementHandler;
-pub use self::acknowlegement::WaitingPacket;
+pub use self::acknowlegement::SentPacket;
 pub use self::congestion::CongestionHandler;
 pub use self::external_ack::ExternalAcks;
 pub use self::fragmenter::Fragmentation;
