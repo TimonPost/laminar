@@ -67,7 +67,7 @@ impl Socket {
         loop {
             // First we pull any newly arrived packets and handle them
             if let Err(e) = self.recv_from() {
-
+                error!("Encountered an error receiving data: {:?}", e);
             };
 
             // Now grab all the packets waiting to be sent and send them
@@ -180,7 +180,7 @@ impl Socket {
 mod tests {
     use crate::{
         net::constants::{ACKED_PACKET_HEADER, FRAGMENT_HEADER_SIZE, STANDARD_HEADER_SIZE},
-        Config, Packet, Socket,
+        Packet, Socket,
     };
     use std::net::SocketAddr;
     use std::thread;
