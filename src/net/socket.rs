@@ -78,20 +78,25 @@ impl Socket {
             }
 
             // Finally check for idle clients
-            self.handle_idle_clients();
+            if let Err(e) = self.handle_idle_clients() {
+                error!("Encountered an error when sending TimeoutEvent {:?}", e);
+            }
         }
     }
 
     /// Iterate through all of the idle connections based on `idle_connection_timeout` config and
     /// remove them from the active connections. For each connection removed, we will send a
     /// `SocketEvent::TimeOut` event to the `event_sender` channel.
-    fn handle_idle_clients(&mut self) {
+    fn handle_idle_clients(&mut self) -> Result<()> {
         let idle_addresses = self
             .connections
             .idle_connections(self.config.idle_connection_timeout);
         for address in idle_addresses {
             self.connections.remove_connection(&address);
+            self.event_sender.send(SocketEvent::Timeout(address))?;
         }
+
+        Ok(())
     }
 
     // Serializes and sends a `Packet` on the socket. On success, returns the number of bytes written.
@@ -188,17 +193,18 @@ impl Socket {
 mod tests {
     use crate::{
         net::constants::{ACKED_PACKET_HEADER, FRAGMENT_HEADER_SIZE, STANDARD_HEADER_SIZE},
-        Packet, Socket,
+        Config, Packet, Socket, SocketEvent,
     };
     use std::net::SocketAddr;
     use std::thread;
+    use std::time::Duration;
 
     #[test]
     fn can_send_and_receive() {
         let (mut server, _, packet_receiver) =
-            Socket::bind("127.0.0.1:12345".parse::<SocketAddr>().unwrap()).unwrap();
+            Socket::bind("127.0.0.1:12342".parse::<SocketAddr>().unwrap()).unwrap();
         let (mut client, packet_sender, _) =
-            Socket::bind("127.0.0.1:12344".parse::<SocketAddr>().unwrap()).unwrap();
+            Socket::bind("127.0.0.1:12341".parse::<SocketAddr>().unwrap()).unwrap();
 
         thread::spawn(move || client.start_polling());
         thread::spawn(move || server.start_polling());
@@ -206,7 +212,7 @@ mod tests {
         for _ in 0..3 {
             packet_sender
                 .send(Packet::unreliable(
-                    "127.0.0.1:12345".parse::<SocketAddr>().unwrap(),
+                    "127.0.0.1:12342".parse::<SocketAddr>().unwrap(),
                     vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
                 ))
                 .unwrap();
@@ -267,6 +273,61 @@ mod tests {
                 ))
                 .unwrap(),
             4000 + (fragment_packet_size * 4 + ACKED_PACKET_HEADER) as usize
+        );
+    }
+
+    #[test]
+    fn connect_event_occurs() {
+        let (mut server, _, packet_receiver) =
+            Socket::bind("127.0.0.1:12345".parse::<SocketAddr>().unwrap()).unwrap();
+        let (mut client, packet_sender, _) =
+            Socket::bind("127.0.0.1:12344".parse::<SocketAddr>().unwrap()).unwrap();
+
+        thread::spawn(move || client.start_polling());
+        thread::spawn(move || server.start_polling());
+
+        packet_sender.send(Packet::unreliable(
+            "127.0.0.1:12345".parse().unwrap(),
+            vec![0, 1, 2],
+        ));
+        assert_eq!(
+            packet_receiver.recv().unwrap(),
+            SocketEvent::Connect("127.0.0.1:12344".parse().unwrap())
+        );
+    }
+
+    #[test]
+    fn disconnect_event_occurs() {
+        let mut config = Config::default();
+        config.idle_connection_timeout = Duration::from_millis(1);
+
+        let (mut server, _, packet_receiver) =
+            Socket::bind("127.0.0.1:12347".parse::<SocketAddr>().unwrap()).unwrap();
+        let (mut client, packet_sender, _) =
+            Socket::bind("127.0.0.1:12346".parse::<SocketAddr>().unwrap()).unwrap();
+
+        thread::spawn(move || client.start_polling());
+        thread::spawn(move || server.start_polling());
+
+        packet_sender.send(Packet::unreliable(
+            "127.0.0.1:12347".parse().unwrap(),
+            vec![0, 1, 2],
+        ));
+
+        assert_eq!(
+            packet_receiver.recv().unwrap(),
+            SocketEvent::Connect("127.0.0.1:12346".parse().unwrap())
+        );
+        assert_eq!(
+            packet_receiver.recv().unwrap(),
+            SocketEvent::Packet(Packet::unreliable(
+                "127.0.0.1:12346".parse().unwrap(),
+                vec![0, 1, 2]
+            ))
+        );
+        assert_eq!(
+            packet_receiver.recv().unwrap(),
+            SocketEvent::Timeout("127.0.0.1:12346".parse().unwrap())
         );
     }
 }
