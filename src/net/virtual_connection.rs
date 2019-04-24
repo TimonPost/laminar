@@ -3,7 +3,7 @@ use crate::{
     error::{ErrorKind, PacketErrorKind, Result},
     infrastructure::{
         arranging::{Arranging, ArrangingSystem, OrderingSystem, SequencingSystem},
-        AcknowledgementHandler, CongestionHandler, Fragmentation, SentPacket,
+        AcknowledgmentHandler, CongestionHandler, Fragmentation, SentPacket,
     },
     net::constants::{
         ACKED_PACKET_HEADER, DEFAULT_ORDERING_STREAM, DEFAULT_SEQUENCING_STREAM,
@@ -31,7 +31,7 @@ pub struct VirtualConnection {
 
     ordering_system: OrderingSystem<Box<[u8]>>,
     sequencing_system: SequencingSystem<Box<[u8]>>,
-    acknowledge_handler: AcknowledgementHandler,
+    acknowledge_handler: AcknowledgmentHandler,
     congestion_handler: CongestionHandler,
 
     config: Config,
@@ -46,7 +46,7 @@ impl VirtualConnection {
             remote_address: addr,
             ordering_system: OrderingSystem::new(),
             sequencing_system: SequencingSystem::new(),
-            acknowledge_handler: AcknowledgementHandler::new(),
+            acknowledge_handler: AcknowledgmentHandler::new(),
             congestion_handler: CongestionHandler::new(config),
             fragmentation: Fragmentation::new(config),
             config: config.to_owned(),
@@ -103,7 +103,7 @@ impl VirtualConnection {
                             ordering_guarantee,
                         );
 
-                        builder = builder.with_acknowledgement_header(
+                        builder = builder.with_acknowledgment_header(
                             self.acknowledge_handler.local_sequence_num(),
                             self.acknowledge_handler.remote_sequence_num(),
                             self.acknowledge_handler.ack_bitfield(),
@@ -158,7 +158,7 @@ impl VirtualConnection {
                                     );
 
                                     if fragment_id == 0 {
-                                        builder = builder.with_acknowledgement_header(
+                                        builder = builder.with_acknowledgment_header(
                                             self.acknowledge_handler.local_sequence_num(),
                                             self.acknowledge_handler.remote_sequence_num(),
                                             self.acknowledge_handler.ack_bitfield(),

@@ -14,7 +14,7 @@ pub struct Config {
     ///
     /// Why can't I have more than 255 (u8)?
     /// This is because you don't want to send more then 256 fragments over UDP, with high amounts of fragments the chance for an invalid packet is very high.
-    /// Use TCP instead (later we will probably support larger ranges but every fragment packet then needs to be resent if it doesn't get an acknowledgement).
+    /// Use TCP instead (later we will probably support larger ranges but every fragment packet then needs to be resent if it doesn't get an acknowledgment).
     ///
     /// default: 16 but keep in mind that lower is better.
     pub max_fragments: u8,

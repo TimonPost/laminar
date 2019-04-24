@@ -12,7 +12,7 @@ It contains information like: protocol version, packet type, delivery and orderi
 - `AckedHeader`
     
     This header will be included to the header if the packet is reliable. 
-It contains information for our acknowledgement system. 
+It contains information for our acknowledgment system. 
 
 - `FragmentHeader`
     

@@ -5,8 +5,8 @@ use std::collections::HashMap;
 
 const REDUNDANT_PACKET_ACKS_SIZE: u16 = 32;
 
-/// Responsible for handling the acknowledgement of packets.
-pub struct AcknowledgementHandler {
+/// Responsible for handling the acknowledgment of packets.
+pub struct AcknowledgmentHandler {
     // Local sequence number which we'll bump each time we send a new packet over the network
     sequence_number: SequenceNumber,
     // Using a Hashmap to track every packet we send out so we can ensure that we can resend when
@@ -19,10 +19,10 @@ pub struct AcknowledgementHandler {
     pub dropped_packets: Vec<SentPacket>,
 }
 
-impl AcknowledgementHandler {
-    /// Constructs a new `AcknowledgementHandler` with which you can perform acknowledgement operations.
-    pub fn new() -> AcknowledgementHandler {
-        AcknowledgementHandler {
+impl AcknowledgmentHandler {
+    /// Constructs a new `AcknowledgmentHandler` with which you can perform acknowledgment operations.
+    pub fn new() -> AcknowledgmentHandler {
+        AcknowledgmentHandler {
             sequence_number: 0,
             sent_packets: HashMap::new(),
             received_packets: SequenceBuffer::with_capacity(REDUNDANT_PACKET_ACKS_SIZE),
@@ -31,7 +31,7 @@ impl AcknowledgementHandler {
     }
 }
 
-impl AcknowledgementHandler {
+impl AcknowledgmentHandler {
     /// Returns the next sequence number to send.
     pub fn local_sequence_num(&self) -> SequenceNumber {
         self.sequence_number
@@ -98,7 +98,7 @@ impl AcknowledgementHandler {
             });
     }
 
-    /// Enqueue the outgoing packet for acknowledgement.
+    /// Enqueue the outgoing packet for acknowledgment.
     pub fn process_outgoing(&mut self, payload: &[u8], ordering_guarantee: OrderingGuarantee) {
         self.sent_packets.insert(
             self.sequence_number,
@@ -125,14 +125,14 @@ pub struct ReceivedPacket;
 
 #[cfg(test)]
 mod test {
-    use crate::infrastructure::{AcknowledgementHandler, SentPacket};
+    use crate::infrastructure::{AcknowledgmentHandler, SentPacket};
     use crate::packet::OrderingGuarantee;
     use log::debug;
-    use crate::infrastructure::acknowledgement::ReceivedPacket;
+    use crate::infrastructure::acknowledgment::ReceivedPacket;
 
     #[test]
     fn increment_local_seq_num_on_process_outgoing() {
-        let mut handler = AcknowledgementHandler::new();
+        let mut handler = AcknowledgmentHandler::new();
         for i in 0..10 {
             handler.process_outgoing(vec![].as_slice(), OrderingGuarantee::None);
             assert_eq!(handler.local_sequence_num(), i + 1);
@@ -141,7 +141,7 @@ mod test {
 
     #[test]
     fn local_seq_num_wraps_on_overflow() {
-        let mut handler = AcknowledgementHandler::new();
+        let mut handler = AcknowledgmentHandler::new();
         let i = u16::max_value();
         handler.sequence_number = i;
         handler.process_outgoing(vec![].as_slice(), OrderingGuarantee::None);
@@ -150,13 +150,13 @@ mod test {
 
     #[test]
     fn ack_bitfield_with_empty_receive() {
-        let handler = AcknowledgementHandler::new();
+        let handler = AcknowledgmentHandler::new();
         assert_eq!(handler.ack_bitfield(), 0)
     }
 
     #[test]
     fn ack_bitfield_with_some_values() {
-        let mut handler = AcknowledgementHandler::new();
+        let mut handler = AcknowledgmentHandler::new();
         handler.received_packets.insert(0, ReceivedPacket::default());
         handler.received_packets.insert(1, ReceivedPacket::default());
         handler.received_packets.insert(3, ReceivedPacket::default());
@@ -165,7 +165,7 @@ mod test {
 
     #[test]
     fn packet_is_not_acked() {
-        let mut handler = AcknowledgementHandler::new();
+        let mut handler = AcknowledgmentHandler::new();
 
         handler.sequence_number = 0;
         handler.process_outgoing(vec![1, 2, 3].as_slice(), OrderingGuarantee::None);
@@ -186,8 +186,8 @@ mod test {
 
     #[test]
     fn acking_500_packets_without_packet_drop() {
-        let mut handler = AcknowledgementHandler::new();
-        let mut other = AcknowledgementHandler::new();
+        let mut handler = AcknowledgmentHandler::new();
+        let mut other = AcknowledgmentHandler::new();
 
         for i in 0..500 {
             handler.sequence_number = i;
@@ -202,8 +202,8 @@ mod test {
 
     #[test]
     fn acking_many_packets_with_packet_drop() {
-        let mut handler = AcknowledgementHandler::new();
-        let mut other = AcknowledgementHandler::new();
+        let mut handler = AcknowledgmentHandler::new();
+        let mut other = AcknowledgmentHandler::new();
 
         let mut drop_count = 0;
 
@@ -231,7 +231,7 @@ mod test {
 
     #[test]
     fn remote_seq_num_will_be_updated() {
-        let mut handler = AcknowledgementHandler::new();
+        let mut handler = AcknowledgmentHandler::new();
         assert_eq!(handler.remote_sequence_num(), 0);
         handler.process_incoming(0, 0, 0);
         assert_eq!(handler.remote_sequence_num(), 1);

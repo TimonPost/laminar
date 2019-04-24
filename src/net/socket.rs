@@ -266,7 +266,7 @@ mod tests {
 
         let fragment_packet_size = STANDARD_HEADER_SIZE + FRAGMENT_HEADER_SIZE;
 
-        // the first fragment of an sequence of fragments contains also the acknowledgement header.
+        // the first fragment of an sequence of fragments contains also the acknowledgment header.
         assert_eq!(
             server
                 .send_to(Packet::reliable_unordered(
