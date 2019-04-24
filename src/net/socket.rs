@@ -67,7 +67,7 @@ impl Socket {
         loop {
             // First we pull any newly arrived packets and handle them
             if let Err(e) = self.recv_from() {
-                error!("Error receiving packet: {:?}", e);
+                error!("Encountered an error receiving data: {:?}", e);
             };
 
             // Now grab all the packets waiting to be sent and send them
@@ -168,12 +168,10 @@ impl Socket {
                 connection.process_incoming(received_payload, &self.event_sender)?;
             }
             Err(e) => {
-                if e.kind() == io::ErrorKind::WouldBlock {
-                    error!("Encountered a WouldBlock error: {:?}", e);
-                } else {
+                if e.kind() != io::ErrorKind::WouldBlock {
                     error!("Encountered an error receiving data: {:?}", e);
+                    return Err(e.into());
                 }
-                return Err(e.into());
             }
         }
         Ok(())
@@ -190,7 +188,7 @@ impl Socket {
 mod tests {
     use crate::{
         net::constants::{ACKED_PACKET_HEADER, FRAGMENT_HEADER_SIZE, STANDARD_HEADER_SIZE},
-        Config, Packet, Socket,
+        Packet, Socket,
     };
     use std::net::SocketAddr;
     use std::thread;
