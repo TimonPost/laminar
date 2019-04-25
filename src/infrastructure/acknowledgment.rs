@@ -79,7 +79,7 @@ impl AcknowledgmentHandler {
 
         // The remote_ack_field is going to include whether or not the past 32 packets have been
         // received successfully. If so, we have no need to resend old packets.
-        for i in 1..REDUNDANT_PACKET_ACKS_SIZE + 1 {
+        for i in 1..=REDUNDANT_PACKET_ACKS_SIZE {
             let ack_sequence = remote_ack_seq.wrapping_sub(i);
             if remote_ack_field & 1 == 1 {
                 self.sent_packets.remove(&ack_sequence);
@@ -104,7 +104,7 @@ impl AcknowledgmentHandler {
 
     /// Returns a `Vec` of packets we believe have been dropped.
     pub fn dropped_packets(&mut self) -> Vec<SentPacket> {
-        let sent_sequences: Vec<SequenceNumber> = self.sent_packets.keys().map(|s| *s).collect();
+        let sent_sequences: Vec<SequenceNumber> = self.sent_packets.keys().cloned().collect();
         let remote_ack_sequence = self.remote_ack_sequence_num;
         sent_sequences
             .into_iter()
