@@ -79,7 +79,7 @@ impl Socket {
 
             // Finally check for idle clients
             if let Err(e) = self.handle_idle_clients() {
-                error!("Encountered an error when sending TimeoutEvent {:?}", e);
+                error!("Encountered an error when sending TimeoutEvent: {:?}", e);
             }
         }
     }
