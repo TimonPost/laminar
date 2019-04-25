@@ -9,29 +9,27 @@ const REDUNDANT_PACKET_ACKS_SIZE: u16 = 32;
 pub struct AcknowledgmentHandler {
     // Local sequence number which we'll bump each time we send a new packet over the network
     sequence_number: SequenceNumber,
+    // The last acked sequence number of the packets we've sent to the remote host.
+    remote_ack_sequence_num: SequenceNumber,
     // Using a Hashmap to track every packet we send out so we can ensure that we can resend when
     // dropped.
     sent_packets: HashMap<u16, SentPacket>,
     // However, we can only reasonably ack up to REDUNDANT_PACKET_ACKS_SIZE + 1 packets on each
     // message we send so this should be REDUNDANT_PACKET_ACKS_SIZE large.
-    received_packets: SequenceBuffer<ReceivedPacket>,
-
-    pub dropped_packets: Vec<SentPacket>,
+    received_packets: SequenceBuffer<ReceivedPacket>
 }
 
 impl AcknowledgmentHandler {
     /// Constructs a new `AcknowledgmentHandler` with which you can perform acknowledgment operations.
-    pub fn new() -> AcknowledgmentHandler {
+    pub fn new() -> Self {
         AcknowledgmentHandler {
             sequence_number: 0,
+            remote_ack_sequence_num: 0,
             sent_packets: HashMap::new(),
-            received_packets: SequenceBuffer::with_capacity(REDUNDANT_PACKET_ACKS_SIZE),
-            dropped_packets: Vec::new(),
+            received_packets: SequenceBuffer::with_capacity(REDUNDANT_PACKET_ACKS_SIZE)
         }
     }
-}
 
-impl AcknowledgmentHandler {
     /// Returns the next sequence number to send.
     pub fn local_sequence_num(&self) -> SequenceNumber {
         self.sequence_number
@@ -45,7 +43,7 @@ impl AcknowledgmentHandler {
     /// Returns the ack_bitfield corresponding to which of the past 32 packets we've
     /// successfully received.
     pub fn ack_bitfield(&self) -> u32 {
-        let most_recent_remote_seq_num: u16 = self.received_packets.sequence_num().wrapping_sub(1);
+        let most_recent_remote_seq_num: u16 = self.remote_sequence_num().wrapping_sub(1);
         let mut ack_bitfield: u32 = 0;
         let mut mask: u32 = 1;
 
@@ -72,6 +70,7 @@ impl AcknowledgmentHandler {
         remote_ack_seq: u16,
         mut remote_ack_field: u32,
     ) {
+        self.remote_ack_sequence_num = remote_ack_seq;
         self.received_packets.insert(remote_seq_num, ReceivedPacket {});
 
         // The current remote_ack_seq was (clearly) received so we should remove it.
@@ -86,16 +85,6 @@ impl AcknowledgmentHandler {
             }
             remote_ack_field >>= 1;
         }
-
-        // Finally, iterate the sent packets and push dropped_packets
-        let sent_sequences: Vec<SequenceNumber> = self.sent_packets.keys().map(|s| *s).collect();
-        sent_sequences.into_iter()
-            .filter(|s| remote_ack_seq.wrapping_sub(*s) > REDUNDANT_PACKET_ACKS_SIZE)
-            .for_each(|s| {
-                if let Some(dropped) = self.sent_packets.remove(&s) {
-                    self.dropped_packets.push(dropped);
-                }
-            });
     }
 
     /// Enqueue the outgoing packet for acknowledgment.
@@ -110,6 +99,16 @@ impl AcknowledgmentHandler {
 
         // Bump the local sequence number for the next outgoing packet.
         self.sequence_number = self.sequence_number.wrapping_add(1);
+    }
+
+    /// Returns a `Vec` of packets we believe have been dropped.
+    pub fn dropped_packets(&mut self) -> Vec<SentPacket> {
+        let sent_sequences: Vec<SequenceNumber> = self.sent_packets.keys().map(|s| *s).collect();
+        let remote_ack_sequence = self.remote_ack_sequence_num;
+        sent_sequences.into_iter()
+            .filter(|s| remote_ack_sequence.wrapping_sub(*s) > REDUNDANT_PACKET_ACKS_SIZE)
+            .flat_map(|s| self.sent_packets.remove(&s))
+            .collect()
     }
 }
 
@@ -176,7 +175,7 @@ mod test {
         handler.process_incoming(ARBITRARY, 40, 0);
 
         assert_eq!(
-            handler.dropped_packets,
+            handler.dropped_packets(),
             vec![SentPacket {
                 payload: vec![1, 2, 3].into_boxed_slice(),
                 ordering_guarantee: OrderingGuarantee::None,
@@ -197,7 +196,7 @@ mod test {
             handler.process_incoming(i, other.remote_sequence_num(), other.ack_bitfield());
         }
 
-        assert_eq!(handler.dropped_packets.len(), 0);
+        assert_eq!(handler.dropped_packets().len(), 0);
     }
 
     #[test]
@@ -226,7 +225,7 @@ mod test {
 
         // TODO: Is this what we want?
 //        assert_eq!(handler.dropped_packets.len(), 25);
-        assert_eq!(handler.dropped_packets.len(), 17);
+        assert_eq!(handler.dropped_packets().len(), 17);
     }
 
     #[test]

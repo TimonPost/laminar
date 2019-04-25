@@ -366,11 +366,11 @@ impl VirtualConnection {
         Ok(())
     }
 
-    /// This will gather dropped packets from the reliable channels.
+    /// This will gather dropped packets from the acknowledgment handler.
     ///
     /// Note that after requesting dropped packets the dropped packets will be removed from this client.
     pub fn gather_dropped_packets(&mut self) -> Vec<SentPacket> {
-        self.acknowledge_handler.dropped_packets.drain(..).collect()
+        self.acknowledge_handler.dropped_packets()
     }
 }
 
