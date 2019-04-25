@@ -160,7 +160,8 @@ impl Client {
         match serialized {
             Ok(raw_data) => {
                 self.packet_sender
-                    .send(Packet::reliable_unordered(server_address(), raw_data)).expect("Should be fine");
+                    .send(Packet::reliable_unordered(server_address(), raw_data))
+                    .expect("Should be fine");
             }
             Err(e) => println!("Some error occurred: {:?}", e),
         }

@@ -1,6 +1,6 @@
 use crate::packet::OrderingGuarantee;
-use crate::sequence_buffer::SequenceBuffer;
 use crate::packet::SequenceNumber;
+use crate::sequence_buffer::SequenceBuffer;
 use std::collections::HashMap;
 
 const REDUNDANT_PACKET_ACKS_SIZE: u16 = 32;
@@ -16,7 +16,7 @@ pub struct AcknowledgmentHandler {
     sent_packets: HashMap<u16, SentPacket>,
     // However, we can only reasonably ack up to REDUNDANT_PACKET_ACKS_SIZE + 1 packets on each
     // message we send so this should be REDUNDANT_PACKET_ACKS_SIZE large.
-    received_packets: SequenceBuffer<ReceivedPacket>
+    received_packets: SequenceBuffer<ReceivedPacket>,
 }
 
 impl AcknowledgmentHandler {
@@ -26,7 +26,7 @@ impl AcknowledgmentHandler {
             sequence_number: 0,
             remote_ack_sequence_num: 0,
             sent_packets: HashMap::new(),
-            received_packets: SequenceBuffer::with_capacity(REDUNDANT_PACKET_ACKS_SIZE)
+            received_packets: SequenceBuffer::with_capacity(REDUNDANT_PACKET_ACKS_SIZE),
         }
     }
 
@@ -71,7 +71,8 @@ impl AcknowledgmentHandler {
         mut remote_ack_field: u32,
     ) {
         self.remote_ack_sequence_num = remote_ack_seq;
-        self.received_packets.insert(remote_seq_num, ReceivedPacket {});
+        self.received_packets
+            .insert(remote_seq_num, ReceivedPacket {});
 
         // The current remote_ack_seq was (clearly) received so we should remove it.
         self.sent_packets.remove(&remote_ack_seq);
@@ -105,7 +106,8 @@ impl AcknowledgmentHandler {
     pub fn dropped_packets(&mut self) -> Vec<SentPacket> {
         let sent_sequences: Vec<SequenceNumber> = self.sent_packets.keys().map(|s| *s).collect();
         let remote_ack_sequence = self.remote_ack_sequence_num;
-        sent_sequences.into_iter()
+        sent_sequences
+            .into_iter()
             .filter(|s| remote_ack_sequence.wrapping_sub(*s) > REDUNDANT_PACKET_ACKS_SIZE)
             .flat_map(|s| self.sent_packets.remove(&s))
             .collect()
@@ -124,10 +126,10 @@ pub struct ReceivedPacket;
 
 #[cfg(test)]
 mod test {
+    use crate::infrastructure::acknowledgment::ReceivedPacket;
     use crate::infrastructure::{AcknowledgmentHandler, SentPacket};
     use crate::packet::OrderingGuarantee;
     use log::debug;
-    use crate::infrastructure::acknowledgment::ReceivedPacket;
 
     #[test]
     fn increment_local_seq_num_on_process_outgoing() {
@@ -156,9 +158,15 @@ mod test {
     #[test]
     fn ack_bitfield_with_some_values() {
         let mut handler = AcknowledgmentHandler::new();
-        handler.received_packets.insert(0, ReceivedPacket::default());
-        handler.received_packets.insert(1, ReceivedPacket::default());
-        handler.received_packets.insert(3, ReceivedPacket::default());
+        handler
+            .received_packets
+            .insert(0, ReceivedPacket::default());
+        handler
+            .received_packets
+            .insert(1, ReceivedPacket::default());
+        handler
+            .received_packets
+            .insert(3, ReceivedPacket::default());
         assert_eq!(handler.ack_bitfield(), 0b1101)
     }
 
@@ -224,7 +232,7 @@ mod test {
         }
 
         // TODO: Is this what we want?
-//        assert_eq!(handler.dropped_packets.len(), 25);
+        //        assert_eq!(handler.dropped_packets.len(), 25);
         assert_eq!(handler.dropped_packets().len(), 17);
     }
 
