@@ -120,7 +120,8 @@ pub struct SentPacket {
     pub ordering_guarantee: OrderingGuarantee,
 }
 
-// TODO: At some point we should put something useful here.
+// TODO: At some point we should put something useful here. Possibly timing information or total
+// bytes sent for metrics tracking.
 #[derive(Clone, Default)]
 pub struct ReceivedPacket;
 

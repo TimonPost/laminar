@@ -120,12 +120,29 @@ fn sequence_less_than(s1: u16, s2: u16) -> bool {
 #[cfg(test)]
 mod tests {
     use super::SequenceBuffer;
+    use crate::sequence_buffer::sequence_greater_than;
+    use crate::sequence_buffer::sequence_less_than;
 
     #[derive(Clone, Default)]
     struct DataStub;
 
     #[test]
-    fn max_sequence_number_exists() {
+    fn test_sequence_comparisons_than() {
+        assert!(sequence_greater_than(1, 0));
+        assert!(sequence_less_than(0, 1));
+
+
+        // Right around the halfway point is where we cut over.
+        assert!(sequence_greater_than(32768, 0));
+        assert!(sequence_less_than(32769, 0));
+
+
+        // In this case, 0 is greater than u16 max because we're likely at the wrapping case
+        assert!(sequence_greater_than(0, u16::max_value()));
+    }
+
+    #[test]
+    fn max_sequence_number_should_not_exist_by_default() {
         let buffer: SequenceBuffer<DataStub> = SequenceBuffer::with_capacity(2);
         assert!(!buffer.exists(u16::max_value()));
     }
@@ -153,10 +170,16 @@ mod tests {
 
     #[test]
     fn insert_into_buffer_old_entry_test() {
-        let mut buffer = SequenceBuffer::with_capacity(2);
-        buffer.insert(2, DataStub);
+        let mut buffer = SequenceBuffer::with_capacity(8);
+        buffer.insert(8, DataStub);
+        // This entry would overlap with sequence 8 based on the buffer size so we must ensure that
+        // it does not.
         buffer.insert(0, DataStub);
         assert!(!buffer.exists(0));
+
+        // However, this one is more recent so it should definitely exist.
+        buffer.insert(16, DataStub);
+        assert!(buffer.exists(16));
     }
 
     #[test]
@@ -164,10 +187,29 @@ mod tests {
         let mut buffer = SequenceBuffer::with_capacity(2);
         for i in 0..3 {
             buffer.insert(i, DataStub);
+            assert_eq!(buffer.sequence_num(), i + 1);
         }
         assert!(!buffer.exists(0));
         assert!(buffer.exists(1));
         assert!(buffer.exists(2));
+    }
+
+    #[test]
+    fn older_sequence_numbers_arent_inserted() {
+        let mut buffer = SequenceBuffer::with_capacity(8);
+        buffer.insert(10, DataStub);
+
+        assert_eq!(buffer.sequence_num(), 11);
+
+        // Inserting "older" should fail to insert
+        buffer.insert(2, DataStub);
+        assert!(!buffer.exists(2));
+
+        // Insert respects boundary wrap. Both of these would be earlier than 11
+        buffer.insert(u16::max_value(), DataStub);
+        buffer.insert(0, DataStub);
+        assert!(!buffer.exists(u16::max_value()));
+        assert!(!buffer.exists(0));
     }
 
     // TODO: Add a bunch of tests...
