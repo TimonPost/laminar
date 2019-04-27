@@ -15,7 +15,7 @@ pub struct AcknowledgmentHandler {
     // dropped.
     sent_packets: HashMap<u16, SentPacket>,
     // However, we can only reasonably ack up to REDUNDANT_PACKET_ACKS_SIZE + 1 packets on each
-    // message we send so this should be REDUNDANT_PACKET_ACKS_SIZE large.
+    // message we send so this should be that large
     received_packets: SequenceBuffer<ReceivedPacket>,
 }
 
@@ -26,7 +26,7 @@ impl AcknowledgmentHandler {
             sequence_number: 0,
             remote_ack_sequence_num: 0,
             sent_packets: HashMap::new(),
-            received_packets: SequenceBuffer::with_capacity(REDUNDANT_PACKET_ACKS_SIZE),
+            received_packets: SequenceBuffer::with_capacity(REDUNDANT_PACKET_ACKS_SIZE + 1),
         }
     }
 
@@ -37,19 +37,19 @@ impl AcknowledgmentHandler {
 
     /// Returns the last sequence number received from the remote host (+1)
     pub fn remote_sequence_num(&self) -> SequenceNumber {
-        self.received_packets.sequence_num()
+        self.received_packets.sequence_num().wrapping_sub(1)
     }
 
     /// Returns the ack_bitfield corresponding to which of the past 32 packets we've
     /// successfully received.
     pub fn ack_bitfield(&self) -> u32 {
-        let most_recent_remote_seq_num: u16 = self.remote_sequence_num().wrapping_sub(1);
+        let most_recent_remote_seq_num: u16 = self.remote_sequence_num();
         let mut ack_bitfield: u32 = 0;
         let mut mask: u32 = 1;
 
         // Iterate the past REDUNDANT_PACKET_ACKS_SIZE received packets and set the corresponding
         // bit for each packet which exists in the buffer.
-        for i in 0..REDUNDANT_PACKET_ACKS_SIZE {
+        for i in 1..=REDUNDANT_PACKET_ACKS_SIZE {
             let sequence = most_recent_remote_seq_num.wrapping_sub(i);
             if self.received_packets.exists(sequence) {
                 ack_bitfield |= mask;
@@ -135,6 +135,7 @@ mod test {
     #[test]
     fn increment_local_seq_num_on_process_outgoing() {
         let mut handler = AcknowledgmentHandler::new();
+        assert_eq!(handler.local_sequence_num(), 0);
         for i in 0..10 {
             handler.process_outgoing(vec![].as_slice(), OrderingGuarantee::None);
             assert_eq!(handler.local_sequence_num(), i + 1);
@@ -144,8 +145,7 @@ mod test {
     #[test]
     fn local_seq_num_wraps_on_overflow() {
         let mut handler = AcknowledgmentHandler::new();
-        let i = u16::max_value();
-        handler.sequence_number = i;
+        handler.sequence_number = u16::max_value();
         handler.process_outgoing(vec![].as_slice(), OrderingGuarantee::None);
         assert_eq!(handler.local_sequence_num(), 0);
     }
@@ -168,7 +168,8 @@ mod test {
         handler
             .received_packets
             .insert(3, ReceivedPacket::default());
-        assert_eq!(handler.ack_bitfield(), 0b1101)
+        assert_eq!(handler.remote_sequence_num(), 3);
+        assert_eq!(handler.ack_bitfield(), 0b110)
     }
 
     #[test]
@@ -231,19 +232,36 @@ mod test {
                 handler.process_incoming(i, other.remote_sequence_num(), other.ack_bitfield());
             }
         }
-
-        // TODO: Is this what we want?
-        //        assert_eq!(handler.dropped_packets.len(), 25);
+        assert_eq!(drop_count, 25);
+        assert_eq!(handler.ack_bitfield(), 0b10111011101110111011101110111011);
         assert_eq!(handler.dropped_packets().len(), 17);
     }
 
     #[test]
     fn remote_seq_num_will_be_updated() {
         let mut handler = AcknowledgmentHandler::new();
-        assert_eq!(handler.remote_sequence_num(), 0);
+        assert_eq!(handler.remote_sequence_num(), 65535);
         handler.process_incoming(0, 0, 0);
-        assert_eq!(handler.remote_sequence_num(), 1);
+        assert_eq!(handler.remote_sequence_num(), 0);
         handler.process_incoming(1, 0, 0);
-        assert_eq!(handler.remote_sequence_num(), 2);
+        assert_eq!(handler.remote_sequence_num(), 1);
+    }
+
+    #[test]
+    fn processing_a_full_set_of_packets() {
+        let mut handler = AcknowledgmentHandler::new();
+        for i in 0..33 {
+            handler.process_incoming(i, 0, 0);
+        }
+        assert_eq!(handler.remote_sequence_num(), 32);
+        assert_eq!(handler.ack_bitfield(), !0);
+    }
+
+    #[test]
+    fn test_process_outgoing() {
+        let mut handler = AcknowledgmentHandler::new();
+        handler.process_outgoing(vec![1, 2, 3].as_slice(), OrderingGuarantee::None);
+        assert_eq!(handler.sent_packets.len(), 1);
+        assert_eq!(handler.local_sequence_num(), 1);
     }
 }
