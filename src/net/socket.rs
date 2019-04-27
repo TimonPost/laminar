@@ -117,7 +117,9 @@ impl Socket {
             .flat_map(|waiting_packet| {
                 connection.process_outgoing(
                     &waiting_packet.payload,
+                    // Because a delivery guarantee is only sent with reliable packets
                     DeliveryGuarantee::Reliable,
+                    // This is stored with the dropped packet because they could be mixed
                     waiting_packet.ordering_guarantee,
                 )
             })
@@ -179,7 +181,7 @@ impl Socket {
         Ok(bytes_sent)
     }
 
-    // In the presence of a link conditioner, we may not want to packet each time.
+    // In the presence of a link conditioner, we may not want to send a packet each time.
     fn should_send_packet(&self) -> bool {
         if let Some(link_conditioner) = &self.link_conditioner {
             link_conditioner.should_send()
@@ -286,10 +288,12 @@ mod tests {
         thread::spawn(move || client.start_polling());
         thread::spawn(move || server.start_polling());
 
-        packet_sender.send(Packet::unreliable(
-            "127.0.0.1:12345".parse().unwrap(),
-            vec![0, 1, 2],
-        )).unwrap();
+        packet_sender
+            .send(Packet::unreliable(
+                "127.0.0.1:12345".parse().unwrap(),
+                vec![0, 1, 2],
+            ))
+            .unwrap();
         assert_eq!(
             packet_receiver.recv().unwrap(),
             SocketEvent::Connect("127.0.0.1:12344".parse().unwrap())
@@ -309,10 +313,12 @@ mod tests {
         thread::spawn(move || client.start_polling());
         thread::spawn(move || server.start_polling());
 
-        packet_sender.send(Packet::unreliable(
-            "127.0.0.1:12347".parse().unwrap(),
-            vec![0, 1, 2],
-        )).unwrap();
+        packet_sender
+            .send(Packet::unreliable(
+                "127.0.0.1:12347".parse().unwrap(),
+                vec![0, 1, 2],
+            ))
+            .unwrap();
 
         assert_eq!(
             packet_receiver.recv().unwrap(),
