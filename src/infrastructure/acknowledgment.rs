@@ -233,6 +233,10 @@ mod test {
             }
         }
         assert_eq!(drop_count, 25);
+        assert_eq!(handler.remote_sequence_num(), 99);
+        // Ack reads from right to left. So we know we have 99 since it's the last one we received.
+        // Then, the first bit is acking 98, then 97, then we're missing 96 which makes sense
+        // because 96 is evenly divisible by 4 and so on...
         assert_eq!(handler.ack_bitfield(), 0b10111011101110111011101110111011);
         assert_eq!(handler.dropped_packets().len(), 17);
     }
