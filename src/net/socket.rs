@@ -101,56 +101,47 @@ impl Socket {
 
     // Serializes and sends a `Packet` on the socket. On success, returns the number of bytes written.
     fn send_to(&mut self, packet: Packet) -> Result<usize> {
-        let (dropped_packets, processed_packet) = {
-            let connection = self
-                .connections
-                .get_or_insert_connection(packet.addr(), &self.config);
+        let connection = self
+            .connections
+            .get_or_insert_connection(packet.addr(), &self.config);
 
-            let processed_packet = connection.process_outgoing(
-                packet.payload(),
-                packet.delivery_guarantee(),
-                packet.order_guarantee(),
-            )?;
+        let processed_packet = connection.process_outgoing(
+            packet.payload(),
+            packet.delivery_guarantee(),
+            packet.order_guarantee(),
+        )?;
 
-            (connection.gather_dropped_packets(), processed_packet)
-        };
+        let dropped = connection.gather_dropped_packets();
+        let mut processed_packets: Vec<Outgoing> = dropped
+            .iter()
+            .flat_map(|waiting_packet| {
+                connection.process_outgoing(
+                    &waiting_packet.payload,
+                    DeliveryGuarantee::Reliable,
+                    waiting_packet.ordering_guarantee,
+                )
+            })
+            .collect();
+
+        processed_packets.push(processed_packet);
 
         let mut bytes_sent = 0;
 
-        let should_send = if let Some(link_conditioner) = &self.link_conditioner {
-            link_conditioner.should_send()
-        } else {
-            true
-        };
-
-        if should_send {
-            match processed_packet {
-                Outgoing::Packet(outgoing) => {
-                    bytes_sent += self.send_packet(&packet.addr(), &outgoing.contents())?;
-                }
-                Outgoing::Fragments(packets) => {
-                    for outgoing in packets {
+        for processed_packet in processed_packets {
+            if self.should_send_packet() {
+                match processed_packet {
+                    Outgoing::Packet(outgoing) => {
                         bytes_sent += self.send_packet(&packet.addr(), &outgoing.contents())?;
+                    }
+                    Outgoing::Fragments(packets) => {
+                        for outgoing in packets {
+                            bytes_sent += self.send_packet(&packet.addr(), &outgoing.contents())?;
+                        }
                     }
                 }
             }
-
-            for dropped_packet in dropped_packets {
-                bytes_sent += self.send_to(Packet::new(
-                    // This is sent from virtual channel, address must be the same
-                    packet.addr(),
-                    dropped_packet.payload,
-                    // Because a delivery guarantee is only sent with reliable packets
-                    DeliveryGuarantee::Reliable,
-                    // This is storted with the dropped packet because they could be mixed
-                    dropped_packet.ordering_guarantee,
-                ))?;
-            }
-
-            Ok(bytes_sent)
-        } else {
-            Ok(0)
         }
+        Ok(bytes_sent)
     }
 
     // On success the packet will be send on the `event_sender`
@@ -186,6 +177,15 @@ impl Socket {
     fn send_packet(&self, addr: &SocketAddr, payload: &[u8]) -> Result<usize> {
         let bytes_sent = self.socket.send_to(payload, addr)?;
         Ok(bytes_sent)
+    }
+
+    // In the presence of a link conditioner, we may not want to packet each time.
+    fn should_send_packet(&self) -> bool {
+        if let Some(link_conditioner) = &self.link_conditioner {
+            link_conditioner.should_send()
+        } else {
+            true
+        }
     }
 }
 
@@ -227,7 +227,7 @@ mod tests {
 
     #[test]
     fn sending_large_unreliable_packet_should_fail() {
-        let (mut server, _, packet_receiver) =
+        let (mut server, _, _) =
             Socket::bind("127.0.0.1:12370".parse::<SocketAddr>().unwrap()).unwrap();
 
         assert_eq!(
@@ -243,7 +243,7 @@ mod tests {
 
     #[test]
     fn send_returns_right_size() {
-        let (mut server, _, packet_receiver) =
+        let (mut server, _, _) =
             Socket::bind("127.0.0.1:12371".parse::<SocketAddr>().unwrap()).unwrap();
 
         assert_eq!(
@@ -259,7 +259,7 @@ mod tests {
 
     #[test]
     fn fragmentation_send_returns_right_size() {
-        let (mut server, _, packet_receiver) =
+        let (mut server, _, _) =
             Socket::bind("127.0.0.1:12372".parse::<SocketAddr>().unwrap()).unwrap();
 
         let fragment_packet_size = STANDARD_HEADER_SIZE + FRAGMENT_HEADER_SIZE;
@@ -289,7 +289,7 @@ mod tests {
         packet_sender.send(Packet::unreliable(
             "127.0.0.1:12345".parse().unwrap(),
             vec![0, 1, 2],
-        ));
+        )).unwrap();
         assert_eq!(
             packet_receiver.recv().unwrap(),
             SocketEvent::Connect("127.0.0.1:12344".parse().unwrap())
@@ -312,7 +312,7 @@ mod tests {
         packet_sender.send(Packet::unreliable(
             "127.0.0.1:12347".parse().unwrap(),
             vec![0, 1, 2],
-        ));
+        )).unwrap();
 
         assert_eq!(
             packet_receiver.recv().unwrap(),
