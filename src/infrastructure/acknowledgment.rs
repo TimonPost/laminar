@@ -24,7 +24,7 @@ impl AcknowledgmentHandler {
     pub fn new() -> Self {
         AcknowledgmentHandler {
             sequence_number: 0,
-            remote_ack_sequence_num: 0,
+            remote_ack_sequence_num: u16::max_value(),
             sent_packets: HashMap::new(),
             received_packets: SequenceBuffer::with_capacity(REDUNDANT_PACKET_ACKS_SIZE + 1),
         }
@@ -104,7 +104,9 @@ impl AcknowledgmentHandler {
 
     /// Returns a `Vec` of packets we believe have been dropped.
     pub fn dropped_packets(&mut self) -> Vec<SentPacket> {
-        let sent_sequences: Vec<SequenceNumber> = self.sent_packets.keys().cloned().collect();
+        let mut sent_sequences: Vec<SequenceNumber> = self.sent_packets.keys().cloned().collect();
+        sent_sequences.sort();
+
         let remote_ack_sequence = self.remote_ack_sequence_num;
         sent_sequences
             .into_iter()

@@ -105,14 +105,14 @@ impl Socket {
             .connections
             .get_or_insert_connection(packet.addr(), &self.config);
 
-        let processed_packet = connection.process_outgoing(
+        connection.process_outgoing(
             packet.payload(),
             packet.delivery_guarantee(),
             packet.order_guarantee(),
         )?;
 
         let dropped = connection.gather_dropped_packets();
-        let mut processed_packets: Vec<Outgoing> = dropped
+        let processed_packets: Vec<Outgoing> = dropped
             .iter()
             .flat_map(|waiting_packet| {
                 connection.process_outgoing(
@@ -124,8 +124,6 @@ impl Socket {
                 )
             })
             .collect();
-
-        processed_packets.push(processed_packet);
 
         let mut bytes_sent = 0;
 
@@ -372,7 +370,7 @@ mod tests {
                 break;
             }
         }
-
+        
         // Ensure that we get the correct number of events to the server.
         // 1 connect event plus the 35 messages
         assert_eq!(events.len(), 36);
@@ -392,6 +390,7 @@ mod tests {
         client_sender
             .send(create_test_packet(35, REMOTE_ADDR))
             .unwrap();
+
         loop {
             if let Ok(event) = server_receiver.recv_timeout(Duration::from_millis(500)) {
                 events.push(event);
@@ -404,11 +403,9 @@ mod tests {
             .iter()
             .flat_map(|e| match e {
                 SocketEvent::Packet(p) => Some(p.payload()[0]),
-                _ => None,
+                _ => None
             })
             .collect();
-        assert_eq!(sent_events.len(), 3);
-        // The order will be guaranteed in a future PR.
-        // assert_eq!(sent_events, vec![0, 1, 35]);
+        assert_eq!(sent_events, vec![0, 1, 35]);
     }
 }
