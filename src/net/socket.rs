@@ -358,7 +358,9 @@ mod tests {
 
         // Send enough packets to ensure that we must have dropped packets.
         for i in 0..35 {
-            client_sender.send(create_test_packet(i, REMOTE_ADDR)).unwrap();
+            client_sender
+                .send(create_test_packet(i, REMOTE_ADDR))
+                .unwrap();
         }
 
         let mut events = Vec::new();
@@ -377,7 +379,9 @@ mod tests {
 
         // Finally the server decides to send us a message back. This necessarily will include
         // the ack information for 33 of the sent 35 packets.
-        server_sender.send(create_test_packet(0, LOCAL_ADDR)).unwrap();
+        server_sender
+            .send(create_test_packet(0, LOCAL_ADDR))
+            .unwrap();
 
         // Block to ensure that the client gets the server message before moving on.
         client_receiver.recv().unwrap();
@@ -385,7 +389,9 @@ mod tests {
         // This next sent message should end up sending the 2 unacked messages plus the new messages
         // with payload 35
         events.clear();
-        client_sender.send(create_test_packet(35, REMOTE_ADDR)).unwrap();
+        client_sender
+            .send(create_test_packet(35, REMOTE_ADDR))
+            .unwrap();
         loop {
             if let Ok(event) = server_receiver.recv_timeout(Duration::from_millis(500)) {
                 events.push(event);
@@ -398,7 +404,7 @@ mod tests {
             .iter()
             .flat_map(|e| match e {
                 SocketEvent::Packet(p) => Some(p.payload()[0]),
-                _ => None
+                _ => None,
             })
             .collect();
         assert_eq!(sent_events, vec![0, 1, 35]);
