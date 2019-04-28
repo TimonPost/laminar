@@ -109,11 +109,11 @@ impl<T: Clone + Default> SequenceBuffer<T> {
     }
 }
 
-fn sequence_greater_than(s1: u16, s2: u16) -> bool {
+pub fn sequence_greater_than(s1: u16, s2: u16) -> bool {
     ((s1 > s2) && (s1 - s2 <= 32768)) || ((s1 < s2) && (s2 - s1 > 32768))
 }
 
-fn sequence_less_than(s1: u16, s2: u16) -> bool {
+pub fn sequence_less_than(s1: u16, s2: u16) -> bool {
     sequence_greater_than(s2, s1)
 }
 

@@ -1,6 +1,6 @@
 use crate::packet::OrderingGuarantee;
 use crate::packet::SequenceNumber;
-use crate::sequence_buffer::SequenceBuffer;
+use crate::sequence_buffer::{SequenceBuffer, sequence_less_than};
 use std::collections::HashMap;
 
 const REDUNDANT_PACKET_ACKS_SIZE: u16 = 32;
@@ -110,7 +110,13 @@ impl AcknowledgmentHandler {
         let remote_ack_sequence = self.remote_ack_sequence_num;
         sent_sequences
             .into_iter()
-            .filter(|s| remote_ack_sequence.wrapping_sub(*s) > REDUNDANT_PACKET_ACKS_SIZE)
+            .filter(|s| {
+                if sequence_less_than(*s, remote_ack_sequence) {
+                    remote_ack_sequence.wrapping_sub(*s) > REDUNDANT_PACKET_ACKS_SIZE
+                } else {
+                    false
+                }
+            })
             .flat_map(|s| self.sent_packets.remove(&s))
             .collect()
     }

@@ -105,14 +105,14 @@ impl Socket {
             .connections
             .get_or_insert_connection(packet.addr(), &self.config);
 
-        connection.process_outgoing(
+        let processed_packet = connection.process_outgoing(
             packet.payload(),
             packet.delivery_guarantee(),
             packet.order_guarantee(),
         )?;
 
         let dropped = connection.gather_dropped_packets();
-        let processed_packets: Vec<Outgoing> = dropped
+        let mut processed_packets: Vec<Outgoing> = dropped
             .iter()
             .flat_map(|waiting_packet| {
                 connection.process_outgoing(
@@ -124,6 +124,8 @@ impl Socket {
                 )
             })
             .collect();
+
+        processed_packets.push(processed_packet);
 
         let mut bytes_sent = 0;
 
@@ -370,7 +372,7 @@ mod tests {
                 break;
             }
         }
-        
+
         // Ensure that we get the correct number of events to the server.
         // 1 connect event plus the 35 messages
         assert_eq!(events.len(), 36);
