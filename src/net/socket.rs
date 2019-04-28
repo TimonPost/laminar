@@ -195,7 +195,7 @@ impl Socket {
 mod tests {
     use crate::{
         net::constants::{ACKED_PACKET_HEADER, FRAGMENT_HEADER_SIZE, STANDARD_HEADER_SIZE},
-        Config, Packet, Socket, SocketEvent
+        Config, Packet, Socket, SocketEvent,
     };
     use std::net::SocketAddr;
     use std::thread;
@@ -405,7 +405,7 @@ mod tests {
             .iter()
             .flat_map(|e| match e {
                 SocketEvent::Packet(p) => Some(p.payload()[0]),
-                _ => None
+                _ => None,
             })
             .collect();
         assert_eq!(sent_events, vec![0, 1, 35]);

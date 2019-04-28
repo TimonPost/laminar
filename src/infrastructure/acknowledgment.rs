@@ -1,6 +1,6 @@
 use crate::packet::OrderingGuarantee;
 use crate::packet::SequenceNumber;
-use crate::sequence_buffer::{SequenceBuffer, sequence_less_than};
+use crate::sequence_buffer::{sequence_less_than, SequenceBuffer};
 use std::collections::HashMap;
 
 const REDUNDANT_PACKET_ACKS_SIZE: u16 = 32;
