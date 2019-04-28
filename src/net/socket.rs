@@ -336,4 +336,71 @@ mod tests {
             SocketEvent::Timeout("127.0.0.1:12346".parse().unwrap())
         );
     }
+
+    const LOCAL_ADDR: &str = "127.0.0.1:13000";
+    const REMOTE_ADDR: &str = "127.0.0.1:14000";
+
+    fn create_test_packet(id: u8, addr: &str) -> Packet {
+        let payload = vec![id];
+        Packet::reliable_unordered(addr.parse().unwrap(), payload)
+    }
+
+    #[test]
+    fn multiple_sends_should_start_sending_dropped() {
+        // Start up a server and a client.
+        let (mut server, server_sender, server_receiver) =
+            Socket::bind(REMOTE_ADDR.parse::<SocketAddr>().unwrap()).unwrap();
+        thread::spawn(move || server.start_polling());
+
+        let (mut client, client_sender, client_receiver) =
+            Socket::bind(LOCAL_ADDR.parse::<SocketAddr>().unwrap()).unwrap();
+        thread::spawn(move || client.start_polling());
+
+        // Send enough packets to ensure that we must have dropped packets.
+        for i in 0..35 {
+            client_sender.send(create_test_packet(i, REMOTE_ADDR)).unwrap();
+        }
+
+        let mut events = Vec::new();
+
+        loop {
+            if let Ok(event) = server_receiver.recv_timeout(Duration::from_millis(500)) {
+                events.push(event);
+            } else {
+                break;
+            }
+        }
+
+        // Ensure that we get the correct number of events to the server.
+        // 1 connect event plus the 35 messages
+        assert_eq!(events.len(), 36);
+
+        // Finally the server decides to send us a message back. This necessarily will include
+        // the ack information for 33 of the sent 35 packets.
+        server_sender.send(create_test_packet(0, LOCAL_ADDR)).unwrap();
+
+        // Block to ensure that the client gets the server message before moving on.
+        client_receiver.recv().unwrap();
+
+        // This next sent message should end up sending the 2 unacked messages plus the new messages
+        // with payload 35
+        events.clear();
+        client_sender.send(create_test_packet(35, REMOTE_ADDR)).unwrap();
+        loop {
+            if let Ok(event) = server_receiver.recv_timeout(Duration::from_millis(500)) {
+                events.push(event);
+            } else {
+                break;
+            }
+        }
+
+        let sent_events: Vec<u8> = events
+            .iter()
+            .flat_map(|e| match e {
+                SocketEvent::Packet(p) => Some(p.payload()[0]),
+                _ => None
+            })
+            .collect();
+        assert_eq!(sent_events, vec![0, 1, 35]);
+    }
 }
