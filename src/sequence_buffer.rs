@@ -120,9 +120,9 @@ pub fn sequence_less_than(s1: u16, s2: u16) -> bool {
 #[cfg(test)]
 mod tests {
     use super::SequenceBuffer;
+    use crate::packet::SequenceNumber;
     use crate::sequence_buffer::sequence_greater_than;
     use crate::sequence_buffer::sequence_less_than;
-    use crate::packet::SequenceNumber;
 
     #[derive(Clone, Default)]
     struct DataStub;

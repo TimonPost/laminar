@@ -161,7 +161,7 @@ impl Client {
             Ok(raw_data) => {
                 self.packet_sender
                     .send(Packet::reliable_unordered(server_address(), raw_data))
-                    .expect("Should be fine");
+                    .unwrap();
             }
             Err(e) => println!("Some error occurred: {:?}", e),
         }
