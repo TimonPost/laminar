@@ -181,7 +181,8 @@ impl Socket {
         Ok(bytes_sent)
     }
 
-    // In the presence of a link conditioner, we may not want to send a packet each time.
+    // In the presence of a link conditioner, we would like it to determine whether or not we should
+    // send a packet.
     fn should_send_packet(&self) -> bool {
         if let Some(link_conditioner) = &self.link_conditioner {
             link_conditioner.should_send()
