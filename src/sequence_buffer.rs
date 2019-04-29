@@ -92,7 +92,7 @@ impl<T: Clone + Default> SequenceBuffer<T> {
         }
 
         if finish_sequence - start_sequence < self.entry_sequences.len() as u32 {
-            for sequence in start_sequence..finish_sequence {
+            for sequence in start_sequence..=finish_sequence {
                 self.remove(sequence as u16);
             }
         } else {
@@ -122,6 +122,7 @@ mod tests {
     use super::SequenceBuffer;
     use crate::sequence_buffer::sequence_greater_than;
     use crate::sequence_buffer::sequence_less_than;
+    use crate::packet::SequenceNumber;
 
     #[derive(Clone, Default)]
     struct DataStub;
@@ -152,6 +153,15 @@ mod tests {
     }
 
     #[test]
+    fn normal_inserts_should_fill_buffer() {
+        let mut buffer = SequenceBuffer::with_capacity(8);
+        for i in 0..8 {
+            buffer.insert(i, DataStub);
+        }
+        assert_eq!(count_entries(&buffer), 8);
+    }
+
+    #[test]
     fn insert_into_buffer_test() {
         let mut buffer = SequenceBuffer::with_capacity(2);
         buffer.insert(0, DataStub);
@@ -178,6 +188,9 @@ mod tests {
         // However, this one is more recent so it should definitely exist.
         buffer.insert(16, DataStub);
         assert!(buffer.exists(16));
+
+        // Since we are pretty far ahead at this point, there should only be 1 valid entry in here.
+        assert_eq!(count_entries(&buffer), 1);
     }
 
     #[test]
@@ -190,6 +203,7 @@ mod tests {
         assert!(!buffer.exists(0));
         assert!(buffer.exists(1));
         assert!(buffer.exists(2));
+        assert_eq!(count_entries(&buffer), 2);
     }
 
     #[test]
@@ -208,7 +222,12 @@ mod tests {
         buffer.insert(0, DataStub);
         assert!(!buffer.exists(u16::max_value()));
         assert!(!buffer.exists(0));
+
+        assert_eq!(count_entries(&buffer), 1);
     }
 
-    // TODO: Add a bunch of tests...
+    fn count_entries(buffer: &SequenceBuffer<DataStub>) -> usize {
+        let nums: Vec<&SequenceNumber> = buffer.entry_sequences.iter().flatten().collect();
+        nums.len()
+    }
 }
