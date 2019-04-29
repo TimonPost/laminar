@@ -4,6 +4,7 @@ use crate::sequence_buffer::{sequence_less_than, SequenceBuffer};
 use std::collections::HashMap;
 
 const REDUNDANT_PACKET_ACKS_SIZE: u16 = 32;
+const DEFAULT_SEND_PACKETS_SIZE: usize = 256;
 
 /// Responsible for handling the acknowledgment of packets.
 pub struct AcknowledgmentHandler {
@@ -25,7 +26,7 @@ impl AcknowledgmentHandler {
         AcknowledgmentHandler {
             sequence_number: 0,
             remote_ack_sequence_num: u16::max_value(),
-            sent_packets: HashMap::new(),
+            sent_packets: HashMap::with_capacity(DEFAULT_SEND_PACKETS_SIZE),
             received_packets: SequenceBuffer::with_capacity(REDUNDANT_PACKET_ACKS_SIZE + 1),
         }
     }
