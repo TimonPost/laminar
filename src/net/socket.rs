@@ -105,12 +105,6 @@ impl Socket {
             .connections
             .get_or_insert_connection(packet.addr(), &self.config);
 
-        let processed_packet = connection.process_outgoing(
-            packet.payload(),
-            packet.delivery_guarantee(),
-            packet.order_guarantee(),
-        )?;
-
         let dropped = connection.gather_dropped_packets();
         let mut processed_packets: Vec<Outgoing> = dropped
             .iter()
@@ -124,6 +118,12 @@ impl Socket {
                 )
             })
             .collect();
+
+        let processed_packet = connection.process_outgoing(
+            packet.payload(),
+            packet.delivery_guarantee(),
+            packet.order_guarantee(),
+        )?;
 
         processed_packets.push(processed_packet);
 
