@@ -3,7 +3,7 @@ use crate::{
     error::{ErrorKind, PacketErrorKind, Result},
     infrastructure::{
         arranging::{Arranging, ArrangingSystem, OrderingSystem, SequencingSystem},
-        AcknowledgementHandler, CongestionHandler, Fragmentation, WaitingPacket,
+        AcknowledgmentHandler, CongestionHandler, Fragmentation, SentPacket,
     },
     net::constants::{
         ACKED_PACKET_HEADER, DEFAULT_ORDERING_STREAM, DEFAULT_SEQUENCING_STREAM,
@@ -31,7 +31,7 @@ pub struct VirtualConnection {
 
     ordering_system: OrderingSystem<Box<[u8]>>,
     sequencing_system: SequencingSystem<Box<[u8]>>,
-    acknowledge_handler: AcknowledgementHandler,
+    acknowledge_handler: AcknowledgmentHandler,
     congestion_handler: CongestionHandler,
 
     config: Config,
@@ -46,7 +46,7 @@ impl VirtualConnection {
             remote_address: addr,
             ordering_system: OrderingSystem::new(),
             sequencing_system: SequencingSystem::new(),
-            acknowledge_handler: AcknowledgementHandler::new(),
+            acknowledge_handler: AcknowledgmentHandler::new(),
             congestion_handler: CongestionHandler::new(config),
             fragmentation: Fragmentation::new(config),
             config: config.to_owned(),
@@ -59,7 +59,7 @@ impl VirtualConnection {
         now.duration_since(self.last_heard)
     }
 
-    /// This pre-process the given buffer to be send over the network.
+    /// This will pre-process the given buffer to be sent over the network.
     pub fn process_outgoing<'a>(
         &mut self,
         payload: &'a [u8],
@@ -103,10 +103,10 @@ impl VirtualConnection {
                             ordering_guarantee,
                         );
 
-                        builder = builder.with_acknowledgement_header(
-                            self.acknowledge_handler.seq_num,
-                            self.acknowledge_handler.last_seq(),
-                            self.acknowledge_handler.bit_mask(),
+                        builder = builder.with_acknowledgment_header(
+                            self.acknowledge_handler.local_sequence_num(),
+                            self.acknowledge_handler.remote_sequence_num(),
+                            self.acknowledge_handler.ack_bitfield(),
                         );
 
                         if let OrderingGuarantee::Ordered(stream_id) = ordering_guarantee {
@@ -152,16 +152,16 @@ impl VirtualConnection {
                                         );
 
                                     builder = builder.with_fragment_header(
-                                        self.acknowledge_handler.seq_num,
+                                        self.acknowledge_handler.local_sequence_num(),
                                         fragment_id as u8,
                                         fragments_needed,
                                     );
 
                                     if fragment_id == 0 {
-                                        builder = builder.with_acknowledgement_header(
-                                            self.acknowledge_handler.seq_num,
-                                            self.acknowledge_handler.last_seq(),
-                                            self.acknowledge_handler.bit_mask(),
+                                        builder = builder.with_acknowledgment_header(
+                                            self.acknowledge_handler.local_sequence_num(),
+                                            self.acknowledge_handler.remote_sequence_num(),
+                                            self.acknowledge_handler.ack_bitfield(),
                                         );
                                     }
 
@@ -173,11 +173,9 @@ impl VirtualConnection {
                 };
 
                 self.congestion_handler
-                    .process_outgoing(self.acknowledge_handler.seq_num);
+                    .process_outgoing(self.acknowledge_handler.local_sequence_num());
                 self.acknowledge_handler
                     .process_outgoing(payload, ordering_guarantee);
-
-                self.acknowledge_handler.seq_num = self.acknowledge_handler.seq_num.wrapping_add(1);
 
                 Ok(outgoing)
             }
@@ -368,11 +366,11 @@ impl VirtualConnection {
         Ok(())
     }
 
-    /// This will gather dropped packets from the reliable channels.
+    /// This will gather dropped packets from the acknowledgment handler.
     ///
     /// Note that after requesting dropped packets the dropped packets will be removed from this client.
-    pub fn gather_dropped_packets(&mut self) -> Vec<WaitingPacket> {
-        self.acknowledge_handler.dropped_packets.drain(..).collect()
+    pub fn gather_dropped_packets(&mut self) -> Vec<SentPacket> {
+        self.acknowledge_handler.dropped_packets()
     }
 }
 

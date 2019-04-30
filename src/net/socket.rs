@@ -105,12 +105,6 @@ impl Socket {
             .connections
             .get_or_insert_connection(packet.addr(), &self.config);
 
-        let processed_packet = connection.process_outgoing(
-            packet.payload(),
-            packet.delivery_guarantee(),
-            packet.order_guarantee(),
-        )?;
-
         let dropped = connection.gather_dropped_packets();
         let mut processed_packets: Vec<Outgoing> = dropped
             .iter()
@@ -124,6 +118,12 @@ impl Socket {
                 )
             })
             .collect();
+
+        let processed_packet = connection.process_outgoing(
+            packet.payload(),
+            packet.delivery_guarantee(),
+            packet.order_guarantee(),
+        )?;
 
         processed_packets.push(processed_packet);
 
@@ -181,7 +181,8 @@ impl Socket {
         Ok(bytes_sent)
     }
 
-    // In the presence of a link conditioner, we may not want to send a packet each time.
+    // In the presence of a link conditioner, we would like it to determine whether or not we should
+    // send a packet.
     fn should_send_packet(&self) -> bool {
         if let Some(link_conditioner) = &self.link_conditioner {
             link_conditioner.should_send()
@@ -266,7 +267,7 @@ mod tests {
 
         let fragment_packet_size = STANDARD_HEADER_SIZE + FRAGMENT_HEADER_SIZE;
 
-        // the first fragment of an sequence of fragments contains also the acknowledgement header.
+        // the first fragment of an sequence of fragments contains also the acknowledgment header.
         assert_eq!(
             server
                 .send_to(Packet::reliable_unordered(
@@ -392,6 +393,7 @@ mod tests {
         client_sender
             .send(create_test_packet(35, REMOTE_ADDR))
             .unwrap();
+
         loop {
             if let Ok(event) = server_receiver.recv_timeout(Duration::from_millis(500)) {
                 events.push(event);
@@ -407,8 +409,6 @@ mod tests {
                 _ => None,
             })
             .collect();
-        assert_eq!(sent_events.len(), 3);
-        // The order will be guaranteed in a future PR.
-        // assert_eq!(sent_events, vec![0, 1, 35]);
+        assert_eq!(sent_events, vec![0, 1, 35]);
     }
 }

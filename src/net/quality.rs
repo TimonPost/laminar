@@ -28,7 +28,7 @@ impl RttMeasurer {
         }
     }
 
-    /// This will calculate the round trip time (rtt) from the given acknowledgement.
+    /// This will calculate the round trip time (rtt) from the given acknowledgment.
     /// Where after it updates the rtt from the given connection.
     pub fn calculate_rrt(&mut self, congestion_data: Option<&mut CongestionData>) {
         self.rtt = self.get_smoothed_rtt(congestion_data);
