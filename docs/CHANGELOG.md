@@ -1,10 +1,10 @@
 # Change Log
 This document contains information about the releases of this crate.
-## [0.2.3] - 2019-05-06
+## [0.2.2] - 2019-05-06
 - Improved Acknowledgement System
 - Fixed bug of not resending dropped packets
 
-## [0.2.2] - 2019-05-06
+## [0.2.1] - 2019-05-06
 - Yanked version, incorrect code.
 
 ## [0.2.0] - 2019-04-13
