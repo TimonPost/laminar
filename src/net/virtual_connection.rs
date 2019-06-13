@@ -182,7 +182,7 @@ impl VirtualConnection {
         }
     }
 
-    /// This processes the incoming data and returns an packet if the data is complete.
+    /// This processes the incoming data and returns a packet if the data is complete.
     pub fn process_incoming(
         &mut self,
         received_data: &[u8],

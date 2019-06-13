@@ -61,7 +61,7 @@ pub fn receive_data() {
     }
 }
 
-/// This is an example of how to construct an packet.
+/// This is an example of how to construct a packet.
 pub fn construct_packet() -> Packet {
     // this is the destination address of the packet.
     let destination: SocketAddr = server_address();
