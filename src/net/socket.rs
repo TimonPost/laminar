@@ -222,6 +222,32 @@ mod tests {
     use std::time::Duration;
 
     #[test]
+    fn manual_polling_socket() {
+        let (mut server, _, packet_receiver) =
+            Socket::bind("127.0.0.1:12339".parse::<SocketAddr>().unwrap()).unwrap();
+        let (mut client, packet_sender, _) =
+            Socket::bind("127.0.0.1:12340".parse::<SocketAddr>().unwrap()).unwrap();
+
+        for _ in 0..3 {
+            packet_sender
+                .send(Packet::unreliable(
+                    "127.0.0.1:12339".parse::<SocketAddr>().unwrap(),
+                    vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+                ))
+                .unwrap();
+        }
+
+        client.manual_poll();
+        server.manual_poll();
+
+        let mut iter = packet_receiver.iter();
+
+        assert!(iter.next().is_some());
+        assert!(iter.next().is_some());
+        assert!(iter.next().is_some());
+    }
+
+    #[test]
     fn can_send_and_receive() {
         let (mut server, _, packet_receiver) =
             Socket::bind("127.0.0.1:12342".parse::<SocketAddr>().unwrap()).unwrap();
