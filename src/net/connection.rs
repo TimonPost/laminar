@@ -1,7 +1,11 @@
 pub use crate::net::{NetworkQuality, RttMeasurer, VirtualConnection};
 
 use crate::config::Config;
-use std::{collections::HashMap, net::SocketAddr, time::Duration};
+use std::{
+    collections::HashMap,
+    net::SocketAddr,
+    time::{Duration, Instant},
+};
 
 /// Maintains a registry of active "connections". Essentially, when we receive a packet on the
 /// socket from a particular `SocketAddr`, we will track information about it here.
@@ -22,10 +26,11 @@ impl ActiveConnections {
         &mut self,
         address: SocketAddr,
         config: &Config,
+        time: Instant,
     ) -> &mut VirtualConnection {
         self.connections
             .entry(address)
-            .or_insert_with(|| VirtualConnection::new(address, config))
+            .or_insert_with(|| VirtualConnection::new(address, config, time))
     }
 
     /// Removes the connection from `ActiveConnections` by socket address.
@@ -37,10 +42,10 @@ impl ActiveConnections {
     }
 
     /// Check for and return `VirtualConnection`s which have been idling longer than `max_idle_time`.
-    pub fn idle_connections(&mut self, max_idle_time: Duration) -> Vec<SocketAddr> {
+    pub fn idle_connections(&mut self, max_idle_time: Duration, time: Instant) -> Vec<SocketAddr> {
         self.connections
             .iter()
-            .filter(|(_, connection)| connection.last_heard() >= max_idle_time)
+            .filter(|(_, connection)| connection.last_heard(time) >= max_idle_time)
             .map(|(address, _)| *address)
             .collect()
     }
@@ -60,7 +65,11 @@ impl ActiveConnections {
 #[cfg(test)]
 mod tests {
     use super::{ActiveConnections, Config};
-    use std::{sync::Arc, thread, time::Duration};
+    use std::{
+        sync::Arc,
+        thread,
+        time::{Duration, Instant},
+    };
 
     const ADDRESS: &str = "127.0.0.1:12345";
 
@@ -69,19 +78,26 @@ mod tests {
         let mut connections = ActiveConnections::new();
         let config = Config::default();
 
+        let now = Instant::now();
+
         // add 10 clients
         for i in 0..10 {
-            connections
-                .get_or_insert_connection(format!("127.0.0.1:123{}", i).parse().unwrap(), &config);
+            connections.get_or_insert_connection(
+                format!("127.0.0.1:123{}", i).parse().unwrap(),
+                &config,
+                now,
+            );
         }
 
         assert_eq!(connections.count(), 10);
 
-        // Sleep a little longer than the polling interval.
-        thread::sleep(Duration::from_millis(400));
+        let wait = Duration::from_millis(200);
 
-        let timed_out_connections = connections.idle_connections(Duration::from_millis(200));
+        let timed_out_connections =
+            connections.idle_connections(wait, now + wait - Duration::from_nanos(1));
+        assert_eq!(timed_out_connections.len(), 0);
 
+        let timed_out_connections = connections.idle_connections(wait, now + wait);
         assert_eq!(timed_out_connections.len(), 10);
     }
 
@@ -91,7 +107,7 @@ mod tests {
         let config = Config::default();
 
         let address = ADDRESS.parse().unwrap();
-        connections.get_or_insert_connection(address, &config);
+        connections.get_or_insert_connection(address, &config, Instant::now());
         assert!(connections.connections.contains_key(&address));
     }
 
@@ -101,9 +117,9 @@ mod tests {
         let config = Config::default();
 
         let address = ADDRESS.parse().unwrap();
-        connections.get_or_insert_connection(address, &config);
+        connections.get_or_insert_connection(address, &config, Instant::now());
         assert!(connections.connections.contains_key(&address));
-        connections.get_or_insert_connection(address, &config);
+        connections.get_or_insert_connection(address, &config, Instant::now());
         assert!(connections.connections.contains_key(&address));
     }
 
@@ -113,7 +129,7 @@ mod tests {
         let config = Arc::new(Config::default());
 
         let address = ADDRESS.parse().unwrap();
-        connections.get_or_insert_connection(address, &config);
+        connections.get_or_insert_connection(address, &config, Instant::now());
         assert!(connections.connections.contains_key(&address));
         connections.remove_connection(&address);
         assert!(!connections.connections.contains_key(&address));

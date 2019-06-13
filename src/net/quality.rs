@@ -82,7 +82,7 @@ mod test {
     use crate::config::Config;
     use crate::net::connection::VirtualConnection;
     use std::net::ToSocketAddrs;
-    use std::time::Duration;
+    use std::time::{Duration, Instant};
 
     static TEST_HOST_IP: &'static str = "127.0.0.1";
     static TEST_PORT: &'static str = "20000";
@@ -92,7 +92,8 @@ mod test {
         let mut addr = format!("{}:{}", TEST_HOST_IP, TEST_PORT)
             .to_socket_addrs()
             .unwrap();
-        let _new_conn = VirtualConnection::new(addr.next().unwrap(), &Config::default());
+        let _new_conn =
+            VirtualConnection::new(addr.next().unwrap(), &Config::default(), Instant::now());
     }
 
     #[test]
