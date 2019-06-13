@@ -3,7 +3,7 @@
 //! Note that in practice you don't want to implement a chat client using UDP.
 use std::io::stdin;
 
-use laminar::{Config, ErrorKind, Packet, Socket, SocketEvent};
+use laminar::{ErrorKind, Packet, Socket, SocketEvent};
 use std::thread;
 
 const SERVER: &str = "127.0.0.1:12351";

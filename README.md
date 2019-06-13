@@ -25,7 +25,7 @@ Laminar was designed to be used within the [Amethyst][amethyst] game engine but 
 # Concepts
 
 This library is loosely based off of [Gaffer on Games][gog] and shares features similar as RakNet, Steam Socket, netcode.io.
-The idea is to provide an in rust written, low-level UDP-protocol which supports the use of cases of video games that require multilayer features.
+The idea is to provide an in rust written, low-level UDP-protocol which supports the use of cases of video games that require multiplayer features.
 The library itself provides a few low-level types of packets that provide different types of guarantees. The most
 basic are unreliable and reliable packets. Also ordering, sequencing can be done on multiple streams.
 For more information, read the projects [README.md][readme], [book][book], [docs][docs] or [examples][examples].
@@ -67,7 +67,7 @@ Add the laminar package to your `Cargo.toml` file.
 
 ```toml
 [dependencies]
-laminar = "0.2"
+laminar = "0.2.3"
 ```
 
 ### Useful Links

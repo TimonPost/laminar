@@ -50,7 +50,7 @@ impl<'p> OutgoingPacketBuilder<'p> {
     }
 
     /// This will add the [`AckedPacketHeader`](./headers/acked_packet_header) to the header.
-    pub fn with_acknowledgement_header(
+    pub fn with_acknowledgment_header(
         mut self,
         seq_num: u16,
         last_seq: u16,
@@ -59,7 +59,7 @@ impl<'p> OutgoingPacketBuilder<'p> {
         let header = AckedPacketHeader::new(seq_num, last_seq, bit_field);
         header
             .parse(&mut self.header)
-            .expect("Could not write acknowledgement header to buffer");
+            .expect("Could not write acknowledgment header to buffer");
 
         self
     }
@@ -166,11 +166,11 @@ mod tests {
     }
 
     #[test]
-    fn assure_creation_acknowledgement_header() {
+    fn assure_creation_acknowledgment_header() {
         let payload = test_payload();
 
         let outgoing = OutgoingPacketBuilder::new(&payload)
-            .with_acknowledgement_header(1, 2, 3)
+            .with_acknowledgment_header(1, 2, 3)
             .build();
 
         let expected: Vec<u8> = [vec![0, 1, 0, 2, 0, 0, 0, 3], test_payload()]

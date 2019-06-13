@@ -65,7 +65,7 @@ impl<'s> PacketReader<'s> {
             AckedPacketHeader::read(&mut self.cursor)
         } else {
             Err(ErrorKind::CouldNotReadHeader(String::from(
-                "acknowledgement",
+                "acknowledgment",
             )))
         }
     }
@@ -76,7 +76,7 @@ impl<'s> PacketReader<'s> {
     /// - Notice that this will continue on the position of last read header;
     /// e.g. when reading `StandardHeader` the position of the underlying `Cursor` will be at the end where it left of,
     /// when calling this function afterward it will read the `FragmentHeader` from there on.
-    /// - Note that only the first fragment of a sequence contains acknowledgement information that's why `AckedPacketHeader` is optional.
+    /// - Note that only the first fragment of a sequence contains acknowledgment information that's why `AckedPacketHeader` is optional.
     pub fn read_fragment(&mut self) -> Result<(FragmentHeader, Option<AckedPacketHeader>)> {
         if self.can_read(FragmentHeader::size()) {
             let fragment_header = FragmentHeader::read(&mut self.cursor)?;
@@ -147,7 +147,7 @@ mod tests {
     }
 
     #[test]
-    fn assure_read_acknowledgement_header() {
+    fn assure_read_acknowledgment_header() {
         // standard header, acked header
         let reliable_ordered_payload: Vec<u8> =
             vec![vec![0, 1, 0, 1, 2], vec![0, 1, 0, 2, 0, 0, 0, 3]].concat();
