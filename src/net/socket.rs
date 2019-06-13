@@ -73,7 +73,10 @@ impl Socket {
             // Now grab all the packets waiting to be sent and send them
             while let Ok(p) = self.packet_receiver.try_recv() {
                 if let Err(e) = self.send_to(p) {
-                    error!("There was an error sending packet: {:?}", e);
+                    match e {
+                        ErrorKind::IOError(ref e) if e.kind() == io::ErrorKind::WouldBlock => {}
+                        _ => error!("There was an error sending packet: {:?}", e),
+                    }
                 }
             }
 
