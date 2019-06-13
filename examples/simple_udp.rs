@@ -75,7 +75,7 @@ enum DataType {
 struct Server {
     _packet_sender: Sender<Packet>,
     event_receiver: Receiver<SocketEvent>,
-    _polling_thread: thread::JoinHandle<Result<(), ErrorKind>>,
+    _polling_thread: thread::JoinHandle<()>,
 }
 
 impl Server {
@@ -138,7 +138,7 @@ impl Server {
 struct Client {
     packet_sender: Sender<Packet>,
     _event_receiver: Receiver<SocketEvent>,
-    _polling_thread: thread::JoinHandle<Result<(), ErrorKind>>,
+    _polling_thread: thread::JoinHandle<()>,
 }
 
 impl Client {
