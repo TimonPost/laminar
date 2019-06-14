@@ -149,7 +149,7 @@ impl Socket {
         Ok(bytes_sent)
     }
 
-    // On success the packet will be send on the `event_sender`
+    // On success the packet will be sent on the `event_sender`
     fn recv_from(&mut self) -> Result<()> {
         match self.socket.recv_from(&mut self.recv_buffer) {
             Ok((recv_len, address)) => {

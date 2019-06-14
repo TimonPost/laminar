@@ -48,7 +48,7 @@ impl Fragmentation {
     ///
     /// The above described method will figure out for all number how many times it fits into another number rounded up.
     ///
-    /// So an example of dividing an packet of bytes we get these fragments:
+    /// So an example of dividing a packet of bytes we get these fragments:
     ///
     /// So for 4000 bytes we need 4 fragments
     /// [fragment: 1024] [fragment: 1024] [fragment: 1024] [fragment: 928]
