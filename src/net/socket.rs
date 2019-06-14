@@ -22,6 +22,11 @@ pub struct Socket {
     packet_receiver: Receiver<Packet>,
 }
 
+enum UdpSocketState {
+    Empty,
+    MaybeMore,
+}
+
 impl Socket {
     /// Binds to the socket and then sets up `ActiveConnections` to manage the "connections".
     /// Because UDP connections are not persistent, we can only infer the status of the remote
@@ -62,28 +67,37 @@ impl Socket {
 
     /// Entry point to the run loop. This should run in a spawned thread since calls to `poll.poll`
     /// are blocking.
-    pub fn start_polling(&mut self) -> Result<()> {
+    pub fn start_polling(&mut self) {
         // Nothing should break out of this loop!
         loop {
-            // First we pull any newly arrived packets and handle them
-            if let Err(e) = self.recv_from() {
-                error!("Encountered an error receiving data: {:?}", e);
-            };
+            self.manual_poll();
+        }
+    }
 
-            // Now grab all the packets waiting to be sent and send them
-            while let Ok(p) = self.packet_receiver.try_recv() {
-                if let Err(e) = self.send_to(p) {
-                    match e {
-                        ErrorKind::IOError(ref e) if e.kind() == io::ErrorKind::WouldBlock => {}
-                        _ => error!("There was an error sending packet: {:?}", e),
-                    }
+    /// Process any inbound/outbound packets and handle idle clients
+    pub fn manual_poll(&mut self) {
+        // First we pull all newly arrived packets and handle them
+        loop {
+            match self.recv_from() {
+                Ok(UdpSocketState::MaybeMore) => continue,
+                Ok(UdpSocketState::Empty) => break,
+                Err(e) => error!("Encountered an error receiving data: {:?}", e),
+            }
+        }
+
+        // Now grab all the packets waiting to be sent and send them
+        while let Ok(p) = self.packet_receiver.try_recv() {
+            if let Err(e) = self.send_to(p) {
+                match e {
+                    ErrorKind::IOError(ref e) if e.kind() == io::ErrorKind::WouldBlock => {}
+                    _ => error!("There was an error sending packet: {:?}", e),
                 }
             }
+        }
 
-            // Finally check for idle clients
-            if let Err(e) = self.handle_idle_clients() {
-                error!("Encountered an error when sending TimeoutEvent: {:?}", e);
-            }
+        // Finally check for idle clients
+        if let Err(e) = self.handle_idle_clients() {
+            error!("Encountered an error when sending TimeoutEvent: {:?}", e);
         }
     }
 
@@ -150,7 +164,7 @@ impl Socket {
     }
 
     // On success the packet will be sent on the `event_sender`
-    fn recv_from(&mut self) -> Result<()> {
+    fn recv_from(&mut self) -> Result<UdpSocketState> {
         match self.socket.recv_from(&mut self.recv_buffer) {
             Ok((recv_len, address)) => {
                 if recv_len == 0 {
@@ -172,10 +186,12 @@ impl Socket {
                 if e.kind() != io::ErrorKind::WouldBlock {
                     error!("Encountered an error receiving data: {:?}", e);
                     return Err(e.into());
+                } else {
+                    return Ok(UdpSocketState::Empty);
                 }
             }
         }
-        Ok(())
+        Ok(UdpSocketState::MaybeMore)
     }
 
     // Send a single packet over the UDP socket.
@@ -204,6 +220,32 @@ mod tests {
     use std::net::SocketAddr;
     use std::thread;
     use std::time::Duration;
+
+    #[test]
+    fn manual_polling_socket() {
+        let (mut server, _, packet_receiver) =
+            Socket::bind("127.0.0.1:12339".parse::<SocketAddr>().unwrap()).unwrap();
+        let (mut client, packet_sender, _) =
+            Socket::bind("127.0.0.1:12340".parse::<SocketAddr>().unwrap()).unwrap();
+
+        for _ in 0..3 {
+            packet_sender
+                .send(Packet::unreliable(
+                    "127.0.0.1:12339".parse::<SocketAddr>().unwrap(),
+                    vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+                ))
+                .unwrap();
+        }
+
+        client.manual_poll();
+        server.manual_poll();
+
+        let mut iter = packet_receiver.iter();
+
+        assert!(iter.next().is_some());
+        assert!(iter.next().is_some());
+        assert!(iter.next().is_some());
+    }
 
     #[test]
     fn can_send_and_receive() {
