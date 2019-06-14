@@ -59,6 +59,21 @@ pipeline {
                         echo 'Tests done!'
                     }
                 }
+                stage("Test on macOS") {
+                    environment {
+                        CARGO_HOME = '/Users/jenkins/.cargo'
+                        RUSTUP_HOME = '/Users/jenkins/.rustup'
+                    }
+                    agent {
+                        label 'mac'
+                    }
+                    steps {
+                        echo 'Beginning tests...'
+                        sh '/Users/jenkins/.cargo/bin/cargo test'
+                        sh '/Users/jenkins/.cargo/bin/cargo test --features="tester"'
+                        echo 'Tests done!'
+                    }
+                }
             }
         }
         stage('Calculate Coverage') {
