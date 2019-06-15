@@ -91,6 +91,8 @@ use laminar::{Socket, Packet};
 
 // create the socket
 let (mut socket, packet_sender, _) = Socket::bind("127.0.0.1:12345")?;
+// this will start the socket, which will start a poll mechanism to receive and send messages.
+let _thread = thread::spawn(move || socket.start_polling());
 
 // our data
 let bytes = vec![...];
@@ -118,6 +120,8 @@ use laminar::{SocketEvent, Socket};
 
 // create the socket
 let (mut socket, _, packet_receiver) = Socket::bind("127.0.0.1:12346")?;
+// this will start the socket, which will start a poll mechanism to receive and send messages.
+let _thread = thread::spawn(move || socket.start_polling());
 
 // wait until a socket event occurs
 let result = packet_receiver.recv();
