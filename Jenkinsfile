@@ -113,7 +113,7 @@ pipeline {
             }
             steps {
                 echo 'Cleaning up...'
-                sh '/Users/jenkins/.cargo/bin/cargo clean'
+                sh '/home/jenkins/.cargo/bin/cargo clean'
                 echo 'Done!'
             }
         }
