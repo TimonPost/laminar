@@ -106,7 +106,7 @@ pipeline {
     }
     post {
         cleanup {
-            node('master') {
+            node('build-0-metal') {
                 cleanWs()
             }
         }
