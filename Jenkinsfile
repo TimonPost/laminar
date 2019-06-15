@@ -103,11 +103,18 @@ pipeline {
                 echo 'Uploading book here'
             }
         }
-    }
-    post {
-        cleanup {
-            node('build-0-metal') {
-                cleanWs()
+        stage('Run cargo clean') {
+            environment {
+                CARGO_HOME = '/home/jenkins/.cargo'
+                RUSTUP_HOME = '/home/jenkins/.rustup'
+            }
+            agent {
+                label 'linux'
+            }
+            steps {
+                echo 'Cleaning up...'
+                sh '/Users/jenkins/.cargo/bin/cargo clean'
+                echo 'Done!'
             }
         }
     }
