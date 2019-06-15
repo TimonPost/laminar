@@ -103,10 +103,10 @@ pipeline {
                 echo 'Uploading book here'
             }
         }
-        post { 
-            always { 
-                cleanWs()
-            }
+    }
+    post { 
+        always { 
+            cleanWs()
         }
     }
 }
