@@ -106,7 +106,9 @@ pipeline {
     }
     post { 
         cleanup { 
-            cleanWs()
+            node {
+                cleanWs()
+            }
         }
     }
 }
