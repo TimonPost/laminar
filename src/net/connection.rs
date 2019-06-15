@@ -83,7 +83,7 @@ mod tests {
         // add 10 clients
         for i in 0..10 {
             connections.get_or_insert_connection(
-                format!("127.0.0.1:123{}", i).parse().unwrap(),
+                format!("127.0.0.1:122{}", i).parse().unwrap(),
                 &config,
                 now,
             );
@@ -97,7 +97,11 @@ mod tests {
             connections.idle_connections(wait, now + wait - Duration::from_nanos(1));
         assert_eq!(timed_out_connections.len(), 0);
 
+        #[cfg(not(windows))]
         let timed_out_connections = connections.idle_connections(wait, now + wait);
+        #[cfg(windows)]
+        let timed_out_connections =
+            connections.idle_connections(wait, now + wait + Duration::from_micros(1));
         assert_eq!(timed_out_connections.len(), 10);
     }
 
