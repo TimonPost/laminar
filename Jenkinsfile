@@ -29,6 +29,20 @@ pipeline {
                 sh '$CARGO_HOME/bin/cargo clippy --all --all-features -- -D warnings'
             }
         }
+        stage('Run cargo clean') {
+            environment {
+                CARGO_HOME = '/home/jenkins/.cargo'
+                RUSTUP_HOME = '/home/jenkins/.rustup'
+            }
+            agent {
+                label 'linux'
+            }
+            steps {
+                echo 'Cleaning up...'
+                sh '/home/jenkins/.cargo/bin/cargo clean'
+                echo 'Done!'
+            }
+        }
         stage('Run Tests') {
             parallel {
                 stage("Test on Windows") {                    

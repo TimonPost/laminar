@@ -40,9 +40,9 @@ pub struct VirtualConnection {
 
 impl VirtualConnection {
     /// Creates and returns a new Connection that wraps the provided socket address
-    pub fn new(addr: SocketAddr, config: &Config) -> VirtualConnection {
+    pub fn new(addr: SocketAddr, config: &Config, time: Instant) -> VirtualConnection {
         VirtualConnection {
-            last_heard: Instant::now(),
+            last_heard: time,
             remote_address: addr,
             ordering_system: OrderingSystem::new(),
             sequencing_system: SequencingSystem::new(),
@@ -53,10 +53,11 @@ impl VirtualConnection {
         }
     }
 
-    /// Returns a Duration representing the interval since we last heard from the client
-    pub fn last_heard(&self) -> Duration {
-        let now = Instant::now();
-        now.duration_since(self.last_heard)
+    /// Returns a [Duration] representing the interval since we last heard from the client
+    pub fn last_heard(&self, time: Instant) -> Duration {
+        // TODO: Replace with saturating_duration_since once it becomes stable.
+        // This function panics if the user supplies a time instant earlier than last_heard.
+        time.duration_since(self.last_heard)
     }
 
     /// This will pre-process the given buffer to be sent over the network.
@@ -65,6 +66,7 @@ impl VirtualConnection {
         payload: &'a [u8],
         delivery_guarantee: DeliveryGuarantee,
         ordering_guarantee: OrderingGuarantee,
+        time: Instant,
     ) -> Result<Outgoing<'a>> {
         match delivery_guarantee {
             DeliveryGuarantee::Unreliable => {
@@ -173,7 +175,7 @@ impl VirtualConnection {
                 };
 
                 self.congestion_handler
-                    .process_outgoing(self.acknowledge_handler.local_sequence_num());
+                    .process_outgoing(self.acknowledge_handler.local_sequence_num(), time);
                 self.acknowledge_handler
                     .process_outgoing(payload, ordering_guarantee);
 
@@ -182,13 +184,14 @@ impl VirtualConnection {
         }
     }
 
-    /// This processes the incoming data and returns an packet if the data is complete.
+    /// This processes the incoming data and returns a packet if the data is complete.
     pub fn process_incoming(
         &mut self,
         received_data: &[u8],
         sender: &Sender<SocketEvent>,
+        time: Instant,
     ) -> crate::Result<()> {
-        self.last_heard = Instant::now();
+        self.last_heard = time;
 
         let mut packet_reader = PacketReader::new(received_data);
 
@@ -397,6 +400,7 @@ mod tests {
     use byteorder::{BigEndian, WriteBytesExt};
     use crossbeam_channel::{unbounded, TryRecvError};
     use std::io::Write;
+    use std::time::Instant;
 
     const PAYLOAD: [u8; 4] = [1, 2, 3, 4];
 
@@ -423,6 +427,7 @@ mod tests {
                     .concat()
                     .as_slice(),
                 &tx,
+                Instant::now(),
             )
             .unwrap();
         assert!(rx.try_recv().is_err());
@@ -436,6 +441,7 @@ mod tests {
                 .concat()
                 .as_slice(),
                 &tx,
+                Instant::now(),
             )
             .unwrap();
         assert!(rx.try_recv().is_err());
@@ -449,6 +455,7 @@ mod tests {
                 .concat()
                 .as_slice(),
                 &tx,
+                Instant::now(),
             )
             .unwrap();
         assert!(rx.try_recv().is_err());
@@ -462,6 +469,7 @@ mod tests {
                 .concat()
                 .as_slice(),
                 &tx,
+                Instant::now(),
             )
             .unwrap();
 
@@ -489,6 +497,7 @@ mod tests {
                 &buffer,
                 DeliveryGuarantee::Reliable,
                 OrderingGuarantee::Ordered(None),
+                Instant::now(),
             )
             .unwrap();
 
@@ -511,6 +520,7 @@ mod tests {
                 &buffer,
                 DeliveryGuarantee::Unreliable,
                 OrderingGuarantee::None,
+                Instant::now(),
             )
             .unwrap();
 
@@ -519,6 +529,7 @@ mod tests {
                 &buffer,
                 DeliveryGuarantee::Unreliable,
                 OrderingGuarantee::Sequenced(None),
+                Instant::now(),
             )
             .unwrap();
 
@@ -527,6 +538,7 @@ mod tests {
                 &buffer,
                 DeliveryGuarantee::Reliable,
                 OrderingGuarantee::Ordered(None),
+                Instant::now(),
             )
             .unwrap();
 
@@ -535,6 +547,7 @@ mod tests {
                 &buffer,
                 DeliveryGuarantee::Reliable,
                 OrderingGuarantee::Sequenced(None),
+                Instant::now(),
             )
             .unwrap();
     }
@@ -717,7 +730,7 @@ mod tests {
 
     /// ======= helper functions =========
     fn create_virtual_connection() -> VirtualConnection {
-        VirtualConnection::new(get_fake_addr(), &Config::default())
+        VirtualConnection::new(get_fake_addr(), &Config::default(), Instant::now())
     }
 
     fn get_fake_addr() -> std::net::SocketAddr {
@@ -768,7 +781,9 @@ mod tests {
 
         let (tx, rx) = unbounded::<SocketEvent>();
 
-        connection.process_incoming(packet.as_slice(), &tx).unwrap();
+        connection
+            .process_incoming(packet.as_slice(), &tx, Instant::now())
+            .unwrap();
 
         let event = rx.try_recv();
 
@@ -799,7 +814,9 @@ mod tests {
 
         let (tx, rx) = unbounded::<SocketEvent>();
 
-        connection.process_incoming(packet.as_slice(), &tx).unwrap();
+        connection
+            .process_incoming(packet.as_slice(), &tx, Instant::now())
+            .unwrap();
 
         let event = rx.try_recv();
 
@@ -817,7 +834,7 @@ mod tests {
         let buffer = vec![1; 500];
 
         let outgoing = connection
-            .process_outgoing(&buffer, delivery, ordering)
+            .process_outgoing(&buffer, delivery, ordering, Instant::now())
             .unwrap();
 
         match outgoing {

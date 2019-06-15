@@ -35,9 +35,9 @@ impl CongestionHandler {
     ///
     /// This will insert an entry which is used for keeping track of the sending time.
     /// Once we process incoming sequence numbers we can calculate the `RTT` time.
-    pub fn process_outgoing(&mut self, seq: u16) {
+    pub fn process_outgoing(&mut self, seq: u16, time: Instant) {
         self.congestion_data
-            .insert(seq, CongestionData::new(seq, Instant::now()));
+            .insert(seq, CongestionData::new(seq, time));
     }
 }
 
@@ -45,12 +45,13 @@ impl CongestionHandler {
 mod test {
     use crate::infrastructure::CongestionHandler;
     use crate::Config;
+    use std::time::Instant;
 
     #[test]
     fn congestion_entry_created() {
         let mut congestion_handler = CongestionHandler::new(&Config::default());
 
-        congestion_handler.process_outgoing(1);
+        congestion_handler.process_outgoing(1, Instant::now());
 
         assert_eq!(congestion_handler.congestion_data.exists(1), true);
     }
@@ -60,7 +61,7 @@ mod test {
         let mut congestion_handler = CongestionHandler::new(&Config::default());
 
         assert_eq!(congestion_handler.rtt_measurer.get_rtt(), 0.);
-        congestion_handler.process_outgoing(1);
+        congestion_handler.process_outgoing(1, Instant::now());
         congestion_handler.process_incoming(1);
         assert_eq!(congestion_handler.rtt_measurer.get_rtt() != 0., true);
     }

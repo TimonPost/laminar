@@ -9,6 +9,7 @@ use log::error;
 use std::{
     self, io,
     net::{SocketAddr, ToSocketAddrs, UdpSocket},
+    time::Instant,
 };
 
 /// A reliable UDP socket implementation with configurable reliability and ordering guarantees.
@@ -20,6 +21,11 @@ pub struct Socket {
     link_conditioner: Option<LinkConditioner>,
     event_sender: Sender<SocketEvent>,
     packet_receiver: Receiver<Packet>,
+}
+
+enum UdpSocketState {
+    Empty,
+    MaybeMore,
 }
 
 impl Socket {
@@ -62,38 +68,47 @@ impl Socket {
 
     /// Entry point to the run loop. This should run in a spawned thread since calls to `poll.poll`
     /// are blocking.
-    pub fn start_polling(&mut self) -> Result<()> {
+    pub fn start_polling(&mut self) {
         // Nothing should break out of this loop!
         loop {
-            // First we pull any newly arrived packets and handle them
-            if let Err(e) = self.recv_from() {
-                error!("Encountered an error receiving data: {:?}", e);
-            };
+            self.manual_poll(Instant::now());
+        }
+    }
 
-            // Now grab all the packets waiting to be sent and send them
-            while let Ok(p) = self.packet_receiver.try_recv() {
-                if let Err(e) = self.send_to(p) {
-                    match e {
-                        ErrorKind::IOError(ref e) if e.kind() == io::ErrorKind::WouldBlock => {}
-                        _ => error!("There was an error sending packet: {:?}", e),
-                    }
+    /// Process any inbound/outbound packets and handle idle clients
+    pub fn manual_poll(&mut self, time: Instant) {
+        // First we pull all newly arrived packets and handle them
+        loop {
+            match self.recv_from(time) {
+                Ok(UdpSocketState::MaybeMore) => continue,
+                Ok(UdpSocketState::Empty) => break,
+                Err(e) => error!("Encountered an error receiving data: {:?}", e),
+            }
+        }
+
+        // Now grab all the packets waiting to be sent and send them
+        while let Ok(p) = self.packet_receiver.try_recv() {
+            if let Err(e) = self.send_to(p, time) {
+                match e {
+                    ErrorKind::IOError(ref e) if e.kind() == io::ErrorKind::WouldBlock => {}
+                    _ => error!("There was an error sending packet: {:?}", e),
                 }
             }
+        }
 
-            // Finally check for idle clients
-            if let Err(e) = self.handle_idle_clients() {
-                error!("Encountered an error when sending TimeoutEvent: {:?}", e);
-            }
+        // Finally check for idle clients
+        if let Err(e) = self.handle_idle_clients(time) {
+            error!("Encountered an error when sending TimeoutEvent: {:?}", e);
         }
     }
 
     /// Iterate through all of the idle connections based on `idle_connection_timeout` config and
     /// remove them from the active connections. For each connection removed, we will send a
     /// `SocketEvent::TimeOut` event to the `event_sender` channel.
-    fn handle_idle_clients(&mut self) -> Result<()> {
+    fn handle_idle_clients(&mut self, time: Instant) -> Result<()> {
         let idle_addresses = self
             .connections
-            .idle_connections(self.config.idle_connection_timeout);
+            .idle_connections(self.config.idle_connection_timeout, time);
         for address in idle_addresses {
             self.connections.remove_connection(&address);
             self.event_sender.send(SocketEvent::Timeout(address))?;
@@ -103,10 +118,10 @@ impl Socket {
     }
 
     // Serializes and sends a `Packet` on the socket. On success, returns the number of bytes written.
-    fn send_to(&mut self, packet: Packet) -> Result<usize> {
-        let connection = self
-            .connections
-            .get_or_insert_connection(packet.addr(), &self.config);
+    fn send_to(&mut self, packet: Packet, time: Instant) -> Result<usize> {
+        let connection =
+            self.connections
+                .get_or_insert_connection(packet.addr(), &self.config, time);
 
         let dropped = connection.gather_dropped_packets();
         let mut processed_packets: Vec<Outgoing> = dropped
@@ -118,6 +133,7 @@ impl Socket {
                     DeliveryGuarantee::Reliable,
                     // This is stored with the dropped packet because they could be mixed
                     waiting_packet.ordering_guarantee,
+                    time,
                 )
             })
             .collect();
@@ -126,6 +142,7 @@ impl Socket {
             packet.payload(),
             packet.delivery_guarantee(),
             packet.order_guarantee(),
+            time,
         )?;
 
         processed_packets.push(processed_packet);
@@ -149,8 +166,8 @@ impl Socket {
         Ok(bytes_sent)
     }
 
-    // On success the packet will be send on the `event_sender`
-    fn recv_from(&mut self) -> Result<()> {
+    // On success the packet will be sent on the `event_sender`
+    fn recv_from(&mut self, time: Instant) -> Result<UdpSocketState> {
         match self.socket.recv_from(&mut self.recv_buffer) {
             Ok((recv_len, address)) => {
                 if recv_len == 0 {
@@ -162,20 +179,22 @@ impl Socket {
                     self.event_sender.send(SocketEvent::Connect(address))?;
                 }
 
-                let connection = self
-                    .connections
-                    .get_or_insert_connection(address, &self.config);
+                let connection =
+                    self.connections
+                        .get_or_insert_connection(address, &self.config, time);
 
-                connection.process_incoming(received_payload, &self.event_sender)?;
+                connection.process_incoming(received_payload, &self.event_sender, time)?;
             }
             Err(e) => {
                 if e.kind() != io::ErrorKind::WouldBlock {
                     error!("Encountered an error receiving data: {:?}", e);
                     return Err(e.into());
+                } else {
+                    return Ok(UdpSocketState::Empty);
                 }
             }
         }
-        Ok(())
+        Ok(UdpSocketState::MaybeMore)
     }
 
     // Send a single packet over the UDP socket.
@@ -203,7 +222,35 @@ mod tests {
     };
     use std::net::SocketAddr;
     use std::thread;
-    use std::time::Duration;
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn manual_polling_socket() {
+        let (mut server, _, packet_receiver) =
+            Socket::bind("127.0.0.1:12339".parse::<SocketAddr>().unwrap()).unwrap();
+        let (mut client, packet_sender, _) =
+            Socket::bind("127.0.0.1:12340".parse::<SocketAddr>().unwrap()).unwrap();
+
+        for _ in 0..3 {
+            packet_sender
+                .send(Packet::unreliable(
+                    "127.0.0.1:12339".parse::<SocketAddr>().unwrap(),
+                    vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+                ))
+                .unwrap();
+        }
+
+        let time = Instant::now();
+
+        client.manual_poll(time);
+        server.manual_poll(time);
+
+        let mut iter = packet_receiver.iter();
+
+        assert!(iter.next().is_some());
+        assert!(iter.next().is_some());
+        assert!(iter.next().is_some());
+    }
 
     #[test]
     fn can_send_and_receive() {
@@ -238,10 +285,10 @@ mod tests {
 
         assert_eq!(
             server
-                .send_to(Packet::unreliable(
-                    "127.0.0.1:12360".parse().unwrap(),
-                    vec![1; 5000]
-                ))
+                .send_to(
+                    Packet::unreliable("127.0.0.1:12360".parse().unwrap(), vec![1; 5000]),
+                    Instant::now(),
+                )
                 .is_err(),
             true
         );
@@ -254,10 +301,10 @@ mod tests {
 
         assert_eq!(
             server
-                .send_to(Packet::unreliable(
-                    "127.0.0.1:12361".parse().unwrap(),
-                    vec![1; 1024]
-                ))
+                .send_to(
+                    Packet::unreliable("127.0.0.1:12361".parse().unwrap(), vec![1; 1024]),
+                    Instant::now(),
+                )
                 .unwrap(),
             1024 + STANDARD_HEADER_SIZE as usize
         );
@@ -273,10 +320,10 @@ mod tests {
         // the first fragment of an sequence of fragments contains also the acknowledgment header.
         assert_eq!(
             server
-                .send_to(Packet::reliable_unordered(
-                    "127.0.0.1:12362".parse().unwrap(),
-                    vec![1; 4000]
-                ))
+                .send_to(
+                    Packet::reliable_unordered("127.0.0.1:12362".parse().unwrap(), vec![1; 4000]),
+                    Instant::now(),
+                )
                 .unwrap(),
             4000 + (fragment_packet_size * 4 + ACKED_PACKET_HEADER) as usize
         );
