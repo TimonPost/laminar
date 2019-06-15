@@ -103,8 +103,10 @@ pipeline {
                 echo 'Uploading book here'
             }
         }
-        stage("Clean workspace") {
-            steps {
+    }
+    post {
+        cleanup {
+            node('master') {
                 cleanWs()
             }
         }
