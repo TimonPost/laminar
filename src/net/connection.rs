@@ -9,6 +9,7 @@ use std::{
 
 /// Maintains a registry of active "connections". Essentially, when we receive a packet on the
 /// socket from a particular `SocketAddr`, we will track information about it here.
+#[derive(Debug)]
 pub struct ActiveConnections {
     connections: HashMap<SocketAddr, VirtualConnection>,
 }

@@ -13,6 +13,7 @@ use std::{
 };
 
 /// A reliable UDP socket implementation with configurable reliability and ordering guarantees.
+#[derive(Debug)]
 pub struct Socket {
     socket: UdpSocket,
     config: Config,
