@@ -105,8 +105,8 @@ pipeline {
         }
     }
     post { 
-        always { 
-            wsCleanup()
+        cleanup { 
+            cleanWs()
         }
     }
 }
