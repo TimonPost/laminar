@@ -29,20 +29,6 @@ pipeline {
                 sh '$CARGO_HOME/bin/cargo clippy --all --all-features -- -D warnings'
             }
         }
-        stage('Run cargo clean') {
-            environment {
-                CARGO_HOME = '/home/jenkins/.cargo'
-                RUSTUP_HOME = '/home/jenkins/.rustup'
-            }
-            agent {
-                label 'linux || mac || windows'
-            }
-            steps {
-                echo 'Cleaning up...'
-                sh '/home/jenkins/.cargo/bin/cargo clean'
-                echo 'Done!'
-            }
-        }
         stage('Run Tests') {
             parallel {
                 stage("Test on Windows") {                    
@@ -54,6 +40,8 @@ pipeline {
                         label 'windows' 
                     }
                     steps {
+                        echo 'Cleaning...'
+                        sh 'C:\\Users\\root\\.cargo\\bin\\cargo clean'
                         echo 'Beginning tests...'
                         bat 'C:\\Users\\root\\.cargo\\bin\\cargo test --features="tester"'
                         echo 'Tests done!'
@@ -68,6 +56,8 @@ pipeline {
                         label 'linux'
                     }
                     steps {
+                        echo 'Cleaning...'
+                        sh '/home/jenkins/.cargo/bin/cargo clean'
                         echo 'Beginning tests...'
                         sh '/home/jenkins/.cargo/bin/cargo test --features="tester"'
                         echo 'Tests done!'
@@ -82,8 +72,9 @@ pipeline {
                         label 'mac'
                     }
                     steps {
+                        echo 'Cleaning...'
+                        sh '/Users/jenkins/.cargo/bin/cargo clean'
                         echo 'Beginning tests...'
-                        sh '/Users/jenkins/.cargo/bin/cargo test'
                         sh '/Users/jenkins/.cargo/bin/cargo test --features="tester"'
                         echo 'Tests done!'
                     }
