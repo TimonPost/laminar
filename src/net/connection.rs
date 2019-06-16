@@ -94,15 +94,15 @@ mod tests {
 
         let wait = Duration::from_millis(200);
 
-        let timed_out_connections =
-            connections.idle_connections(wait, now + wait - Duration::from_nanos(1));
+        #[cfg(not(windows))]
+        let epsilon = Duration::from_nanos(1);
+        #[cfg(windows)]
+        let epsilon = Duration::from_millis(1);
+
+        let timed_out_connections = connections.idle_connections(wait, now + wait - epsilon);
         assert_eq!(timed_out_connections.len(), 0);
 
-        #[cfg(not(windows))]
-        let timed_out_connections = connections.idle_connections(wait, now + wait);
-        #[cfg(windows)]
-        let timed_out_connections =
-            connections.idle_connections(wait, now + wait + Duration::from_micros(1));
+        let timed_out_connections = connections.idle_connections(wait, now + wait + epsilon);
         assert_eq!(timed_out_connections.len(), 10);
     }
 
