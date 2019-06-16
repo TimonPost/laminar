@@ -5,6 +5,7 @@
 
 use rand::prelude::random;
 
+#[derive(Debug)]
 pub struct LinkConditioner {
     // Value between 0 and 1, representing the % change a packet will be dropped on sending
     packet_loss: f64,

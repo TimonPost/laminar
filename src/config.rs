@@ -1,7 +1,7 @@
 use crate::net::constants::{DEFAULT_MTU, FRAGMENT_SIZE_DEFAULT, MAX_FRAGMENTS_DEFAULT};
 use std::{default::Default, time::Duration};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 /// Contains the configuration options to configure laminar for special use-cases.
 pub struct Config {
     /// Value which can specify the amount of time that can pass without hearing from a client before considering them disconnected
