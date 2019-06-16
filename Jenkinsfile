@@ -35,7 +35,7 @@ pipeline {
                 RUSTUP_HOME = '/home/jenkins/.rustup'
             }
             agent {
-                label 'linux'
+                label 'linux || mac || windows'
             }
             steps {
                 echo 'Cleaning up...'
