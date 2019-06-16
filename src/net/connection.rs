@@ -74,7 +74,7 @@ impl ActiveConnections {
 
     /// Returns the number of connected clients.
     #[cfg(test)]
-    pub fn count(&self) -> usize {
+    pub(crate) fn count(&self) -> usize {
         self.connections.len()
     }
 }

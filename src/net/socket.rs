@@ -247,12 +247,12 @@ impl Socket {
     }
 
     #[cfg(test)]
-    pub fn connection_count(&self) -> usize {
+    fn connection_count(&self) -> usize {
         self.connections.count()
     }
 
     #[cfg(test)]
-    pub fn forget_all_incoming_packets(&mut self) {
+    fn forget_all_incoming_packets(&mut self) {
         loop {
             match self.socket.recv_from(&mut self.recv_buffer) {
                 Ok((recv_len, _address)) => {
