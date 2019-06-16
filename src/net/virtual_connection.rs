@@ -312,9 +312,7 @@ impl VirtualConnection {
                                 OrderingGuarantee::Sequenced(Some(arranging_header.stream_id())),
                             )?;
                         }
-                    }
-
-                    if let OrderingGuarantee::Ordered(_id) = header.ordering_guarantee() {
+                    } else if let OrderingGuarantee::Ordered(_id) = header.ordering_guarantee() {
                         let arranging_header = packet_reader.read_arranging_header(u16::from(
                             STANDARD_HEADER_SIZE + ACKED_PACKET_HEADER,
                         ))?;

@@ -472,6 +472,42 @@ mod tests {
     }
 
     #[test]
+    fn do_not_duplicate_sequenced_packets_when_received() {
+        let server_addr = "127.0.0.1:12325".parse::<SocketAddr>().unwrap();
+        let client_addr = "127.0.0.1:12326".parse::<SocketAddr>().unwrap();
+
+        let (mut server, server_sender, server_receiver) = Socket::bind(server_addr).unwrap();
+        let (mut client, client_sender, client_receiver) = Socket::bind(client_addr).unwrap();
+
+        let time = Instant::now();
+
+        for id in 0..100 {
+            client_sender
+                .send(Packet::reliable_sequenced(server_addr, vec![id], None))
+                .unwrap();
+            client.manual_poll(time);
+            server.manual_poll(time);
+        }
+
+        let mut seen = HashSet::new();
+
+        while let Ok(message) = server_receiver.try_recv() {
+            match message {
+                SocketEvent::Connect(connect_event) => {}
+                SocketEvent::Packet(packet) => {
+                    assert![!seen.contains(&packet.payload()[0])];
+                    seen.insert(packet.payload()[0]);
+                }
+                SocketEvent::Timeout(timeout_event) => {
+                    panic!["This should not happen, as we've not advanced time"];
+                }
+            }
+        }
+
+        assert_eq![100, seen.len()];
+    }
+
+    #[test]
     fn manual_polling_socket() {
         let (mut server, _, packet_receiver) =
             Socket::bind("127.0.0.1:12339".parse::<SocketAddr>().unwrap()).unwrap();
