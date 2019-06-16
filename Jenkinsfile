@@ -41,7 +41,7 @@ pipeline {
                     }
                     steps {
                         echo 'Cleaning...'
-                        sh 'C:\\Users\\root\\.cargo\\bin\\cargo clean'
+                        bat 'C:\\Users\\root\\.cargo\\bin\\cargo clean'
                         echo 'Beginning tests...'
                         bat 'C:\\Users\\root\\.cargo\\bin\\cargo test --features="tester"'
                         echo 'Tests done!'
