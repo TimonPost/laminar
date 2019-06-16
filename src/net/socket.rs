@@ -41,10 +41,17 @@ impl Socket {
 
     /// Bind to any local port on the system, if available
     pub fn bind_any() -> Result<(Self, Sender<Packet>, Receiver<SocketEvent>)> {
+        Self::bind_any_with_config(Config::default())
+    }
+
+    /// Bind to any local port on the system, if available, with a given config
+    pub fn bind_any_with_config(
+        config: Config,
+    ) -> Result<(Self, Sender<Packet>, Receiver<SocketEvent>)> {
         let loopback = Ipv4Addr::new(127, 0, 0, 1);
         let address = SocketAddrV4::new(loopback, 0);
         let socket = UdpSocket::bind(address)?;
-        Self::bind_internal(socket, Config::default())
+        Self::bind_internal(socket, config)
     }
 
     /// Binds to the socket and then sets up `ActiveConnections` to manage the "connections".
@@ -243,6 +250,7 @@ mod tests {
     #[test]
     fn binding_to_any() {
         assert![Socket::bind_any().is_ok()];
+        assert![Socket::bind_any_with_config(Config::default()).is_ok()];
     }
 
     #[test]
