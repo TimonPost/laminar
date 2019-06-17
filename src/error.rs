@@ -13,6 +13,8 @@ pub type Result<T> = result::Result<T, ErrorKind>;
 #[derive(Debug)]
 /// Enum with all possible network errors that could occur.
 pub enum ErrorKind {
+    /// Error in decoding the packet
+    DecodingError(DecodingErrorKind),
     /// Error relating to receiving or parsing a fragment
     FragmentError(FragmentErrorKind),
     /// Error relating to receiving or parsing a packet
@@ -32,6 +34,11 @@ pub enum ErrorKind {
 impl Display for ErrorKind {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         match self {
+            ErrorKind::DecodingError(e) => write!(
+                fmt,
+                "Something went wrong with parsing the header. Reason: {:?}.",
+                e
+            ),
             ErrorKind::FragmentError(e) => write!(
                 fmt,
                 "Something went wrong with receiving/parsing fragments. Reason: {:?}.",
@@ -59,6 +66,31 @@ impl Display for ErrorKind {
                 "Expected {} header but could not be read from buffer.",
                 header
             ),
+        }
+    }
+}
+
+/// Errors that could occur while parsing packet contents
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum DecodingErrorKind {
+    /// The [PacketType] could not be read
+    PacketType,
+    /// The [OrderingGuarantee] could not be read
+    OrderingGuarantee,
+    /// The [DeliveryGuarantee] could not be read
+    DeliveryGuarantee,
+}
+
+impl Display for DecodingErrorKind {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        match *self {
+            DecodingErrorKind::PacketType => write!(fmt, "The packet type could not be read."),
+            DecodingErrorKind::OrderingGuarantee => {
+                write!(fmt, "The ordering guarantee could not be read.")
+            }
+            DecodingErrorKind::DeliveryGuarantee => {
+                write!(fmt, "The delivery guarantee could not be read.")
+            }
         }
     }
 }

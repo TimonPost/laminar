@@ -1,4 +1,8 @@
-use crate::packet::EnumConverter;
+use crate::{
+    error::{DecodingErrorKind, ErrorKind},
+    packet::EnumConverter,
+};
+use std::convert::TryFrom;
 
 /// Enum to specify how a packet should be delivered.
 #[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Eq)]
@@ -16,13 +20,18 @@ impl EnumConverter for DeliveryGuarantee {
     fn to_u8(&self) -> u8 {
         *self as u8
     }
+}
 
+impl TryFrom<u8> for DeliveryGuarantee {
+    type Error = ErrorKind;
     /// Get `DeliveryGuarantee` enum instance from integer value.
-    fn from_u8(input: u8) -> Self::Enum {
-        match input {
-            0 => DeliveryGuarantee::Unreliable,
-            1 => DeliveryGuarantee::Reliable,
-            _ => unimplemented!("Delivery Guarantee {} does not exist yet.", input),
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(DeliveryGuarantee::Unreliable),
+            1 => Ok(DeliveryGuarantee::Reliable),
+            _ => Err(ErrorKind::DecodingError(
+                DecodingErrorKind::DeliveryGuarantee,
+            )),
         }
     }
 }
@@ -55,14 +64,19 @@ impl EnumConverter for OrderingGuarantee {
             OrderingGuarantee::Ordered(_) => 2,
         }
     }
+}
 
+impl TryFrom<u8> for OrderingGuarantee {
+    type Error = ErrorKind;
     /// Get `OrderingGuarantee` enum instance from integer value.
-    fn from_u8(input: u8) -> Self::Enum {
-        match input {
-            0 => OrderingGuarantee::None,
-            1 => OrderingGuarantee::Sequenced(None),
-            2 => OrderingGuarantee::Ordered(None),
-            _ => unimplemented!("Ordering Guarantee {} does not exist yet.", input),
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(OrderingGuarantee::None),
+            1 => Ok(OrderingGuarantee::Sequenced(None)),
+            2 => Ok(OrderingGuarantee::Ordered(None)),
+            _ => Err(ErrorKind::DecodingError(
+                DecodingErrorKind::OrderingGuarantee,
+            )),
         }
     }
 }
@@ -82,12 +96,15 @@ impl EnumConverter for PacketType {
     fn to_u8(&self) -> u8 {
         *self as u8
     }
+}
 
-    fn from_u8(input: u8) -> Self::Enum {
-        match input {
-            0 => PacketType::Packet,
-            1 => PacketType::Fragment,
-            _ => unimplemented!("Packet ID {} does not exist yet.", input),
+impl TryFrom<u8> for PacketType {
+    type Error = ErrorKind;
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(PacketType::Packet),
+            1 => Ok(PacketType::Fragment),
+            _ => Err(ErrorKind::DecodingError(DecodingErrorKind::PacketType)),
         }
     }
 }
@@ -98,6 +115,7 @@ mod tests {
         enums::{DeliveryGuarantee, OrderingGuarantee, PacketType},
         EnumConverter,
     };
+    use std::convert::TryFrom;
 
     #[test]
     fn assure_parsing_ordering_guarantee() {
@@ -107,15 +125,15 @@ mod tests {
 
         assert_eq!(
             OrderingGuarantee::None,
-            OrderingGuarantee::from_u8(none.to_u8())
+            OrderingGuarantee::try_from(none.to_u8()).unwrap()
         );
         assert_eq!(
             OrderingGuarantee::Ordered(None),
-            OrderingGuarantee::from_u8(ordered.to_u8())
+            OrderingGuarantee::try_from(ordered.to_u8()).unwrap()
         );
         assert_eq!(
             OrderingGuarantee::Sequenced(None),
-            OrderingGuarantee::from_u8(sequenced.to_u8())
+            OrderingGuarantee::try_from(sequenced.to_u8()).unwrap()
         )
     }
 
@@ -125,11 +143,11 @@ mod tests {
         let reliable = DeliveryGuarantee::Reliable;
         assert_eq!(
             DeliveryGuarantee::Unreliable,
-            DeliveryGuarantee::from_u8(unreliable.to_u8())
+            DeliveryGuarantee::try_from(unreliable.to_u8()).unwrap()
         );
         assert_eq!(
             DeliveryGuarantee::Reliable,
-            DeliveryGuarantee::from_u8(reliable.to_u8())
+            DeliveryGuarantee::try_from(reliable.to_u8()).unwrap()
         )
     }
 
@@ -137,7 +155,13 @@ mod tests {
     fn assure_parsing_packet_id() {
         let packet = PacketType::Packet;
         let fragment = PacketType::Fragment;
-        assert_eq!(PacketType::Packet, PacketType::from_u8(packet.to_u8()));
-        assert_eq!(PacketType::Fragment, PacketType::from_u8(fragment.to_u8()))
+        assert_eq!(
+            PacketType::Packet,
+            PacketType::try_from(packet.to_u8()).unwrap()
+        );
+        assert_eq!(
+            PacketType::Fragment,
+            PacketType::try_from(fragment.to_u8()).unwrap()
+        );
     }
 }
