@@ -1,6 +1,7 @@
 pub use crate::net::{NetworkQuality, RttMeasurer, VirtualConnection};
 
 use crate::config::Config;
+use crate::either::Either::{self, Left, Right};
 use std::{
     collections::HashMap,
     net::SocketAddr,
@@ -32,6 +33,21 @@ impl ActiveConnections {
         self.connections
             .entry(address)
             .or_insert_with(|| VirtualConnection::new(address, config, time))
+    }
+
+    /// Try to get or create a [VirtualConnection] by address. If the connection does not exist, it will be
+    /// created and returned, but not inserted into the table of active connections.
+    pub(crate) fn get_or_create_connection(
+        &mut self,
+        address: SocketAddr,
+        config: &Config,
+        time: Instant,
+    ) -> Either<&mut VirtualConnection, VirtualConnection> {
+        if let Some(connection) = self.connections.get_mut(&address) {
+            Left(connection)
+        } else {
+            Right(VirtualConnection::new(address, config, time))
+        }
     }
 
     /// Removes the connection from `ActiveConnections` by socket address.

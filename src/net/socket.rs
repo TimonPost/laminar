@@ -1,3 +1,4 @@
+use crate::either::Either::{Left, Right};
 use crate::{
     config::Config,
     error::{ErrorKind, Result},
@@ -204,9 +205,16 @@ impl Socket {
 
                 let connection =
                     self.connections
-                        .get_or_insert_connection(address, &self.config, time);
+                        .get_or_create_connection(address, &self.config, time);
 
-                connection.process_incoming(received_payload, &self.event_sender, time)?;
+                match connection {
+                    Left(existing) => {
+                        existing.process_incoming(received_payload, &self.event_sender, time)?;
+                    }
+                    Right(mut anonymous) => {
+                        anonymous.process_incoming(received_payload, &self.event_sender, time)?;
+                    }
+                }
             }
             Err(e) => {
                 if e.kind() != io::ErrorKind::WouldBlock {
@@ -235,6 +243,32 @@ impl Socket {
             true
         }
     }
+
+    #[cfg(test)]
+    pub fn connection_count(&self) -> usize {
+        self.connections.count()
+    }
+
+    #[cfg(test)]
+    pub fn forget_all_incoming_packets(&mut self) {
+        loop {
+            match self.socket.recv_from(&mut self.recv_buffer) {
+                Ok((recv_len, _address)) => {
+                    if recv_len == 0 {
+                        panic!("Received data too short");
+                    }
+                    let received_payload = &self.recv_buffer[..recv_len];
+                }
+                Err(e) => {
+                    if e.kind() != io::ErrorKind::WouldBlock {
+                        panic!("Encountered an error receiving data: {:?}", e);
+                    } else {
+                        return;
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -251,6 +285,95 @@ mod tests {
     fn binding_to_any() {
         assert![Socket::bind_any().is_ok()];
         assert![Socket::bind_any_with_config(Config::default()).is_ok()];
+    }
+
+    #[test]
+    fn initial_packet_is_resent() {
+        let (mut server, server_sender, server_receiver) =
+            Socket::bind("127.0.0.1:12335".parse::<SocketAddr>().unwrap()).unwrap();
+        let (mut client, client_sender, client_receiver) =
+            Socket::bind("127.0.0.1:12336".parse::<SocketAddr>().unwrap()).unwrap();
+
+        let time = Instant::now();
+
+        // Send a packet that the server ignores/drops
+        client_sender
+            .send(Packet::reliable_unordered(
+                "127.0.0.1:12335".parse::<SocketAddr>().unwrap(),
+                b"Do not arrive".iter().cloned().collect::<Vec<_>>(),
+            ))
+            .unwrap();
+        client.manual_poll(time);
+
+        // Drop the inbound packet, this simulates a network error
+        server.forget_all_incoming_packets();
+
+        // Send a packet that the server receives
+        for id in 0..u8::max_value() {
+            client_sender
+                .send(create_test_packet(id, "127.0.0.1:12335"))
+                .unwrap();
+
+            server_sender
+                .send(create_test_packet(id, "127.0.0.1:12336"))
+                .unwrap();
+
+            client.manual_poll(time);
+            server.manual_poll(time);
+
+            while let Ok(SocketEvent::Packet(pkt)) = server_receiver.try_recv() {
+                if pkt.payload() == b"Do not arrive" {
+                    return;
+                }
+            }
+            while let Ok(_) = client_receiver.try_recv() {}
+        }
+
+        panic!["Did not receive the ignored packet"];
+    }
+
+    #[test]
+    fn receiving_does_not_allow_denial_of_service() {
+        let (mut server, server_sender, packet_receiver) =
+            Socket::bind("127.0.0.1:12337".parse::<SocketAddr>().unwrap()).unwrap();
+        let (mut client, client_sender, _) =
+            Socket::bind("127.0.0.1:12338".parse::<SocketAddr>().unwrap()).unwrap();
+
+        // Send a bunch of packets to a server
+        for _ in 0..3 {
+            client_sender
+                .send(Packet::unreliable(
+                    "127.0.0.1:12337".parse::<SocketAddr>().unwrap(),
+                    vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+                ))
+                .unwrap();
+        }
+
+        let time = Instant::now();
+
+        client.manual_poll(time);
+        server.manual_poll(time);
+
+        for _ in 0..6 {
+            assert![packet_receiver.try_recv().is_ok()];
+        }
+        assert![packet_receiver.try_recv().is_err()];
+
+        // The server shall not have any connection in its connection table even though it received
+        // packets
+        assert_eq![0, server.connection_count()];
+
+        server_sender
+            .send(Packet::unreliable(
+                "127.0.0.1:12338".parse::<SocketAddr>().unwrap(),
+                vec![1],
+            ))
+            .unwrap();
+
+        server.manual_poll(time);
+
+        // The server only adds to its table after having sent explicitly
+        assert_eq![1, server.connection_count()];
     }
 
     #[test]
@@ -385,15 +508,15 @@ mod tests {
         let mut config = Config::default();
         config.idle_connection_timeout = Duration::from_millis(1);
 
-        let (mut server, _, packet_receiver) =
+        let (mut server, server_sender, server_receiver) =
             Socket::bind("127.0.0.1:12347".parse::<SocketAddr>().unwrap()).unwrap();
-        let (mut client, packet_sender, _) =
+        let (mut client, client_sender, _) =
             Socket::bind("127.0.0.1:12346".parse::<SocketAddr>().unwrap()).unwrap();
 
         thread::spawn(move || client.start_polling());
         thread::spawn(move || server.start_polling());
 
-        packet_sender
+        client_sender
             .send(Packet::unreliable(
                 "127.0.0.1:12347".parse().unwrap(),
                 vec![0, 1, 2],
@@ -401,18 +524,27 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            packet_receiver.recv().unwrap(),
+            server_receiver.recv().unwrap(),
             SocketEvent::Connect("127.0.0.1:12346".parse().unwrap())
         );
         assert_eq!(
-            packet_receiver.recv().unwrap(),
+            server_receiver.recv().unwrap(),
             SocketEvent::Packet(Packet::unreliable(
                 "127.0.0.1:12346".parse().unwrap(),
                 vec![0, 1, 2]
             ))
         );
+
+        // Acknowledge the client
+        server_sender
+            .send(Packet::unreliable(
+                "127.0.0.1:12346".parse().unwrap(),
+                vec![],
+            ))
+            .unwrap();
+
         assert_eq!(
-            packet_receiver.recv().unwrap(),
+            server_receiver.recv().unwrap(),
             SocketEvent::Timeout("127.0.0.1:12346".parse().unwrap())
         );
     }
@@ -454,8 +586,8 @@ mod tests {
         }
 
         // Ensure that we get the correct number of events to the server.
-        // 1 connect event plus the 35 messages
-        assert_eq!(events.len(), 36);
+        // 35 connect events plus the 35 messages
+        assert_eq!(events.len(), 70);
 
         // Finally the server decides to send us a message back. This necessarily will include
         // the ack information for 33 of the sent 35 packets.
@@ -488,6 +620,6 @@ mod tests {
                 _ => None,
             })
             .collect();
-        assert_eq!(sent_events, vec![0, 1, 35]);
+        assert_eq!(sent_events, vec![35]);
     }
 }

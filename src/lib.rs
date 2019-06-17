@@ -23,6 +23,7 @@
 #![allow(clippy::trivially_copy_pass_by_ref)]
 
 mod config;
+mod either;
 mod error;
 mod infrastructure;
 mod net;
