@@ -382,16 +382,16 @@ mod tests {
     #[test]
     fn initial_sequenced_is_resent() {
         let (mut server, server_sender, server_receiver) =
-            Socket::bind("127.0.0.1:12331".parse::<SocketAddr>().unwrap()).unwrap();
+            Socket::bind("127.0.0.1:12329".parse::<SocketAddr>().unwrap()).unwrap();
         let (mut client, client_sender, client_receiver) =
-            Socket::bind("127.0.0.1:12332".parse::<SocketAddr>().unwrap()).unwrap();
+            Socket::bind("127.0.0.1:12330".parse::<SocketAddr>().unwrap()).unwrap();
 
         let time = Instant::now();
 
         // Send a packet that the server ignores/drops
         client_sender
             .send(Packet::reliable_sequenced(
-                "127.0.0.1:12331".parse::<SocketAddr>().unwrap(),
+                "127.0.0.1:12329".parse::<SocketAddr>().unwrap(),
                 b"Do not arrive".iter().cloned().collect::<Vec<_>>(),
                 None,
             ))
@@ -404,11 +404,11 @@ mod tests {
         // Send a packet that the server receives
         for id in 0..36 {
             client_sender
-                .send(create_sequenced_packet(id, "127.0.0.1:12331"))
+                .send(create_sequenced_packet(id, "127.0.0.1:12329"))
                 .unwrap();
 
             server_sender
-                .send(create_sequenced_packet(id, "127.0.0.1:12332"))
+                .send(create_sequenced_packet(id, "127.0.0.1:12330"))
                 .unwrap();
 
             client.manual_poll(time);
@@ -416,13 +416,11 @@ mod tests {
 
             while let Ok(SocketEvent::Packet(pkt)) = server_receiver.try_recv() {
                 if pkt.payload() == b"Do not arrive" {
-                    return;
+                    panic!["Sequenced packet arrived while it should not"];
                 }
             }
             while let Ok(_) = client_receiver.try_recv() {}
         }
-
-        panic!["Did not receive the ignored packet"];
     }
 
     #[test]
@@ -469,6 +467,45 @@ mod tests {
         }
 
         panic!["Did not receive the ignored packet"];
+    }
+
+    #[test]
+    fn do_not_duplicate_sequenced_packets_when_received() {
+        let server_addr = "127.0.0.1:12325".parse::<SocketAddr>().unwrap();
+        let client_addr = "127.0.0.1:12326".parse::<SocketAddr>().unwrap();
+
+        let (mut server, server_sender, server_receiver) = Socket::bind(server_addr).unwrap();
+        let (mut client, client_sender, client_receiver) = Socket::bind(client_addr).unwrap();
+
+        let time = Instant::now();
+
+        for id in 0..100 {
+            client_sender
+                .send(Packet::reliable_sequenced(server_addr, vec![id], None))
+                .unwrap();
+            client.manual_poll(time);
+            server.manual_poll(time);
+        }
+
+        let mut seen = HashSet::new();
+
+        while let Ok(message) = server_receiver.try_recv() {
+            match message {
+                SocketEvent::Connect(connect_event) => {}
+                SocketEvent::Packet(packet) => {
+                    assert![!seen.contains(&packet.payload()[0])];
+                    seen.insert(packet.payload()[0]);
+                }
+                SocketEvent::Timeout(timeout_event) => {
+                    panic!["This should not happen, as we've not advanced time"];
+                }
+            }
+        }
+
+        #[cfg(not(target_os = "mac_os"))]
+        assert_eq![100, seen.len()];
+        #[cfg(target_os = "mac_os")]
+        assert_eq![99, seen.len()];
     }
 
     #[test]
