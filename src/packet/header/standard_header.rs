@@ -4,6 +4,7 @@ use crate::net::constants::STANDARD_HEADER_SIZE;
 use crate::packet::{DeliveryGuarantee, EnumConverter, OrderingGuarantee, PacketType};
 use crate::protocol_version::ProtocolVersion;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use std::convert::TryFrom;
 use std::io::Cursor;
 
 #[derive(Copy, Clone, Debug)]
@@ -96,9 +97,9 @@ impl HeaderReader for StandardHeader {
 
         let header = StandardHeader {
             protocol_version,
-            packet_type: PacketType::from_u8(packet_id),
-            delivery_guarantee: DeliveryGuarantee::from_u8(delivery_guarantee_id),
-            ordering_guarantee: OrderingGuarantee::from_u8(order_guarantee_id),
+            packet_type: PacketType::try_from(packet_id)?,
+            delivery_guarantee: DeliveryGuarantee::try_from(delivery_guarantee_id)?,
+            ordering_guarantee: OrderingGuarantee::try_from(order_guarantee_id)?,
         };
 
         Ok(header)

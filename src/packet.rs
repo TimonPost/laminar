@@ -18,5 +18,4 @@ pub trait EnumConverter {
     type Enum;
 
     fn to_u8(&self) -> u8;
-    fn from_u8(input: u8) -> Self::Enum;
 }

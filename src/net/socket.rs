@@ -279,7 +279,8 @@ mod tests {
         net::constants::{ACKED_PACKET_HEADER, FRAGMENT_HEADER_SIZE, STANDARD_HEADER_SIZE},
         Config, Packet, Socket, SocketEvent,
     };
-    use std::net::SocketAddr;
+    use std::collections::HashSet;
+    use std::net::{SocketAddr, UdpSocket};
     use std::thread;
     use std::time::{Duration, Instant};
 
@@ -725,5 +726,20 @@ mod tests {
             })
             .collect();
         assert_eq!(sent_events, vec![35]);
+    }
+
+    #[quickcheck_macros::quickcheck]
+    fn do_not_panic_on_arbitrary_packets(bytes: Vec<u8>) {
+        let receiver = "127.0.0.1:12332".parse::<SocketAddr>().unwrap();
+        let sender = "127.0.0.1:12331".parse::<SocketAddr>().unwrap();
+
+        let (mut server, server_sender, server_receiver) = Socket::bind(receiver).unwrap();
+
+        let client = UdpSocket::bind(sender).unwrap();
+
+        client.send_to(&bytes, receiver);
+
+        let time = Instant::now();
+        server.manual_poll(time);
     }
 }
