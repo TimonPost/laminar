@@ -3,14 +3,20 @@
 //! networks. This is not in heavy use yet, hence the allowing dead code. These will be removed as our testing
 //! becomes more sophisticated.
 
-use rand::prelude::random;
+use rand::Rng;
+use rand_pcg::Pcg64Mcg as Random;
+use std::time::Duration;
 
-#[derive(Debug)]
+/// Network simulator. Used to simulate network conditions as dropped packets and packet delays.
+/// For use in [Socket::set_link_conditioner](crate::net::Socket::set_link_conditioner).
+#[derive(Clone, Debug)]
 pub struct LinkConditioner {
     // Value between 0 and 1, representing the % change a packet will be dropped on sending
     packet_loss: f64,
-    // Value in milliseconds, representing the delay imposed between packets
-    latency: u32,
+    // Duration of the delay imposed between packets
+    latency: Duration,
+    // Random number generator
+    random: Random,
 }
 
 impl LinkConditioner {
@@ -19,7 +25,8 @@ impl LinkConditioner {
     pub fn new() -> LinkConditioner {
         LinkConditioner {
             packet_loss: 0.0,
-            latency: 0,
+            latency: Duration::default(),
+            random: Random::new(0),
         }
     }
 
@@ -31,12 +38,18 @@ impl LinkConditioner {
 
     /// Sets the latency the link conditioner should apply to each packet
     #[allow(dead_code)]
-    pub fn set_latency(&mut self, latency: u32) {
+    pub fn set_latency(&mut self, latency: Duration) {
         self.latency = latency
     }
 
     /// Function that checks to see if a packet should be dropped or not
-    pub fn should_send(&self) -> bool {
-        random::<f64>() >= self.packet_loss
+    pub fn should_send(&mut self) -> bool {
+        self.random.gen_range(0.0, 1.0) >= self.packet_loss
+    }
+}
+
+impl Default for LinkConditioner {
+    fn default() -> Self {
+        Self::new()
     }
 }

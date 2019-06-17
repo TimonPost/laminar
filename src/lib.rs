@@ -39,5 +39,5 @@ pub use self::throughput::ThroughputMonitoring;
 
 pub use self::config::Config;
 pub use self::error::{ErrorKind, Result};
-pub use self::net::{Socket, SocketEvent};
+pub use self::net::{LinkConditioner, Socket, SocketEvent};
 pub use self::packet::{DeliveryGuarantee, OrderingGuarantee, Packet};

@@ -29,7 +29,8 @@ crossbeam-channel = "0.3"
 lazy_static = "1.1"
 log = "0.4"
 mio = "0.6"
-rand = "0.5"
+rand = "0.6"
+rand_pcg = "0.1"
 clap = { version = "2.32", features = ["yaml"], optional = true }
 env_logger = { version = "0.6", optional = true }
 
