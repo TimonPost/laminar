@@ -157,6 +157,7 @@ impl Socket {
                     DeliveryGuarantee::Reliable,
                     // This is stored with the dropped packet because they could be mixed
                     waiting_packet.ordering_guarantee,
+                    waiting_packet.item_identifier,
                     time,
                 )
             })
@@ -166,6 +167,7 @@ impl Socket {
             packet.payload(),
             packet.delivery_guarantee(),
             packet.order_guarantee(),
+            None,
             time,
         )?;
 
@@ -245,12 +247,12 @@ impl Socket {
     }
 
     #[cfg(test)]
-    pub fn connection_count(&self) -> usize {
+    fn connection_count(&self) -> usize {
         self.connections.count()
     }
 
     #[cfg(test)]
-    pub fn forget_all_incoming_packets(&mut self) {
+    fn forget_all_incoming_packets(&mut self) {
         loop {
             match self.socket.recv_from(&mut self.recv_buffer) {
                 Ok((recv_len, _address)) => {
@@ -374,6 +376,98 @@ mod tests {
 
         // The server only adds to its table after having sent explicitly
         assert_eq![1, server.connection_count()];
+    }
+
+    #[test]
+    fn initial_sequenced_is_resent() {
+        let (mut server, server_sender, server_receiver) =
+            Socket::bind("127.0.0.1:12331".parse::<SocketAddr>().unwrap()).unwrap();
+        let (mut client, client_sender, client_receiver) =
+            Socket::bind("127.0.0.1:12332".parse::<SocketAddr>().unwrap()).unwrap();
+
+        let time = Instant::now();
+
+        // Send a packet that the server ignores/drops
+        client_sender
+            .send(Packet::reliable_sequenced(
+                "127.0.0.1:12331".parse::<SocketAddr>().unwrap(),
+                b"Do not arrive".iter().cloned().collect::<Vec<_>>(),
+                None,
+            ))
+            .unwrap();
+        client.manual_poll(time);
+
+        // Drop the inbound packet, this simulates a network error
+        server.forget_all_incoming_packets();
+
+        // Send a packet that the server receives
+        for id in 0..36 {
+            client_sender
+                .send(create_sequenced_packet(id, "127.0.0.1:12331"))
+                .unwrap();
+
+            server_sender
+                .send(create_sequenced_packet(id, "127.0.0.1:12332"))
+                .unwrap();
+
+            client.manual_poll(time);
+            server.manual_poll(time);
+
+            while let Ok(SocketEvent::Packet(pkt)) = server_receiver.try_recv() {
+                if pkt.payload() == b"Do not arrive" {
+                    return;
+                }
+            }
+            while let Ok(_) = client_receiver.try_recv() {}
+        }
+
+        panic!["Did not receive the ignored packet"];
+    }
+
+    #[test]
+    fn initial_ordered_is_resent() {
+        let (mut server, server_sender, server_receiver) =
+            Socket::bind("127.0.0.1:12333".parse::<SocketAddr>().unwrap()).unwrap();
+        let (mut client, client_sender, client_receiver) =
+            Socket::bind("127.0.0.1:12334".parse::<SocketAddr>().unwrap()).unwrap();
+
+        let time = Instant::now();
+
+        // Send a packet that the server ignores/drops
+        client_sender
+            .send(Packet::reliable_ordered(
+                "127.0.0.1:12333".parse::<SocketAddr>().unwrap(),
+                b"Do not arrive".iter().cloned().collect::<Vec<_>>(),
+                None,
+            ))
+            .unwrap();
+        client.manual_poll(time);
+
+        // Drop the inbound packet, this simulates a network error
+        server.forget_all_incoming_packets();
+
+        // Send a packet that the server receives
+        for id in 0..36 {
+            client_sender
+                .send(create_ordered_packet(id, "127.0.0.1:12333"))
+                .unwrap();
+
+            server_sender
+                .send(create_ordered_packet(id, "127.0.0.1:12334"))
+                .unwrap();
+
+            client.manual_poll(time);
+            server.manual_poll(time);
+
+            while let Ok(SocketEvent::Packet(pkt)) = server_receiver.try_recv() {
+                if pkt.payload() == b"Do not arrive" {
+                    return;
+                }
+            }
+            while let Ok(_) = client_receiver.try_recv() {}
+        }
+
+        panic!["Did not receive the ignored packet"];
     }
 
     #[test]
@@ -555,6 +649,16 @@ mod tests {
     fn create_test_packet(id: u8, addr: &str) -> Packet {
         let payload = vec![id];
         Packet::reliable_unordered(addr.parse().unwrap(), payload)
+    }
+
+    fn create_ordered_packet(id: u8, addr: &str) -> Packet {
+        let payload = vec![id];
+        Packet::reliable_ordered(addr.parse().unwrap(), payload, None)
+    }
+
+    fn create_sequenced_packet(id: u8, addr: &str) -> Packet {
+        let payload = vec![id];
+        Packet::reliable_sequenced(addr.parse().unwrap(), payload, None)
     }
 
     #[test]

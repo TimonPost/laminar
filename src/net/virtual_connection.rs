@@ -11,7 +11,7 @@ use crate::{
     },
     packet::{
         DeliveryGuarantee, OrderingGuarantee, Outgoing, OutgoingPacketBuilder, Packet,
-        PacketReader, PacketType,
+        PacketReader, PacketType, SequenceNumber,
     },
     SocketEvent,
 };
@@ -66,6 +66,7 @@ impl VirtualConnection {
         payload: &'a [u8],
         delivery_guarantee: DeliveryGuarantee,
         ordering_guarantee: OrderingGuarantee,
+        last_item_identifier: Option<SequenceNumber>,
         time: Instant,
     ) -> Result<Outgoing<'a>> {
         match delivery_guarantee {
@@ -96,6 +97,7 @@ impl VirtualConnection {
             DeliveryGuarantee::Reliable => {
                 let payload_length = payload.len() as u16;
 
+                let mut item_identifier_value = None;
                 let outgoing = {
                     // spit the packet if the payload length is greater than the allowed fragment size.
                     if payload_length <= self.config.fragment_size {
@@ -112,25 +114,39 @@ impl VirtualConnection {
                         );
 
                         if let OrderingGuarantee::Ordered(stream_id) = ordering_guarantee {
-                            let item_identifier = self
-                                .ordering_system
-                                .get_or_create_stream(stream_id.unwrap_or(DEFAULT_ORDERING_STREAM))
-                                .new_item_identifier();
+                            let item_identifier = if let Some(item_identifier) =
+                                last_item_identifier
+                            {
+                                item_identifier
+                            } else {
+                                self.ordering_system
+                                    .get_or_create_stream(
+                                        stream_id.unwrap_or(DEFAULT_ORDERING_STREAM),
+                                    )
+                                    .new_item_identifier() as u16
+                            };
 
-                            builder =
-                                builder.with_ordering_header(item_identifier as u16, stream_id);
+                            item_identifier_value = Some(item_identifier);
+
+                            builder = builder.with_ordering_header(item_identifier, stream_id);
                         };
 
                         if let OrderingGuarantee::Sequenced(stream_id) = ordering_guarantee {
-                            let item_identifier = self
-                                .sequencing_system
-                                .get_or_create_stream(
-                                    stream_id.unwrap_or(DEFAULT_SEQUENCING_STREAM),
-                                )
-                                .new_item_identifier();
+                            let item_identifier = if let Some(item_identifier) =
+                                last_item_identifier
+                            {
+                                item_identifier
+                            } else {
+                                self.sequencing_system
+                                    .get_or_create_stream(
+                                        stream_id.unwrap_or(DEFAULT_SEQUENCING_STREAM),
+                                    )
+                                    .new_item_identifier() as u16
+                            };
 
-                            builder =
-                                builder.with_sequencing_header(item_identifier as u16, stream_id);
+                            item_identifier_value = Some(item_identifier);
+
+                            builder = builder.with_sequencing_header(item_identifier, stream_id);
                         };
 
                         Outgoing::Packet(builder.build())
@@ -176,8 +192,11 @@ impl VirtualConnection {
 
                 self.congestion_handler
                     .process_outgoing(self.acknowledge_handler.local_sequence_num(), time);
-                self.acknowledge_handler
-                    .process_outgoing(payload, ordering_guarantee);
+                self.acknowledge_handler.process_outgoing(
+                    payload,
+                    ordering_guarantee,
+                    item_identifier_value,
+                );
 
                 Ok(outgoing)
             }
@@ -497,6 +516,7 @@ mod tests {
                 &buffer,
                 DeliveryGuarantee::Reliable,
                 OrderingGuarantee::Ordered(None),
+                None,
                 Instant::now(),
             )
             .unwrap();
@@ -520,6 +540,7 @@ mod tests {
                 &buffer,
                 DeliveryGuarantee::Unreliable,
                 OrderingGuarantee::None,
+                None,
                 Instant::now(),
             )
             .unwrap();
@@ -529,6 +550,7 @@ mod tests {
                 &buffer,
                 DeliveryGuarantee::Unreliable,
                 OrderingGuarantee::Sequenced(None),
+                None,
                 Instant::now(),
             )
             .unwrap();
@@ -538,6 +560,7 @@ mod tests {
                 &buffer,
                 DeliveryGuarantee::Reliable,
                 OrderingGuarantee::Ordered(None),
+                None,
                 Instant::now(),
             )
             .unwrap();
@@ -547,6 +570,7 @@ mod tests {
                 &buffer,
                 DeliveryGuarantee::Reliable,
                 OrderingGuarantee::Sequenced(None),
+                None,
                 Instant::now(),
             )
             .unwrap();
@@ -834,7 +858,7 @@ mod tests {
         let buffer = vec![1; 500];
 
         let outgoing = connection
-            .process_outgoing(&buffer, delivery, ordering, Instant::now())
+            .process_outgoing(&buffer, delivery, ordering, None, Instant::now())
             .unwrap();
 
         match outgoing {
