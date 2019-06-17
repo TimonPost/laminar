@@ -126,6 +126,11 @@ impl Socket {
         }
     }
 
+    /// Set the link conditioner for this socket. See [LinkConditioner] for further details.
+    pub fn set_link_conditioner(&mut self, link_conditioner: Option<LinkConditioner>) {
+        self.link_conditioner = link_conditioner;
+    }
+
     /// Iterate through all of the idle connections based on `idle_connection_timeout` config and
     /// remove them from the active connections. For each connection removed, we will send a
     /// `SocketEvent::TimeOut` event to the `event_sender` channel.
@@ -238,8 +243,8 @@ impl Socket {
 
     // In the presence of a link conditioner, we would like it to determine whether or not we should
     // send a packet.
-    fn should_send_packet(&self) -> bool {
-        if let Some(link_conditioner) = &self.link_conditioner {
+    fn should_send_packet(&mut self) -> bool {
+        if let Some(link_conditioner) = &mut self.link_conditioner {
             link_conditioner.should_send()
         } else {
             true
@@ -277,7 +282,7 @@ impl Socket {
 mod tests {
     use crate::{
         net::constants::{ACKED_PACKET_HEADER, FRAGMENT_HEADER_SIZE, STANDARD_HEADER_SIZE},
-        Config, Packet, Socket, SocketEvent,
+        Config, LinkConditioner, Packet, Socket, SocketEvent,
     };
     use std::collections::HashSet;
     use std::net::{SocketAddr, UdpSocket};
@@ -741,5 +746,74 @@ mod tests {
 
         let time = Instant::now();
         server.manual_poll(time);
+    }
+
+    #[test]
+    fn really_bad_network_keeps_chugging_along() {
+        let server_addr = "127.0.0.1:12320".parse::<SocketAddr>().unwrap();
+        let client_addr = "127.0.0.1:12321".parse::<SocketAddr>().unwrap();
+
+        let (mut server, server_sender, server_receiver) = Socket::bind(server_addr).unwrap();
+        let (mut client, client_sender, client_receiver) = Socket::bind(client_addr).unwrap();
+
+        let time = Instant::now();
+
+        // We give both the server and the client a really bad bidirectional link
+        let link_conditioner = {
+            let mut lc = LinkConditioner::new();
+            lc.set_packet_loss(0.9);
+            Some(lc)
+        };
+
+        client.set_link_conditioner(link_conditioner.clone());
+        server.set_link_conditioner(link_conditioner);
+
+        let mut set = HashSet::new();
+
+        // We chat 100 packets between the client and server, which will re-send any non-acked
+        // packets
+        let mut send_many_packets = |dummy: Option<u8>| {
+            for id in 0..100 {
+                client_sender
+                    .send(Packet::reliable_unordered(
+                        server_addr,
+                        vec![dummy.unwrap_or(id)],
+                    ))
+                    .unwrap();
+
+                server_sender
+                    .send(Packet::reliable_unordered(client_addr, vec![255]))
+                    .unwrap();
+
+                client.manual_poll(time);
+                server.manual_poll(time);
+
+                while let Ok(_) = client_receiver.try_recv() {}
+                while let Ok(event) = server_receiver.try_recv() {
+                    match event {
+                        SocketEvent::Packet(pkt) => {
+                            set.insert(pkt.payload()[0]);
+                        }
+                        SocketEvent::Timeout(_) => {
+                            panic!["Unable to time out, time has not advanced"]
+                        }
+                        SocketEvent::Connect(_) => {}
+                    }
+                }
+            }
+
+            return set.len();
+        };
+
+        // The first chatting sequence sends packets 0..100 from the client to the server. After
+        // this we just chat with a value of 255 so we don't accidentally overlap those chatting
+        // packets with the packets we want to ack.
+        assert_eq![42, send_many_packets(None)];
+        assert_eq![85, send_many_packets(Some(255))];
+        assert_eq![98, send_many_packets(Some(255))];
+        assert_eq![100, send_many_packets(Some(255))];
+
+        // 101 because we have 0..100 and 255 from the dummies
+        assert_eq![101, send_many_packets(Some(255))];
     }
 }
