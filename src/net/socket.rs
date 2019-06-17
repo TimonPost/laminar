@@ -8,7 +8,7 @@ use crossbeam_channel::{self, unbounded, Receiver, Sender};
 use log::error;
 use std::{
     self, io,
-    net::{SocketAddr, ToSocketAddrs, UdpSocket},
+    net::{Ipv4Addr, SocketAddr, SocketAddrV4, ToSocketAddrs, UdpSocket},
     time::Instant,
 };
 
@@ -39,6 +39,21 @@ impl Socket {
         Socket::bind_with_config(addresses, Config::default())
     }
 
+    /// Bind to any local port on the system, if available
+    pub fn bind_any() -> Result<(Self, Sender<Packet>, Receiver<SocketEvent>)> {
+        Self::bind_any_with_config(Config::default())
+    }
+
+    /// Bind to any local port on the system, if available, with a given config
+    pub fn bind_any_with_config(
+        config: Config,
+    ) -> Result<(Self, Sender<Packet>, Receiver<SocketEvent>)> {
+        let loopback = Ipv4Addr::new(127, 0, 0, 1);
+        let address = SocketAddrV4::new(loopback, 0);
+        let socket = UdpSocket::bind(address)?;
+        Self::bind_internal(socket, config)
+    }
+
     /// Binds to the socket and then sets up `ActiveConnections` to manage the "connections".
     /// Because UDP connections are not persistent, we can only infer the status of the remote
     /// endpoint by looking to see if they are still sending packets or not
@@ -49,6 +64,13 @@ impl Socket {
         config: Config,
     ) -> Result<(Self, Sender<Packet>, Receiver<SocketEvent>)> {
         let socket = UdpSocket::bind(addresses)?;
+        Self::bind_internal(socket, config)
+    }
+
+    fn bind_internal(
+        socket: UdpSocket,
+        config: Config,
+    ) -> Result<(Self, Sender<Packet>, Receiver<SocketEvent>)> {
         socket.set_nonblocking(true)?;
         let (event_sender, event_receiver) = unbounded();
         let (packet_sender, packet_receiver) = unbounded();
@@ -224,6 +246,12 @@ mod tests {
     use std::net::SocketAddr;
     use std::thread;
     use std::time::{Duration, Instant};
+
+    #[test]
+    fn binding_to_any() {
+        assert![Socket::bind_any().is_ok()];
+        assert![Socket::bind_any_with_config(Config::default()).is_ok()];
+    }
 
     #[test]
     fn manual_polling_socket() {
