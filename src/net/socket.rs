@@ -825,8 +825,8 @@ mod tests {
                 client.manual_poll(time);
                 server.manual_poll(time);
 
-                while let Ok(_) = client_receiver.try_recv() {}
-                while let Ok(event) = server_receiver.try_recv() {
+                while let Ok(_) = client_receiver.recv_timeout(Duration::from_millis(1)) {}
+                while let Ok(event) = server_receiver.recv_timeout(Duration::from_millis(1)) {
                     match event {
                         SocketEvent::Packet(pkt) => {
                             set.insert(pkt.payload()[0]);
