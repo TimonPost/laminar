@@ -7,7 +7,6 @@ use std::{
 };
 
 use clap::{load_yaml, App, AppSettings};
-use crossbeam_channel::Sender;
 use laminar::{Packet, Result, Socket, SocketEvent, ThroughputMonitoring};
 use log::{debug, error, info};
 
@@ -39,10 +38,10 @@ impl From<clap::ArgMatches<'_>> for ClientConfiguration {
     fn from(args: clap::ArgMatches<'_>) -> Self {
         ClientConfiguration {
             listen_host: args
-                .value_of("LISTEN_ADDR")
-                .expect("No `LISTEN_ADDR` argument provided!")
+                .value_of("LISTEN_HOST")
+                .expect("No `LISTEN_HOST` argument provided!")
                 .parse()
-                .expect("Could not parse `LISTEN_ADDR` argument!"),
+                .expect("Could not parse `LISTEN_HOST` argument!"),
             destination: args
                 .value_of("CONNECT_ADDR")
                 .expect("No `CONNECT_ADDR` argument provided!")
@@ -83,10 +82,10 @@ impl From<clap::ArgMatches<'_>> for ServerConfiguration {
     fn from(args: clap::ArgMatches<'_>) -> Self {
         ServerConfiguration {
             listen_host: args
-                .value_of("LISTEN_ADDR")
-                .expect("No `LISTEN_ADDR` argument provided!")
+                .value_of("LISTEN_HOST")
+                .expect("No `LISTEN_HOST` argument provided!")
                 .parse()
-                .expect("Could not parse `LISTEN_ADDR` argument!"),
+                .expect("Could not parse `LISTEN_HOST` argument!"),
             run_duration: Duration::from_secs(
                 args.value_of("SHUTDOWN_TIMER")
                     .expect("No `SHUTDOWN_TIMER` argument provided!")
@@ -123,21 +122,23 @@ fn process_client_subcommand(m: clap::ArgMatches<'_>) {
 }
 
 fn run_server(server_config: ServerConfiguration) -> Result<()> {
-    let (mut socket, _packet_sender, event_receiver) = Socket::bind(server_config.listen_host)?;
-
-    let _thread = thread::spawn(move || socket.start_polling());
+    let mut socket = Socket::bind(server_config.listen_host)?;
 
     let mut throughput = ThroughputMonitoring::new(Duration::from_secs(1));
 
     loop {
-        match event_receiver.recv() {
-            Ok(SocketEvent::Packet(_)) => {
-                throughput.tick();
+        socket.manual_poll(Instant::now());
+        if let Some(event) = socket.recv() {
+            match event {
+                SocketEvent::Packet(_) => {
+                    println!["Got a packet"];
+                    throughput.tick();
+                }
+                SocketEvent::Connect(address) => {
+                    socket.send(Packet::unreliable(address, vec![0])).unwrap();
+                }
+                _ => error!("Event not handled yet."),
             }
-            Err(e) => {
-                error!("Error receiving packet: {:?}", e);
-            }
-            _ => error!("Event not handled yet."),
         }
 
         info!("{}", throughput);
@@ -145,14 +146,12 @@ fn run_server(server_config: ServerConfiguration) -> Result<()> {
 }
 
 fn run_client(config: ClientConfiguration) -> Result<()> {
-    let (mut socket, packet_sender, _) = Socket::bind(config.listen_host)?;
-
-    let _thread = thread::spawn(move || socket.start_polling());
+    let socket = Socket::bind(config.listen_host)?;
 
     // See which test we want to run
     match config.test_name.as_str() {
         "steady-stream" => {
-            test_steady_stream(&packet_sender, config);
+            test_steady_stream(config, socket);
             exit(0);
         }
         _ => {
@@ -163,19 +162,19 @@ fn run_client(config: ClientConfiguration) -> Result<()> {
 }
 
 // Basic test where the client sends packets at a steady rate to the server
-fn test_steady_stream(sender: &Sender<Packet>, config: ClientConfiguration) {
+fn test_steady_stream(config: ClientConfiguration, mut socket: Socket) {
     info!("Beginning steady-state test");
 
-    let test_packet = Packet::reliable_unordered(config.listen_host, config.test_name.into_bytes());
+    let test_packet = Packet::reliable_unordered(config.destination, config.test_name.into_bytes());
 
     let time_quantum = 1000 / config.packet_ps as u64;
     let start_time = Instant::now();
     let mut packets_sent = 0;
 
     loop {
-        sender
-            .send(test_packet.clone())
-            .expect("Unable to send a client packet");
+        socket.send(test_packet.clone()).unwrap();
+        socket.manual_poll(Instant::now());
+        while let Some(_) = socket.recv() {}
 
         packets_sent += 1;
 

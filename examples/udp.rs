@@ -23,40 +23,38 @@ fn server_address() -> SocketAddr {
 /// This is an example of how to send data to an specific address.
 pub fn send_data() {
     // Setup a udp socket and bind it to the client address.
-    let (mut socket, packet_sender, _event_receiver) = Socket::bind(client_address()).unwrap();
-    let _thread = thread::spawn(move || socket.start_polling());
+    let mut socket = Socket::bind(client_address()).unwrap();
 
     let packet = construct_packet();
 
     // next send or packet to the endpoint we earlier putted into the packet.
-    packet_sender.send(packet).unwrap();
+    socket.send(packet);
 }
 
-/// This is an example of how to receive data over udp on an specific socket address.
+/// This is an example of how to receive data over udp.
 pub fn receive_data() {
     // setup an udp socket and bind it to the client address.
-    let (mut socket, _packet_sender, event_receiver) = Socket::bind(server_address()).unwrap();
-    let _thread = thread::spawn(move || socket.start_polling());
+    let mut socket = Socket::bind(server_address()).unwrap();
 
     // Next start receiving.
-    let result = event_receiver.recv();
+    loop {
+        if let Some(result) = socket.recv() {
+            match result {
+                SocketEvent::Packet(packet) => {
+                    let endpoint: SocketAddr = packet.addr();
+                    let received_data: &[u8] = packet.payload();
 
-    match result {
-        Ok(SocketEvent::Packet(packet)) => {
-            let endpoint: SocketAddr = packet.addr();
-            let received_data: &[u8] = packet.payload();
+                    // you can here deserialize your bytes into the data you have passed it when sending.
 
-            // you can here deserialize your bytes into the data you have passed it when sending.
-
-            println!(
-                "Received packet from: {:?} with length {}",
-                endpoint,
-                received_data.len()
-            );
-        }
-        Ok(_) => {}
-        Err(e) => {
-            println!("Something went wrong when receiving, error: {:?}", e);
+                    println!(
+                        "Received packet from: {:?} with length {}",
+                        endpoint,
+                        received_data.len()
+                    );
+                }
+                _ => {}
+            }
+            break;
         }
     }
 }
