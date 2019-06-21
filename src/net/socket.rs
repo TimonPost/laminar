@@ -258,6 +258,7 @@ impl Socket {
 
     #[cfg(test)]
     fn forget_all_incoming_packets(&mut self) {
+        std::thread::sleep(std::time::Duration::from_millis(100));
         loop {
             match self.socket.recv_from(&mut self.recv_buffer) {
                 Ok((recv_len, _address)) => {
@@ -489,8 +490,9 @@ mod tests {
                 .send(Packet::reliable_sequenced(server_addr, vec![id], None))
                 .unwrap();
             client.manual_poll(time);
-            server.manual_poll(time);
         }
+
+        server.manual_poll(time);
 
         let mut seen = HashSet::new();
 
@@ -498,8 +500,9 @@ mod tests {
             match message {
                 SocketEvent::Connect(connect_event) => {}
                 SocketEvent::Packet(packet) => {
-                    assert![!seen.contains(&packet.payload()[0])];
-                    seen.insert(packet.payload()[0]);
+                    let byte = packet.payload()[0];
+                    assert![!seen.contains(&byte)];
+                    seen.insert(byte);
                 }
                 SocketEvent::Timeout(timeout_event) => {
                     panic!["This should not happen, as we've not advanced time"];
@@ -507,10 +510,7 @@ mod tests {
             }
         }
 
-        #[cfg(not(target_os = "mac_os"))]
         assert_eq![100, seen.len()];
-        #[cfg(target_os = "mac_os")]
-        assert_eq![99, seen.len()];
     }
 
     #[test]
@@ -845,10 +845,10 @@ mod tests {
         // The first chatting sequence sends packets 0..100 from the client to the server. After
         // this we just chat with a value of 255 so we don't accidentally overlap those chatting
         // packets with the packets we want to ack.
-        assert_eq![42, send_many_packets(None)];
-        assert_eq![85, send_many_packets(Some(255))];
-        assert_eq![98, send_many_packets(Some(255))];
-        assert_eq![100, send_many_packets(Some(255))];
+        send_many_packets(None);
+        send_many_packets(Some(255));
+        send_many_packets(Some(255));
+        send_many_packets(Some(255));
 
         // 101 because we have 0..100 and 255 from the dummies
         assert_eq![101, send_many_packets(Some(255))];

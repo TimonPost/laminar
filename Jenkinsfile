@@ -31,13 +31,13 @@ pipeline {
         }
         stage('Run Tests') {
             parallel {
-                stage("Test on Windows") {                    
+                stage("Test on Windows") {
                     environment {
                         CARGO_HOME = 'C:\\Users\\root\\.cargo'
                         RUSTUP_HOME = 'C:\\Users\\root\\.rustup'
                     }
-                    agent { 
-                        label 'windows' 
+                    agent {
+                        label 'windows'
                     }
                     steps {
                         echo 'Cleaning...'
@@ -63,7 +63,8 @@ pipeline {
                         echo 'Tests done!'
                     }
                 }
-                stage("Test on macOS") {
+                // Skip macOS stage for now until we can get a stable machine to run on
+                /* stage("Test on macOS") {
                     environment {
                         CARGO_HOME = '/Users/jenkins/.cargo'
                         RUSTUP_HOME = '/Users/jenkins/.rustup'
@@ -78,7 +79,7 @@ pipeline {
                         sh '/Users/jenkins/.cargo/bin/cargo test --features="tester"'
                         echo 'Tests done!'
                     }
-                }
+                } */
             }
         }
         stage('Calculate Coverage') {
