@@ -10,7 +10,7 @@ use log::error;
 use std::{
     self, io,
     net::{Ipv4Addr, SocketAddr, SocketAddrV4, ToSocketAddrs, UdpSocket},
-    thread::sleep,
+    thread::{sleep, yield_now},
     time::{Duration, Instant},
 };
 
@@ -113,18 +113,21 @@ impl Socket {
     }
 
     /// Entry point to the run loop. This should run in a spawned thread since calls to `poll.poll`
-    /// are blocking.
+    /// are blocking. We will default this to sleeping for 1ms.
     pub fn start_polling(&mut self) {
-        self.start_polling_with_duration(Duration::from_millis(1))
+        self.start_polling_with_duration(Some(Duration::from_millis(1)))
     }
 
     /// Run the polling loop with a specified duration. This should run in a spawned thread since
     /// calls to `poll.poll` are blocking.
-    pub fn start_polling_with_duration(&mut self, poll_duration: Duration) {
+    pub fn start_polling_with_duration(&mut self, poll_duration: Option<Duration>) {
         // Nothing should break out of this loop!
         loop {
             self.manual_poll(Instant::now());
-            sleep(poll_duration);
+            match poll_duration {
+                None => yield_now(),
+                Some(duration) => sleep(duration),
+            };
         }
     }
 
