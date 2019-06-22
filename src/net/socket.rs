@@ -10,7 +10,8 @@ use log::error;
 use std::{
     self, io,
     net::{Ipv4Addr, SocketAddr, SocketAddrV4, ToSocketAddrs, UdpSocket},
-    time::Instant,
+    thread::sleep,
+    time::{Duration, Instant},
 };
 
 /// A reliable UDP socket implementation with configurable reliability and ordering guarantees.
@@ -114,9 +115,16 @@ impl Socket {
     /// Entry point to the run loop. This should run in a spawned thread since calls to `poll.poll`
     /// are blocking.
     pub fn start_polling(&mut self) {
+        self.start_polling_with_duration(Duration::from_millis(1))
+    }
+
+    /// Run the polling loop with a specified duration. This should run in a spawned thread since
+    /// calls to `poll.poll` are blocking.
+    pub fn start_polling_with_duration(&mut self, poll_duration: Duration) {
         // Nothing should break out of this loop!
         loop {
             self.manual_poll(Instant::now());
+            sleep(poll_duration);
         }
     }
 
