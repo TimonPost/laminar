@@ -4,7 +4,7 @@ use laminar::{Config, Packet, Socket, SocketEvent, ThroughputMonitoring};
 use log::error;
 use std::net::SocketAddr;
 use std::thread::{self, JoinHandle};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 /// Enum with commands you can send to the server.
 #[derive(Debug)]
@@ -42,9 +42,7 @@ impl Server {
     where
         F: Fn(Packet) + Send + Sized + 'static,
     {
-        let (mut socket, _, packet_receiver) = Socket::bind(self.listening_host).unwrap();
-
-        let _ = thread::spawn(move || socket.start_polling());
+        let mut socket = Socket::bind(self.listening_host).unwrap();
 
         let (notify_tx, notify_rx) = crossbeam_channel::unbounded();
         let (events_tx, events_rx) = crossbeam_channel::unbounded();
@@ -52,8 +50,9 @@ impl Server {
 
         let serve_handle = thread::spawn(move || {
             loop {
-                match packet_receiver.try_recv() {
-                    Ok(result) => match result {
+                socket.manual_poll(Instant::now());
+                match socket.recv() {
+                    Some(result) => match result {
                         SocketEvent::Packet(p) => {
                             packet_assert(p);
                             if throughput_monitor.tick() {
@@ -70,35 +69,33 @@ impl Server {
                             }
                         }
                     },
-                    Err(e) => {
-                        if !e.is_empty() {
-                            error!("An error has occurred: {}", e);
-                        } else {
-                            // check if we received a notify to close the server.
-                            match notify_rx.try_recv() {
-                                Ok(notify) => match notify {
-                                    ServerCommand::Shutdown => {
-                                        let result = || -> Result<(), crossbeam_channel::SendError<ServerEvent>> {
-                                            events_tx.send(ServerEvent::AverageThroughput(
-                                                throughput_monitor.average(),
-                                            ))?;
-                                            events_tx.send(ServerEvent::TotalSent(
-                                                throughput_monitor.total_measured_ticks(),
-                                            ))?;
-                                            Ok(())
-                                        };
+                    None => {
+                        // check if we received a notify to close the server.
+                        match notify_rx.try_recv() {
+                            Ok(notify) => match notify {
+                                ServerCommand::Shutdown => {
+                                    let result = || -> Result<(), crossbeam_channel::SendError<ServerEvent>> {
+                                        events_tx.send(ServerEvent::AverageThroughput(
+                                            throughput_monitor.average(),
+                                        ))?;
+                                        events_tx.send(ServerEvent::TotalSent(
+                                            throughput_monitor.total_measured_ticks(),
+                                        ))?;
+                                        Ok(())
+                                    };
 
-                                        if let Err(e) = result() {
-                                            error!("Unable to sent an event {:?}", e);
-                                        };
+                                    if let Err(e) = result() {
+                                        error!("Unable to sent an event {:?}", e);
+                                    };
 
-                                        return;
-                                    }
-                                },
-                                Err(e) => {
-                                    if !e.is_empty() {
-                                        error!("Error occurred when trying to receive on notify channel");
-                                    }
+                                    return;
+                                }
+                            },
+                            Err(e) => {
+                                if !e.is_empty() {
+                                    error!(
+                                        "Error occurred when trying to receive on notify channel"
+                                    );
                                 }
                             }
                         }
