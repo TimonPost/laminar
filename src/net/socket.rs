@@ -82,6 +82,16 @@ impl Socket {
         })
     }
 
+    /// Returns a handle to the packet sender which provides a thread-safe way to enqueue packets to be processed. This should be used when the socket is busy running its polling loop in a separate thread.
+    pub fn get_packet_sender(&mut self) -> Sender<Packet> {
+        self.sender.clone()
+    }
+
+    /// Returns a handle to the event receiver which provides a thread-safe way to retrieve events from the socket. This should be used when the socket is busy running its polling loop in a separate thread.
+    pub fn get_event_receiver(&mut self) -> Receiver<SocketEvent> {
+        self.receiver.clone()
+    }
+
     /// Send a packet
     pub fn send(&mut self, packet: Packet) -> Result<()> {
         match self.sender.send(packet) {
@@ -304,6 +314,35 @@ mod tests {
     fn binding_to_any() {
         assert![Socket::bind_any().is_ok()];
         assert![Socket::bind_any_with_config(Config::default()).is_ok()];
+    }
+
+    #[test]
+    fn using_sender_and_receiver() {
+        let server_addr = "127.0.0.1:12310".parse::<SocketAddr>().unwrap();
+        let client_addr = "127.0.0.1:12311".parse::<SocketAddr>().unwrap();
+
+        let mut server = Socket::bind(server_addr).unwrap();
+        let mut client = Socket::bind(client_addr).unwrap();
+
+        let time = Instant::now();
+
+        let mut sender = client.get_packet_sender();
+        let mut receiver = server.get_event_receiver();
+
+        sender.send(Packet::reliable_unordered(
+            server_addr,
+            b"Hello world!".iter().cloned().collect::<Vec<_>>(),
+        ));
+
+        client.manual_poll(time);
+        server.manual_poll(time);
+
+        assert_eq![Ok(SocketEvent::Connect(client_addr)), receiver.recv()];
+        if let SocketEvent::Packet(packet) = receiver.recv().unwrap() {
+            assert_eq![b"Hello world!", packet.payload()];
+        } else {
+            panic!["Did not receive a packet when it should"];
+        }
     }
 
     #[test]
