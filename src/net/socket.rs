@@ -83,12 +83,16 @@ impl Socket {
         })
     }
 
-    /// Returns a handle to the packet sender which provides a thread-safe way to enqueue packets to be processed. This should be used when the socket is busy running its polling loop in a separate thread.
+    /// Returns a handle to the packet sender which provides a thread-safe way to enqueue packets
+    /// to be processed. This should be used when the socket is busy running its polling loop in a
+    /// separate thread.
     pub fn get_packet_sender(&mut self) -> Sender<Packet> {
         self.sender.clone()
     }
 
-    /// Returns a handle to the event receiver which provides a thread-safe way to retrieve events from the socket. This should be used when the socket is busy running its polling loop in a separate thread.
+    /// Returns a handle to the event receiver which provides a thread-safe way to retrieve events
+    /// from the socket. This should be used when the socket is busy running its polling loop in
+    /// a separate thread.
     pub fn get_event_receiver(&mut self) -> Receiver<SocketEvent> {
         self.receiver.clone()
     }
@@ -118,13 +122,13 @@ impl Socket {
         self.start_polling_with_duration(Some(Duration::from_millis(1)))
     }
 
-    /// Run the polling loop with a specified duration. This should run in a spawned thread since
-    /// calls to `poll.poll` are blocking.
-    pub fn start_polling_with_duration(&mut self, poll_duration: Option<Duration>) {
+    /// Run the polling loop with a specified sleep duration. This should run in a spawned thread
+    /// since calls to `poll.poll` are blocking.
+    pub fn start_polling_with_duration(&mut self, sleep_duration: Option<Duration>) {
         // Nothing should break out of this loop!
         loop {
             self.manual_poll(Instant::now());
-            match poll_duration {
+            match sleep_duration {
                 None => yield_now(),
                 Some(duration) => sleep(duration),
             };
