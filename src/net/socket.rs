@@ -83,6 +83,28 @@ impl Socket {
         })
     }
 
+    /// Send the packet out immediately, similar to [Socket::send] and [Socket::manual_poll] in that order.
+    pub fn send_immediate(&mut self, packet: Packet, time: Instant) -> Result<()> {
+        let result = match self.sender.send(packet) {
+            Ok(_) => Ok(()),
+            Err(error) => Err(ErrorKind::SendError(SendError(SocketEvent::Packet(
+                error.0,
+            )))),
+        };
+        self.manual_poll(time);
+        result
+    }
+
+    /// Recv a packet immediately, similar to [Socket::manual_poll] and [Socket::recv] in that order.
+    pub fn recv_immediate(&mut self, time: Instant) -> Option<SocketEvent> {
+        self.manual_poll(time);
+        match self.receiver.try_recv() {
+            Ok(pkt) => Some(pkt),
+            Err(TryRecvError::Empty) => None,
+            Err(TryRecvError::Disconnected) => panic!["This can never happen"],
+        }
+    }
+
     /// Returns a handle to the packet sender which provides a thread-safe way to enqueue packets
     /// to be processed. This should be used when the socket is busy running its polling loop in a
     /// separate thread.
@@ -330,6 +352,35 @@ mod tests {
     fn binding_to_any() {
         assert![Socket::bind_any().is_ok()];
         assert![Socket::bind_any_with_config(Config::default()).is_ok()];
+    }
+
+    #[test]
+    fn immediate_mode() {
+        let server_addr = "127.0.0.1:12312".parse::<SocketAddr>().unwrap();
+        let client_addr = "127.0.0.1:12313".parse::<SocketAddr>().unwrap();
+
+        let mut server = Socket::bind(server_addr).unwrap();
+        let mut client = Socket::bind(client_addr).unwrap();
+
+        let time = Instant::now();
+
+        client.send_immediate(
+            Packet::reliable_unordered(
+                server_addr,
+                b"Hello world!".iter().cloned().collect::<Vec<_>>(),
+            ),
+            time,
+        );
+
+        assert_eq![
+            Some(SocketEvent::Connect(client_addr)),
+            server.recv_immediate(time)
+        ];
+        if let SocketEvent::Packet(packet) = server.recv_immediate(time).unwrap() {
+            assert_eq![b"Hello world!", packet.payload()];
+        } else {
+            panic!["Did not receive a packet when it should"];
+        }
     }
 
     #[test]
