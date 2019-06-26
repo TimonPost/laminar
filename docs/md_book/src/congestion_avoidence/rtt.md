@@ -8,7 +8,7 @@ So you could say: "very simple, measure the time between sending and receiving y
 
 _Allowed RTT value_
 
-So now we have the smoothed RTT and or current RTT, GREAT! But RTT on its own is not bad. So there may be some max allowed RTT. We need to subtract that amount from our measured RTT multiplied by the smoothing factor. 
+So now we have the smoothed RTT and our current RTT, GREAT! But RTT on its own is not bad. So there may be some max allowed RTT. We need to subtract that amount from our measured RTT multiplied by the smoothing factor. 
 
 The formula would look like the following:
 
@@ -31,8 +31,8 @@ _good internet_
 let new_rtt_value = (100 - 250) * 0.10.
 ```
 
-As you see when or calculation is under 250ms we get a negative result, which is in this case positive. 
-When or calculation is above 250ms it will be positive, which is in this case negative.
+As you see when our calculation is under 250ms we get a negative result, which is in this case positive. 
+When our calculation is above 250ms it will be positive, which is in this case negative.
 
 So each time we receive an acknowledgment we can add our result, of the above formula, to the RTT time saved in the connection.
 
