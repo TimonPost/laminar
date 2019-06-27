@@ -166,7 +166,8 @@ impl Socket {
     pub fn set_link_conditioner(&mut self, link_conditioner: Option<LinkConditioner>) {
         self.link_conditioner = link_conditioner;
     }
-    /// Get port of socket
+
+    /// Get the local socket address
     pub fn local_addr(&self) -> Result<SocketAddr> {
         Ok(self.socket.local_addr()?)
     }
@@ -305,7 +306,7 @@ impl Socket {
                     if recv_len == 0 {
                         panic!("Received data too short");
                     }
-                    let received_payload = &self.recv_buffer[..recv_len];
+                    &self.recv_buffer[..recv_len];
                 }
                 Err(e) => {
                     if e.kind() != io::ErrorKind::WouldBlock {
@@ -327,7 +328,6 @@ mod tests {
     };
     use std::collections::HashSet;
     use std::net::{SocketAddr, UdpSocket};
-    use std::thread;
     use std::time::{Duration, Instant};
 
     #[test]
@@ -346,13 +346,15 @@ mod tests {
 
         let time = Instant::now();
 
-        let mut sender = client.get_packet_sender();
-        let mut receiver = server.get_event_receiver();
+        let sender = client.get_packet_sender();
+        let receiver = server.get_event_receiver();
 
-        sender.send(Packet::reliable_unordered(
-            server_addr,
-            b"Hello world!".iter().cloned().collect::<Vec<_>>(),
-        ));
+        sender
+            .send(Packet::reliable_unordered(
+                server_addr,
+                b"Hello world!".iter().cloned().collect::<Vec<_>>(),
+            ))
+            .unwrap();
 
         client.manual_poll(time);
         server.manual_poll(time);
@@ -373,10 +375,12 @@ mod tests {
         let time = Instant::now();
 
         // Send a packet that the server ignores/drops
-        client.send(Packet::reliable_unordered(
-            "127.0.0.1:12335".parse::<SocketAddr>().unwrap(),
-            b"Do not arrive".iter().cloned().collect::<Vec<_>>(),
-        ));
+        client
+            .send(Packet::reliable_unordered(
+                "127.0.0.1:12335".parse::<SocketAddr>().unwrap(),
+                b"Do not arrive".iter().cloned().collect::<Vec<_>>(),
+            ))
+            .unwrap();
         client.manual_poll(time);
 
         // Drop the inbound packet, this simulates a network error
@@ -384,9 +388,13 @@ mod tests {
 
         // Send a packet that the server receives
         for id in 0..u8::max_value() {
-            client.send(create_test_packet(id, "127.0.0.1:12335"));
+            client
+                .send(create_test_packet(id, "127.0.0.1:12335"))
+                .unwrap();
 
-            server.send(create_test_packet(id, "127.0.0.1:12336"));
+            server
+                .send(create_test_packet(id, "127.0.0.1:12336"))
+                .unwrap();
 
             client.manual_poll(time);
             server.manual_poll(time);
@@ -409,10 +417,12 @@ mod tests {
 
         // Send a bunch of packets to a server
         for _ in 0..3 {
-            client.send(Packet::unreliable(
-                "127.0.0.1:12337".parse::<SocketAddr>().unwrap(),
-                vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
-            ));
+            client
+                .send(Packet::unreliable(
+                    "127.0.0.1:12337".parse::<SocketAddr>().unwrap(),
+                    vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+                ))
+                .unwrap();
         }
 
         let time = Instant::now();
@@ -429,10 +439,12 @@ mod tests {
         // packets
         assert_eq![0, server.connection_count()];
 
-        server.send(Packet::unreliable(
-            "127.0.0.1:12338".parse::<SocketAddr>().unwrap(),
-            vec![1],
-        ));
+        server
+            .send(Packet::unreliable(
+                "127.0.0.1:12338".parse::<SocketAddr>().unwrap(),
+                vec![1],
+            ))
+            .unwrap();
 
         server.manual_poll(time);
 
@@ -448,11 +460,13 @@ mod tests {
         let time = Instant::now();
 
         // Send a packet that the server ignores/drops
-        client.send(Packet::reliable_sequenced(
-            "127.0.0.1:12329".parse::<SocketAddr>().unwrap(),
-            b"Do not arrive".iter().cloned().collect::<Vec<_>>(),
-            None,
-        ));
+        client
+            .send(Packet::reliable_sequenced(
+                "127.0.0.1:12329".parse::<SocketAddr>().unwrap(),
+                b"Do not arrive".iter().cloned().collect::<Vec<_>>(),
+                None,
+            ))
+            .unwrap();
         client.manual_poll(time);
 
         // Drop the inbound packet, this simulates a network error
@@ -460,9 +474,13 @@ mod tests {
 
         // Send a packet that the server receives
         for id in 0..36 {
-            client.send(create_sequenced_packet(id, "127.0.0.1:12329"));
+            client
+                .send(create_sequenced_packet(id, "127.0.0.1:12329"))
+                .unwrap();
 
-            server.send(create_sequenced_packet(id, "127.0.0.1:12330"));
+            server
+                .send(create_sequenced_packet(id, "127.0.0.1:12330"))
+                .unwrap();
 
             client.manual_poll(time);
             server.manual_poll(time);
@@ -484,11 +502,13 @@ mod tests {
         let time = Instant::now();
 
         // Send a packet that the server ignores/drops
-        client.send(Packet::reliable_ordered(
-            "127.0.0.1:12333".parse::<SocketAddr>().unwrap(),
-            b"Do not arrive".iter().cloned().collect::<Vec<_>>(),
-            None,
-        ));
+        client
+            .send(Packet::reliable_ordered(
+                "127.0.0.1:12333".parse::<SocketAddr>().unwrap(),
+                b"Do not arrive".iter().cloned().collect::<Vec<_>>(),
+                None,
+            ))
+            .unwrap();
         client.manual_poll(time);
 
         // Drop the inbound packet, this simulates a network error
@@ -496,9 +516,13 @@ mod tests {
 
         // Send a packet that the server receives
         for id in 0..36 {
-            client.send(create_ordered_packet(id, "127.0.0.1:12333"));
+            client
+                .send(create_ordered_packet(id, "127.0.0.1:12333"))
+                .unwrap();
 
-            server.send(create_ordered_packet(id, "127.0.0.1:12334"));
+            server
+                .send(create_ordered_packet(id, "127.0.0.1:12334"))
+                .unwrap();
 
             client.manual_poll(time);
             server.manual_poll(time);
@@ -525,7 +549,9 @@ mod tests {
         let time = Instant::now();
 
         for id in 0..100 {
-            client.send(Packet::reliable_sequenced(server_addr, vec![id], None));
+            client
+                .send(Packet::reliable_sequenced(server_addr, vec![id], None))
+                .unwrap();
             client.manual_poll(time);
         }
 
@@ -535,13 +561,13 @@ mod tests {
 
         while let Some(message) = server.recv() {
             match message {
-                SocketEvent::Connect(connect_event) => {}
+                SocketEvent::Connect(_) => {}
                 SocketEvent::Packet(packet) => {
                     let byte = packet.payload()[0];
                     assert![!seen.contains(&byte)];
                     seen.insert(byte);
                 }
-                SocketEvent::Timeout(timeout_event) => {
+                SocketEvent::Timeout(_) => {
                     panic!["This should not happen, as we've not advanced time"];
                 }
             }
@@ -556,10 +582,12 @@ mod tests {
         let mut client = Socket::bind("127.0.0.1:12340".parse::<SocketAddr>().unwrap()).unwrap();
 
         for _ in 0..3 {
-            client.send(Packet::unreliable(
-                "127.0.0.1:12339".parse::<SocketAddr>().unwrap(),
-                vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
-            ));
+            client
+                .send(Packet::unreliable(
+                    "127.0.0.1:12339".parse::<SocketAddr>().unwrap(),
+                    vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+                ))
+                .unwrap();
         }
 
         let time = Instant::now();
@@ -578,10 +606,12 @@ mod tests {
         let mut client = Socket::bind("127.0.0.1:12341".parse::<SocketAddr>().unwrap()).unwrap();
 
         for _ in 0..3 {
-            client.send(Packet::unreliable(
-                "127.0.0.1:12342".parse::<SocketAddr>().unwrap(),
-                vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
-            ));
+            client
+                .send(Packet::unreliable(
+                    "127.0.0.1:12342".parse::<SocketAddr>().unwrap(),
+                    vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+                ))
+                .unwrap();
         }
 
         let now = Instant::now();
@@ -646,10 +676,12 @@ mod tests {
         let mut server = Socket::bind("127.0.0.1:12345".parse::<SocketAddr>().unwrap()).unwrap();
         let mut client = Socket::bind("127.0.0.1:12344".parse::<SocketAddr>().unwrap()).unwrap();
 
-        client.send(Packet::unreliable(
-            "127.0.0.1:12345".parse().unwrap(),
-            vec![0, 1, 2],
-        ));
+        client
+            .send(Packet::unreliable(
+                "127.0.0.1:12345".parse().unwrap(),
+                vec![0, 1, 2],
+            ))
+            .unwrap();
 
         let now = Instant::now();
         client.manual_poll(now);
@@ -669,10 +701,12 @@ mod tests {
         let mut server = Socket::bind("127.0.0.1:12347".parse::<SocketAddr>().unwrap()).unwrap();
         let mut client = Socket::bind("127.0.0.1:12346".parse::<SocketAddr>().unwrap()).unwrap();
 
-        client.send(Packet::unreliable(
-            "127.0.0.1:12347".parse().unwrap(),
-            vec![0, 1, 2],
-        ));
+        client
+            .send(Packet::unreliable(
+                "127.0.0.1:12347".parse().unwrap(),
+                vec![0, 1, 2],
+            ))
+            .unwrap();
 
         let now = Instant::now();
         client.manual_poll(now);
@@ -691,10 +725,12 @@ mod tests {
         );
 
         // Acknowledge the client
-        server.send(Packet::unreliable(
-            "127.0.0.1:12346".parse().unwrap(),
-            vec![],
-        ));
+        server
+            .send(Packet::unreliable(
+                "127.0.0.1:12346".parse().unwrap(),
+                vec![],
+            ))
+            .unwrap();
 
         server.manual_poll(now);
         client.manual_poll(now);
@@ -728,20 +764,19 @@ mod tests {
     fn multiple_sends_should_start_sending_dropped() {
         // Start up a server and a client.
         let mut server = Socket::bind(REMOTE_ADDR.parse::<SocketAddr>().unwrap()).unwrap();
-
         let mut client = Socket::bind(LOCAL_ADDR.parse::<SocketAddr>().unwrap()).unwrap();
 
         let now = Instant::now();
 
         // Send enough packets to ensure that we must have dropped packets.
         for i in 0..35 {
-            client.send(create_test_packet(i, REMOTE_ADDR));
+            client.send(create_test_packet(i, REMOTE_ADDR)).unwrap();
+            client.manual_poll(now);
         }
 
         let mut events = Vec::new();
 
         loop {
-            client.manual_poll(now);
             server.manual_poll(now);
             if let Some(event) = server.recv() {
                 events.push(event);
@@ -756,28 +791,27 @@ mod tests {
 
         // Finally the server decides to send us a message back. This necessarily will include
         // the ack information for 33 of the sent 35 packets.
-        server.send(create_test_packet(0, LOCAL_ADDR));
-
+        server.send(create_test_packet(0, LOCAL_ADDR)).unwrap();
         server.manual_poll(now);
-        client.manual_poll(now);
 
-        // Block to ensure that the client gets the server message before moving on.
-        client.recv();
+        // Loop to ensure that the client gets the server message before moving on.
+        loop {
+            client.manual_poll(now);
+            if client.recv().is_some() {
+                break;
+            }
+        }
 
         // This next sent message should end up sending the 2 unacked messages plus the new messages
         // with payload 35
         events.clear();
-        client.send(create_test_packet(35, REMOTE_ADDR));
-
+        client.send(create_test_packet(35, REMOTE_ADDR)).unwrap();
         client.manual_poll(now);
-        server.manual_poll(now);
 
         loop {
-            client.manual_poll(now);
             server.manual_poll(now);
             if let Some(event) = server.recv() {
                 events.push(event);
-            } else {
                 break;
             }
         }
@@ -801,7 +835,7 @@ mod tests {
 
         let client = UdpSocket::bind(sender).unwrap();
 
-        client.send_to(&bytes, receiver);
+        client.send_to(&bytes, receiver).unwrap();
 
         let time = Instant::now();
         server.manual_poll(time);
@@ -833,12 +867,16 @@ mod tests {
         // packets
         let mut send_many_packets = |dummy: Option<u8>| {
             for id in 0..100 {
-                client.send(Packet::reliable_unordered(
-                    server_addr,
-                    vec![dummy.unwrap_or(id)],
-                ));
+                client
+                    .send(Packet::reliable_unordered(
+                        server_addr,
+                        vec![dummy.unwrap_or(id)],
+                    ))
+                    .unwrap();
 
-                server.send(Packet::reliable_unordered(client_addr, vec![255]));
+                server
+                    .send(Packet::reliable_unordered(client_addr, vec![255]))
+                    .unwrap();
 
                 client.manual_poll(time);
                 server.manual_poll(time);
