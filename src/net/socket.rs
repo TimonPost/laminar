@@ -166,6 +166,10 @@ impl Socket {
     pub fn set_link_conditioner(&mut self, link_conditioner: Option<LinkConditioner>) {
         self.link_conditioner = link_conditioner;
     }
+    /// Get port of socket
+    pub fn local_addr(&self) -> Result<SocketAddr> {
+        Ok(self.socket.local_addr()?)
+    }
 
     /// Iterate through all of the idle connections based on `idle_connection_timeout` config and
     /// remove them from the active connections. For each connection removed, we will send a
@@ -866,5 +870,13 @@ mod tests {
 
         // 101 because we have 0..100 and 255 from the dummies
         assert_eq![101, send_many_packets(Some(255))];
+    }
+
+    #[test]
+    fn local_addr() {
+        let port = 40000;
+        let socket =
+            Socket::bind(format!("127.0.0.1:{}", port).parse::<SocketAddr>().unwrap()).unwrap();
+        assert_eq!(port, socket.local_addr().unwrap().port());
     }
 }
