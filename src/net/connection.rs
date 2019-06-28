@@ -84,7 +84,6 @@ mod tests {
     use super::{ActiveConnections, Config};
     use std::{
         sync::Arc,
-        thread,
         time::{Duration, Instant},
     };
 

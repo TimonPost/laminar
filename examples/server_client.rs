@@ -11,7 +11,7 @@ const SERVER: &str = "127.0.0.1:12351";
 
 fn server() -> Result<(), ErrorKind> {
     let mut socket = Socket::bind(SERVER)?;
-    let (mut sender, mut receiver) = (socket.get_packet_sender(), socket.get_event_receiver());
+    let (sender, receiver) = (socket.get_packet_sender(), socket.get_event_receiver());
     let _thread = thread::spawn(move || socket.start_polling());
 
     loop {
@@ -29,10 +29,12 @@ fn server() -> Result<(), ErrorKind> {
 
                     println!("Received {:?} from {:?}", msg, ip);
 
-                    sender.send(Packet::reliable_unordered(
-                        packet.addr(),
-                        "Copy that!".as_bytes().to_vec(),
-                    ));
+                    sender
+                        .send(Packet::reliable_unordered(
+                            packet.addr(),
+                            "Copy that!".as_bytes().to_vec(),
+                        ))
+                        .expect("This should send");
                 }
                 SocketEvent::Timeout(address) => {
                     println!("Client timed out: {}", address);
@@ -65,7 +67,7 @@ fn client() -> Result<(), ErrorKind> {
         socket.send(Packet::reliable_unordered(
             server,
             line.clone().into_bytes(),
-        ));
+        ))?;
 
         socket.manual_poll(Instant::now());
 
