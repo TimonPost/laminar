@@ -19,9 +19,6 @@ repository = "https://github.com/amethyst/laminar"
 autobenches = false
 edition = "2018"
 
-[badges]
-travis-ci = { repository = "amethyst/laminar", branch = "master" }
-
 [dependencies]
 byteorder = "1.2"
 crc = "1.8"
