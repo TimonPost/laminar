@@ -1,6 +1,6 @@
 [package]
 name = "laminar"
-version = "0.2.3"
+version = "0.3.0"
 authors = [
     "Lucio Franco <luciofranco14@gmail.com>",
     "Fletcher Haynes <fletcher@capitalprawn.com>",

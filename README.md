@@ -67,7 +67,7 @@ Add the laminar package to your `Cargo.toml` file.
 
 ```toml
 [dependencies]
-laminar = "0.2.3"
+laminar = "0.3.0"
 ```
 
 ### Useful Links
@@ -90,7 +90,8 @@ _Send packets_
 use laminar::{Socket, Packet};
 
 // create the socket
-let (mut socket, packet_sender, _) = Socket::bind("127.0.0.1:12345")?;
+let mut socket = Socket::bind("127.0.0.1:12345")?;
+let packet_sender = socket.get_packet_sender();
 // this will start the socket, which will start a poll mechanism to receive and send messages.
 let _thread = thread::spawn(move || socket.start_polling());
 
@@ -119,12 +120,13 @@ _Receive Packets_
 use laminar::{SocketEvent, Socket};
 
 // create the socket
-let (mut socket, _, packet_receiver) = Socket::bind("127.0.0.1:12346")?;
+let socket = Socket::bind("127.0.0.1:12346")?;
+let event_receiver = socket.get_event_receiver();
 // this will start the socket, which will start a poll mechanism to receive and send messages.
 let _thread = thread::spawn(move || socket.start_polling());
 
 // wait until a socket event occurs
-let result = packet_receiver.recv();
+let result = event_receiver.recv();
 
 match result {
     Ok(socket_event) => {

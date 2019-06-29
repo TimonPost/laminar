@@ -1,6 +1,14 @@
 # Change Log
 This document contains information about the releases of this crate.
-## [0.2.3] - 2019-16-13
+## [0.3.0] - 2019-06-29
+- Moved the packet sender and event receiver into socket struct
+- Exposed internal SocketAddr
+- Introduced a new method to manually step through the polling loop
+- Added a number of #[derive(Debug)] lines to Socket and member types
+- Implemented basic DoS mitigation
+- Added a customizable sleep to the polling loop. Defaults to 1ms
+
+## [0.2.3] - 2019-06-13
 - Remove error 'WouldBlock'
 
 ## [0.2.2] - 2019-05-06
