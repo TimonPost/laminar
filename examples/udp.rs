@@ -22,7 +22,7 @@ fn server_address() -> SocketAddr {
 /// This is an example of how to send data to an specific address.
 pub fn send_data() -> Result<()> {
     // Setup a udp socket and bind it to the client address.
-    let mut socket = Socket::bind(client_address()).unwrap();
+    let socket = Socket::bind(client_address()).unwrap();
 
     let packet = construct_packet();
 
@@ -33,7 +33,7 @@ pub fn send_data() -> Result<()> {
 /// This is an example of how to receive data over udp.
 pub fn receive_data() {
     // setup an udp socket and bind it to the client address.
-    let mut socket = Socket::bind(server_address()).unwrap();
+    let socket = Socket::bind(server_address()).unwrap();
 
     // Next start receiving.
     loop {

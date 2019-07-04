@@ -86,19 +86,19 @@ impl Socket {
     /// Returns a handle to the packet sender which provides a thread-safe way to enqueue packets
     /// to be processed. This should be used when the socket is busy running its polling loop in a
     /// separate thread.
-    pub fn get_packet_sender(&mut self) -> Sender<Packet> {
+    pub fn get_packet_sender(&self) -> Sender<Packet> {
         self.sender.clone()
     }
 
     /// Returns a handle to the event receiver which provides a thread-safe way to retrieve events
     /// from the socket. This should be used when the socket is busy running its polling loop in
     /// a separate thread.
-    pub fn get_event_receiver(&mut self) -> Receiver<SocketEvent> {
+    pub fn get_event_receiver(&self) -> Receiver<SocketEvent> {
         self.receiver.clone()
     }
 
     /// Send a packet
-    pub fn send(&mut self, packet: Packet) -> Result<()> {
+    pub fn send(&self, packet: Packet) -> Result<()> {
         match self.sender.send(packet) {
             Ok(_) => Ok(()),
             Err(error) => Err(ErrorKind::SendError(SendError(SocketEvent::Packet(
@@ -108,7 +108,7 @@ impl Socket {
     }
 
     /// Receive a packet
-    pub fn recv(&mut self) -> Option<SocketEvent> {
+    pub fn recv(&self) -> Option<SocketEvent> {
         match self.receiver.try_recv() {
             Ok(pkt) => Some(pkt),
             Err(TryRecvError::Empty) => None,
