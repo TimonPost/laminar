@@ -31,30 +31,33 @@ basic are unreliable and reliable packets. Also ordering, sequencing can be done
 For more information, read the projects [README.md][readme], [book][book], [docs][docs] or [examples][examples].
 
 ## Important
-- Correct useage of laminar
+- Correct usage of laminar
     
-    With gaming networking for fast-phased FPS games, you have to deal with a lot of data that has to go from point A to B.
+    With game networking for fast-phased FPS games, you have to deal with a lot of data that has to go from point A to B.
     We are talking about numbers of 20/30/60 htz. 
-    Laminar is based and optimized for the situation where a consistent flow of packets from server to client and from client to server.
-    In a game, where everything runs at milliseconds and speed, you have to deal with high speeds and regular updates.
+    Laminar is based and optimized for the situation where a consistent flow of packets from the server to the client and from the client to the server are being sent.
+    In a game, where everything runs at milliseconds and speed is important, you need fast communication and multiple updates per seconds.
     
     In what kind of scenarios could this occur? 
-    You can think of input synchronisation, location updates, state updates, events etc.  
-    Let's zoom in on input synchronisation of an FPS game. 
+    You can think of input synchronization, location updates, state updates, events, etc.  
+    Let's zoom in on input synchronization of an FPS game. 
     The client sends the packages, the server receives it, validates it, and sends an update to all other clients. 
-    In an FPS game, a lot of input is shared, and it's not a strange idea for a client to share its input and receive updates every 60x a second.   
-    To use laminar correctly you have to make sure there is a consistent communication from server -> client and client -> server.
+    In an FPS game, a lot of input is shared, and it's not a strange idea for a client to share its input and receive updates 60 times a second.   
+    To use laminar correctly you have to make sure there is a consistent communication from the server -> client and client -> server. 
+    
+    To add to this, note that clients will be seen as 'disconnected' if they don't send packets for some duration, this duration can be found in the [configuration][config]. 
+    When there is a scenario's that you are sending packets less frequent, you can always send some heartbeat to keep the connection alive.
 
 - TCP isn't so bad
 
-    TCP is made for reliability, end does this very well. 
+    TCP is made for reliability and does this very well. 
     We have been asked many times by people why reliability does not work well or is slow in laminar.
     Important to know is that laminar has reliability as an option but it is not focused on that and isn't made to be faster and better than TCP. 
-    In the fast phased game industry it is not possible to use TCP. Because a delay in a packet can have a major impact on all subsequent packets.
+    In the fast phased game industry, it is not possible to use TCP. Because a delay in a packet can have a major impact on all subsequent packets.
     Reliability, after all, is less important for fast-phased FPS games; UDP. 
-    So consider TCP when you need less frequent packet communication or big file transfers.
+    Consider to use TCP when 1) you need less frequent reliable packet communication 2) big file transfers 3) when not working with fast phased FPS games.
 
-
+[config]: https://github.com/amethyst/laminar/blob/master/src/config.rs#L8
 [gog]: https://gafferongames.com/
 [readme]: https://github.com/amethyst/laminar/blob/master/README.md
 [book]: https://amethyst.github.io/laminar/docs/index.html
