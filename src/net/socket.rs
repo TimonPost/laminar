@@ -193,8 +193,7 @@ impl Socket {
             self.connections
                 .get_or_insert_connection(packet.addr(), &self.config, time);
 
-        let dropped = connection.gather_dropped_packets();
-        let mut processed_packets: Vec<Outgoing> = dropped
+        let mut processed_packets: Vec<Outgoing> = connection.gather_dropped_packets()
             .iter()
             .flat_map(|waiting_packet| {
                 connection.process_outgoing(
