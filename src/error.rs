@@ -3,6 +3,7 @@
 use crate::SocketEvent;
 use crossbeam_channel::SendError;
 use std::{
+    error::Error,
     fmt::{self, Display, Formatter},
     io, result,
 };
@@ -69,6 +70,8 @@ impl Display for ErrorKind {
         }
     }
 }
+
+impl Error for ErrorKind {}
 
 /// Errors that could occur while parsing packet contents
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -173,5 +176,15 @@ impl From<FragmentErrorKind> for ErrorKind {
 impl From<crossbeam_channel::SendError<SocketEvent>> for ErrorKind {
     fn from(inner: SendError<SocketEvent>) -> Self {
         ErrorKind::SendError(inner)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn able_to_box_errors() {
+        let _: Box<Error> = Box::new(ErrorKind::CouldNotReadHeader("".into()));
     }
 }
