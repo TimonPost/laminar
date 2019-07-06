@@ -35,15 +35,16 @@ For more information, read the projects [README.md][readme], [book][book], [docs
     
     With game networking for fast-phased FPS games, you have to deal with a lot of data that has to go from point A to B.
     We are talking about numbers of 20/30/60 htz. 
-    Laminar is based and optimized for the situation where a consistent flow of packets from the server to the client and from the client to the server are being sent.
+    Laminar is based and optimized for the situation where a consistent flow of packets from the server to the client and from the client to the server that are being sent.
     In a game, where everything runs at milliseconds and speed is important, you need fast communication and multiple updates per seconds.
     
-    In what kind of scenarios could this occur? 
+    What are those scenario's, and how can I know, if laminar is usefully for my purpose?
     You can think of input synchronization, location updates, state updates, events, etc.  
     Let's zoom in on input synchronization of an FPS game. 
     The client sends the packages, the server receives it, validates it, and sends an update to all other clients. 
     In an FPS game, a lot of input is shared, and it's not a strange idea for a client to share its input and receive updates 60 times a second.   
-    To use laminar correctly you have to make sure there is a consistent communication from the server -> client and client -> server. 
+    Laminar is based on this idea, and is optimized for it. 
+    When you are sending packets once a second, laminar might not be the best solution here. And your probably going to do fine with TCP. 
     
     To add to this, note that clients will be seen as 'disconnected' if they don't send packets for some duration, this duration can be found in the [configuration][config]. 
     When there is a scenario's that you are sending packets less frequent, you can always send some heartbeat to keep the connection alive.
