@@ -30,7 +30,7 @@ pub struct Socket {
 }
 
 enum UdpSocketState {
-    Empty,
+    MaybeEmpty,
     MaybeMore,
 }
 
@@ -66,7 +66,7 @@ impl Socket {
     }
 
     fn bind_internal(socket: UdpSocket, config: Config) -> Result<Self> {
-        socket.set_nonblocking(true)?;
+        socket.set_nonblocking(!config.blocking_mode)?;
         let (event_sender, event_receiver) = unbounded();
         let (packet_sender, packet_receiver) = unbounded();
         Ok(Socket {
@@ -141,7 +141,7 @@ impl Socket {
         loop {
             match self.recv_from(time) {
                 Ok(UdpSocketState::MaybeMore) => continue,
-                Ok(UdpSocketState::Empty) => break,
+                Ok(UdpSocketState::MaybeEmpty) => break,
                 Err(e) => error!("Encountered an error receiving data: {:?}", e),
             }
         }
@@ -269,11 +269,16 @@ impl Socket {
                     error!("Encountered an error receiving data: {:?}", e);
                     return Err(e.into());
                 } else {
-                    return Ok(UdpSocketState::Empty);
+                    return Ok(UdpSocketState::MaybeEmpty);
                 }
             }
         }
-        Ok(UdpSocketState::MaybeMore)
+
+        if self.config.blocking_mode {
+            Ok(UdpSocketState::MaybeEmpty)
+        } else {
+            Ok(UdpSocketState::MaybeMore)
+        }
     }
 
     // Send a single packet over the UDP socket.
@@ -334,6 +339,40 @@ mod tests {
     fn binding_to_any() {
         assert![Socket::bind_any().is_ok()];
         assert![Socket::bind_any_with_config(Config::default()).is_ok()];
+    }
+
+    #[test]
+    fn blocking_sender_and_receiver() {
+        let cfg = Config::default();
+
+        let mut client = Socket::bind_any_with_config(cfg.clone()).unwrap();
+        let mut server = Socket::bind_any_with_config(Config {
+            blocking_mode: true,
+            ..cfg
+        })
+        .unwrap();
+
+        let server_addr = server.local_addr().unwrap();
+        let client_addr = client.local_addr().unwrap();
+
+        let time = Instant::now();
+
+        client
+            .send(Packet::unreliable(
+                server_addr,
+                b"Hello world!".iter().cloned().collect::<Vec<_>>(),
+            ))
+            .unwrap();
+
+        client.manual_poll(time);
+        server.manual_poll(time);
+
+        assert_eq![SocketEvent::Connect(client_addr), server.recv().unwrap()];
+        if let SocketEvent::Packet(packet) = server.recv().unwrap() {
+            assert_eq![b"Hello world!", packet.payload()];
+        } else {
+            panic!["Did not receive a packet when it should"];
+        }
     }
 
     #[test]
