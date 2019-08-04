@@ -10,8 +10,8 @@ use crate::{
         STANDARD_HEADER_SIZE,
     },
     packet::{
-        DeliveryGuarantee, OrderingGuarantee, Outgoing, OutgoingPacketBuilder, Packet,
-        PacketReader, PacketType, SequenceNumber,
+        DeliveryGuarantee, OrderingGuarantee, Outgoing, OutgoingPacket, OutgoingPacketBuilder,
+        Packet, PacketReader, PacketType, SequenceNumber,
     },
     SocketEvent,
 };
@@ -26,6 +26,8 @@ use std::time::{Duration, Instant};
 pub struct VirtualConnection {
     /// Last time we received a packet from this client
     pub last_heard: Instant,
+    /// Last time we sent a packet to this client
+    pub last_sent: Instant,
     /// The address of the remote endpoint
     pub remote_address: SocketAddr,
 
@@ -43,6 +45,7 @@ impl VirtualConnection {
     pub fn new(addr: SocketAddr, config: &Config, time: Instant) -> VirtualConnection {
         VirtualConnection {
             last_heard: time,
+            last_sent: time,
             remote_address: addr,
             ordering_system: OrderingSystem::new(),
             sequencing_system: SequencingSystem::new(),
@@ -58,6 +61,28 @@ impl VirtualConnection {
         // TODO: Replace with saturating_duration_since once it becomes stable.
         // This function panics if the user supplies a time instant earlier than last_heard.
         time.duration_since(self.last_heard)
+    }
+
+    /// Returns a [Duration] representing the interval since we last sent to the client
+    pub fn last_sent(&self, time: Instant) -> Duration {
+        // TODO: Replace with saturating_duration_since once it becomes stable.
+        // This function panics if the user supplies a time instant earlier than last_heard.
+        time.duration_since(self.last_sent)
+    }
+
+    /// This will create a heartbeat packet that is expected to be sent over the network
+    pub fn create_and_process_heartbeat(&mut self, time: Instant) -> OutgoingPacket<'static> {
+        self.last_sent = time;
+        self.congestion_handler
+            .process_outgoing(self.acknowledge_handler.local_sequence_num(), time);
+
+        OutgoingPacketBuilder::new(&[])
+            .with_default_header(
+                PacketType::Heartbeat,
+                DeliveryGuarantee::Unreliable,
+                OrderingGuarantee::None,
+            )
+            .build()
     }
 
     /// This will pre-process the given buffer to be sent over the network.
@@ -190,6 +215,7 @@ impl VirtualConnection {
                     }
                 };
 
+                self.last_sent = time;
                 self.congestion_handler
                     .process_outgoing(self.acknowledge_handler.local_sequence_num(), time);
                 self.acknowledge_handler.process_outgoing(
@@ -218,6 +244,12 @@ impl VirtualConnection {
 
         if !header.is_current_protocol() {
             return Err(ErrorKind::ProtocolVersionMismatch);
+        }
+
+        if header.is_heartbeat() {
+            // Heartbeat packets are unreliable, unordered and empty packets.
+            // We already updated our `self.last_heard` time, nothing else to be done.
+            return Ok(());
         }
 
         match header.delivery_guarantee() {
