@@ -347,9 +347,9 @@ mod tests {
                 stub_packet1
             );
 
-            stream.arrange(4, stub_packet4.clone()).is_none();
-            stream.arrange(5, stub_packet5.clone()).is_none();
-            stream.arrange(3, stub_packet3.clone()).is_none();
+            assert![stream.arrange(4, stub_packet4.clone()).is_none()];
+            assert![stream.arrange(5, stub_packet5.clone()).is_none()];
+            assert![stream.arrange(3, stub_packet3.clone()).is_none()];
         }
         {
             let mut iterator = stream.iter_mut();
