@@ -74,7 +74,7 @@ mod tests {
     fn serialize() {
         let mut buffer = Vec::new();
         let header = ArrangingHeader::new(1, 2);
-        header.parse(&mut buffer).is_ok();
+        assert![header.parse(&mut buffer).is_ok()];
 
         assert_eq!(buffer[1], 1);
         assert_eq!(buffer[2], 2);
