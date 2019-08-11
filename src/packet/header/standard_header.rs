@@ -126,7 +126,7 @@ mod tests {
             OrderingGuarantee::Sequenced(None),
             PacketType::Packet,
         );
-        header.parse(&mut buffer).is_ok();
+        assert![header.parse(&mut buffer).is_ok()];
 
         // [0 .. 3] protocol version
         assert_eq!(buffer[2], PacketType::Packet.to_u8());
