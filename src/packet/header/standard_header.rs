@@ -17,7 +17,7 @@ pub struct StandardHeader {
 }
 
 impl StandardHeader {
-    /// Create new heartbeat header.
+    /// Create new header.
     pub fn new(
         delivery_guarantee: DeliveryGuarantee,
         ordering_guarantee: OrderingGuarantee,
@@ -51,6 +51,11 @@ impl StandardHeader {
     #[cfg(test)]
     pub fn packet_type(&self) -> PacketType {
         self.packet_type
+    }
+
+    /// Returns true if the packet is a heartbeat packet, false otherwise
+    pub fn is_heartbeat(&self) -> bool {
+        self.packet_type == PacketType::Heartbeat
     }
 
     /// Returns true if the packet is a fragment, false if not
