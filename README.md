@@ -34,11 +34,11 @@ For more information, read the projects [README.md][readme], [book][book], [docs
 - Correct usage of laminar
     
     With game networking for fast-phased FPS games, you have to deal with a lot of data that has to go from point A to B.
-    We are talking about numbers of 20/30/60 htz. 
+    We are talking about numbers of 20/30/60 hz. 
     Laminar is based and optimized for the situation where a consistent flow of packets from the server to the client and from the client to the server that are being sent.
     In a game, where everything runs at milliseconds and speed is important, you need fast communication and multiple updates per seconds.
     
-    What are those scenario's, and how can I know, if laminar is usefully for my purpose?
+    What are those scenario's, and how can I know, if laminar is useful for my purpose?
     You can think of input synchronization, location updates, state updates, events, etc.  
     Let's zoom in on input synchronization of an FPS game. 
     The client sends the packages, the server receives it, validates it, and sends an update to all other clients. 
