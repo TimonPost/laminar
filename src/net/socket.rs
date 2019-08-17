@@ -30,7 +30,7 @@ pub struct Socket {
 }
 
 enum UdpSocketState {
-    Empty,
+    MaybeEmpty,
     MaybeMore,
 }
 
@@ -66,7 +66,7 @@ impl Socket {
     }
 
     fn bind_internal(socket: UdpSocket, config: Config) -> Result<Self> {
-        socket.set_nonblocking(true)?;
+        socket.set_nonblocking(!config.blocking_mode)?;
         let (event_sender, event_receiver) = unbounded();
         let (packet_sender, packet_receiver) = unbounded();
         Ok(Socket {
@@ -141,7 +141,7 @@ impl Socket {
         loop {
             match self.recv_from(time) {
                 Ok(UdpSocketState::MaybeMore) => continue,
-                Ok(UdpSocketState::Empty) => break,
+                Ok(UdpSocketState::MaybeEmpty) => break,
                 Err(e) => error!("Encountered an error receiving data: {:?}", e),
             }
         }
@@ -156,9 +156,19 @@ impl Socket {
             }
         }
 
-        // Finally check for idle clients
+        // Check for idle clients
         if let Err(e) = self.handle_idle_clients(time) {
             error!("Encountered an error when sending TimeoutEvent: {:?}", e);
+        }
+
+        // Finally send heartbeat packets to connections that require them, if enabled
+        if let Some(heartbeat_interval) = self.config.heartbeat_interval {
+            if let Err(e) = self.send_heartbeat_packets(heartbeat_interval, time) {
+                match e {
+                    ErrorKind::IOError(ref e) if e.kind() == io::ErrorKind::WouldBlock => {}
+                    _ => error!("There was an error sending a heartbeat packet: {:?}", e),
+                }
+            }
         }
     }
 
@@ -185,6 +195,35 @@ impl Socket {
         }
 
         Ok(())
+    }
+
+    /// Iterate over all connections which have not sent a packet for a duration of at least
+    /// `heartbeat_interval` (from config), and send a heartbeat packet to each.
+    fn send_heartbeat_packets(
+        &mut self,
+        heartbeat_interval: Duration,
+        time: Instant,
+    ) -> Result<usize> {
+        let heartbeat_packets_and_addrs = self
+            .connections
+            .heartbeat_required_connections(heartbeat_interval, time)
+            .map(|connection| {
+                (
+                    connection.create_and_process_heartbeat(time),
+                    connection.remote_address,
+                )
+            })
+            .collect::<Vec<_>>();
+
+        let mut bytes_sent = 0;
+
+        for (heartbeat_packet, address) in heartbeat_packets_and_addrs {
+            if self.should_send_packet() {
+                bytes_sent += self.send_packet(&address, &heartbeat_packet.contents())?;
+            }
+        }
+
+        Ok(bytes_sent)
     }
 
     // Serializes and sends a `Packet` on the socket. On success, returns the number of bytes written.
@@ -268,11 +307,16 @@ impl Socket {
                     error!("Encountered an error receiving data: {:?}", e);
                     return Err(e.into());
                 } else {
-                    return Ok(UdpSocketState::Empty);
+                    return Ok(UdpSocketState::MaybeEmpty);
                 }
             }
         }
-        Ok(UdpSocketState::MaybeMore)
+
+        if self.config.blocking_mode {
+            Ok(UdpSocketState::MaybeEmpty)
+        } else {
+            Ok(UdpSocketState::MaybeMore)
+        }
     }
 
     // Send a single packet over the UDP socket.
@@ -333,6 +377,40 @@ mod tests {
     fn binding_to_any() {
         assert![Socket::bind_any().is_ok()];
         assert![Socket::bind_any_with_config(Config::default()).is_ok()];
+    }
+
+    #[test]
+    fn blocking_sender_and_receiver() {
+        let cfg = Config::default();
+
+        let mut client = Socket::bind_any_with_config(cfg.clone()).unwrap();
+        let mut server = Socket::bind_any_with_config(Config {
+            blocking_mode: true,
+            ..cfg
+        })
+        .unwrap();
+
+        let server_addr = server.local_addr().unwrap();
+        let client_addr = client.local_addr().unwrap();
+
+        let time = Instant::now();
+
+        client
+            .send(Packet::unreliable(
+                server_addr,
+                b"Hello world!".iter().cloned().collect::<Vec<_>>(),
+            ))
+            .unwrap();
+
+        client.manual_poll(time);
+        server.manual_poll(time);
+
+        assert_eq![SocketEvent::Connect(client_addr), server.recv().unwrap()];
+        if let SocketEvent::Packet(packet) = server.recv().unwrap() {
+            assert_eq![b"Hello world!", packet.payload()];
+        } else {
+            panic!["Did not receive a packet when it should"];
+        }
     }
 
     #[test]
@@ -697,52 +775,111 @@ mod tests {
         let mut config = Config::default();
         config.idle_connection_timeout = Duration::from_millis(1);
 
-        let mut server = Socket::bind("127.0.0.1:12347".parse::<SocketAddr>().unwrap()).unwrap();
-        let mut client = Socket::bind("127.0.0.1:12346".parse::<SocketAddr>().unwrap()).unwrap();
+        let server_addr = "127.0.0.1:12347".parse::<SocketAddr>().unwrap();
+        let client_addr = "127.0.0.1:12346".parse::<SocketAddr>().unwrap();
+
+        let mut server = Socket::bind_with_config(server_addr, config.clone()).unwrap();
+        let mut client = Socket::bind_with_config(client_addr, config.clone()).unwrap();
 
         client
-            .send(Packet::unreliable(
-                "127.0.0.1:12347".parse().unwrap(),
-                vec![0, 1, 2],
-            ))
+            .send(Packet::unreliable(server_addr, vec![0, 1, 2]))
             .unwrap();
 
         let now = Instant::now();
         client.manual_poll(now);
         server.manual_poll(now);
 
+        assert_eq!(server.recv().unwrap(), SocketEvent::Connect(client_addr));
         assert_eq!(
             server.recv().unwrap(),
-            SocketEvent::Connect("127.0.0.1:12346".parse().unwrap())
-        );
-        assert_eq!(
-            server.recv().unwrap(),
-            SocketEvent::Packet(Packet::unreliable(
-                "127.0.0.1:12346".parse().unwrap(),
-                vec![0, 1, 2]
-            ))
+            SocketEvent::Packet(Packet::unreliable(client_addr, vec![0, 1, 2]))
         );
 
         // Acknowledge the client
         server
-            .send(Packet::unreliable(
-                "127.0.0.1:12346".parse().unwrap(),
-                vec![],
-            ))
+            .send(Packet::unreliable(client_addr, vec![]))
             .unwrap();
 
         server.manual_poll(now);
         client.manual_poll(now);
-        server.manual_poll(now + Duration::new(5, 0));
 
+        // Make sure the connection was successful on the client side
         assert_eq!(
-            server.recv().unwrap(),
-            SocketEvent::Timeout("127.0.0.1:12346".parse().unwrap())
+            client.recv().unwrap(),
+            SocketEvent::Packet(Packet::unreliable(server_addr, vec![]))
         );
+
+        // Give just enough time for no timeout events to occur (yet)
+        server.manual_poll(now + config.idle_connection_timeout - Duration::from_millis(1));
+        client.manual_poll(now + config.idle_connection_timeout - Duration::from_millis(1));
+
+        assert_eq!(server.recv(), None);
+        assert_eq!(client.recv(), None);
+
+        // Give enough time for timeouts to be detected
+        server.manual_poll(now + config.idle_connection_timeout);
+        client.manual_poll(now + config.idle_connection_timeout);
+
+        assert_eq!(server.recv().unwrap(), SocketEvent::Timeout(client_addr));
+        assert_eq!(client.recv().unwrap(), SocketEvent::Timeout(server_addr));
     }
 
-    const LOCAL_ADDR: &str = "127.0.0.1:13000";
-    const REMOTE_ADDR: &str = "127.0.0.1:14000";
+    #[test]
+    fn heartbeats_work() {
+        let mut config = Config::default();
+        config.idle_connection_timeout = Duration::from_millis(10);
+        config.heartbeat_interval = Some(Duration::from_millis(4));
+
+        let server_addr = "127.0.0.1:12351".parse::<SocketAddr>().unwrap();
+        let client_addr = "127.0.0.1:12352".parse::<SocketAddr>().unwrap();
+
+        // Start up a server and a client.
+        let mut server = Socket::bind_with_config(server_addr, config.clone()).unwrap();
+        let mut client = Socket::bind_with_config(client_addr, config.clone()).unwrap();
+
+        // Initiate a connection
+        client
+            .send(Packet::unreliable(server_addr, vec![0, 1, 2]))
+            .unwrap();
+
+        let now = Instant::now();
+        client.manual_poll(now);
+        server.manual_poll(now);
+
+        // Make sure the connection was successful on the server side
+        assert_eq!(server.recv().unwrap(), SocketEvent::Connect(client_addr));
+        assert_eq!(
+            server.recv().unwrap(),
+            SocketEvent::Packet(Packet::unreliable(client_addr, vec![0, 1, 2]))
+        );
+
+        // Acknowledge the client
+        // This way, the server also knows about the connection and sends heartbeats
+        server
+            .send(Packet::unreliable(client_addr, vec![]))
+            .unwrap();
+
+        server.manual_poll(now);
+        client.manual_poll(now);
+
+        // Make sure the connection was successful on the client side
+        assert_eq!(
+            client.recv().unwrap(),
+            SocketEvent::Packet(Packet::unreliable(server_addr, vec![]))
+        );
+
+        // Give time to send heartbeats
+        client.manual_poll(now + config.heartbeat_interval.unwrap());
+        server.manual_poll(now + config.heartbeat_interval.unwrap());
+
+        // Give time for timeouts to occur if no heartbeats were sent
+        client.manual_poll(now + config.idle_connection_timeout);
+        server.manual_poll(now + config.idle_connection_timeout);
+
+        // Assert that no disconnection events occurred
+        assert_eq!(client.recv(), None);
+        assert_eq!(server.recv(), None);
+    }
 
     fn create_test_packet(id: u8, addr: &str) -> Packet {
         let payload = vec![id];
@@ -761,6 +898,9 @@ mod tests {
 
     #[test]
     fn multiple_sends_should_start_sending_dropped() {
+        const LOCAL_ADDR: &str = "127.0.0.1:13000";
+        const REMOTE_ADDR: &str = "127.0.0.1:14000";
+
         // Start up a server and a client.
         let mut server = Socket::bind(REMOTE_ADDR.parse::<SocketAddr>().unwrap()).unwrap();
         let mut client = Socket::bind(LOCAL_ADDR.parse::<SocketAddr>().unwrap()).unwrap();

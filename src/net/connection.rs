@@ -67,6 +67,18 @@ impl ActiveConnections {
             .collect()
     }
 
+    /// Check for and return `VirtualConnection`s which have not sent anything for a duration of at least `heartbeat_interval`.
+    pub fn heartbeat_required_connections(
+        &mut self,
+        heartbeat_interval: Duration,
+        time: Instant,
+    ) -> impl Iterator<Item = &mut VirtualConnection> {
+        self.connections
+            .iter_mut()
+            .filter(move |(_, connection)| connection.last_sent(time) >= heartbeat_interval)
+            .map(|(_, connection)| connection)
+    }
+
     /// Returns true if the given connection exists.
     pub fn exists(&self, address: &SocketAddr) -> bool {
         self.connections.contains_key(&address)

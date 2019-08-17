@@ -88,6 +88,8 @@ pub enum PacketType {
     Packet = 0,
     /// Fragment of a full packet
     Fragment = 1,
+    /// Heartbeat packet
+    Heartbeat = 2,
 }
 
 impl EnumConverter for PacketType {
@@ -104,6 +106,7 @@ impl TryFrom<u8> for PacketType {
         match value {
             0 => Ok(PacketType::Packet),
             1 => Ok(PacketType::Fragment),
+            2 => Ok(PacketType::Heartbeat),
             _ => Err(ErrorKind::DecodingError(DecodingErrorKind::PacketType)),
         }
     }
@@ -152,9 +155,10 @@ mod tests {
     }
 
     #[test]
-    fn assure_parsing_packet_id() {
+    fn assure_parsing_packet_type() {
         let packet = PacketType::Packet;
         let fragment = PacketType::Fragment;
+        let heartbeat = PacketType::Heartbeat;
         assert_eq!(
             PacketType::Packet,
             PacketType::try_from(packet.to_u8()).unwrap()
@@ -162,6 +166,10 @@ mod tests {
         assert_eq!(
             PacketType::Fragment,
             PacketType::try_from(fragment.to_u8()).unwrap()
+        );
+        assert_eq!(
+            PacketType::Heartbeat,
+            PacketType::try_from(heartbeat.to_u8()).unwrap()
         );
     }
 }

@@ -4,8 +4,13 @@ use std::{default::Default, time::Duration};
 #[derive(Clone, Debug)]
 /// Contains the configuration options to configure laminar for special use-cases.
 pub struct Config {
+    /// Make the underlying UDP socket block when true, otherwise non-blocking.
+    pub blocking_mode: bool,
     /// Value which can specify the amount of time that can pass without hearing from a client before considering them disconnected
     pub idle_connection_timeout: Duration,
+    /// Value which specifies at which interval (if at all) a heartbeat should be sent, if no other packet was sent in the meantime.
+    /// If None, no heartbeats will be sent (the default).
+    pub heartbeat_interval: Option<Duration>,
     /// Value which can specify the maximum size a packet can be in bytes. This value is inclusive of fragmenting; if a packet is fragmented, the total size of the fragments cannot exceed this value.
     ///
     /// Recommended value: 16384
@@ -48,7 +53,9 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
+            blocking_mode: false,
             idle_connection_timeout: Duration::from_secs(5),
+            heartbeat_interval: None,
             max_packet_size: (MAX_FRAGMENTS_DEFAULT * FRAGMENT_SIZE_DEFAULT) as usize,
             max_fragments: MAX_FRAGMENTS_DEFAULT as u8,
             fragment_size: FRAGMENT_SIZE_DEFAULT,

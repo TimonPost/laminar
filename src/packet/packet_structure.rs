@@ -5,14 +5,15 @@ use std::net::SocketAddr;
 /// This is a user friendly packet containing the payload, endpoint, and reliability guarantees.
 /// A packet could have reliability guarantees to specify how it should be delivered and processed.
 ///
-/// | Reliability Type                 | Packet Drop | Packet Duplication | Packet Order  | Packet Fragmentation |Packet Delivery|
-/// | :-------------:                  | :-------------: | :-------------:    | :-------------:  | :-------------:    | :-------------:
-/// |       **Unreliable Unordered**   |       Yes       |       Yes          |      No          |      No             |       No
-/// |       **Reliable Unordered**     |       No        |      No            |      No          |      Yes             |       Yes
-/// |       **Reliable Ordered**       |       No        |      No            |      Ordered |      Yes             |       Yes
-/// |       **Sequenced**              |       Yes       |      No            |      Sequenced |      No |       No
+/// | Reliability Type             | Packet Drop     | Packet Duplication | Packet Order     | Packet Fragmentation |Packet Delivery|
+/// | :-------------:              | :-------------: | :-------------:    | :-------------:  | :-------------:      | :-------------:
+/// |   **Unreliable Unordered**   |       Any       |      Yes           |     No           |      No              |   No
+/// |   **Unreliable Sequenced**   |    Any + old    |      No            |     Sequenced    |      No              |   No
+/// |   **Reliable Unordered**     |       No        |      No            |     No           |      Yes             |   Yes
+/// |   **Reliable Ordered**       |       No        |      No            |     Ordered      |      Yes             |   Yes
+/// |   **Reliable Sequenced**     |    Only old     |      No            |     Sequenced    |      Yes             |   Only newest
 ///
-/// You are able to send packets with any the above guarantees.
+/// You are able to send packets with the above reliability types.
 pub struct Packet {
     /// the endpoint from where it came
     addr: SocketAddr,
@@ -48,7 +49,7 @@ impl Packet {
     ///
     /// | Packet Drop     | Packet Duplication | Packet Order     | Packet Fragmentation | Packet Delivery |
     /// | :-------------: | :-------------:    | :-------------:  | :-------------:      | :-------------: |
-    /// |       Yes       |        Yes         |      No          |      No              |       No        |
+    /// |       Any       |        Yes         |      No          |      No              |       No        |
     ///
     /// Basically just bare UDP. The packet may or may not be delivered.
     pub fn unreliable(addr: SocketAddr, payload: Vec<u8>) -> Packet {
@@ -68,7 +69,7 @@ impl Packet {
     ///
     /// | Packet Drop     | Packet Duplication | Packet Order     | Packet Fragmentation | Packet Delivery |
     /// | :-------------: | :-------------:    | :-------------:  | :-------------:      | :-------------: |
-    /// |       Yes       |        Yes         |      Sequenced          |      No              |       No        |
+    /// |    Any + old    |        No          |      Sequenced   |      No              |       No        |
     ///
     /// Basically just bare UDP, free to be dropped, but has some sequencing to it so that only the newest packets are kept.
     pub fn unreliable_sequenced(
@@ -135,7 +136,7 @@ impl Packet {
     ///
     /// |   Packet Drop   | Packet Duplication | Packet Order     | Packet Fragmentation | Packet Delivery |
     /// | :-------------: | :-------------:    | :-------------:  | :-------------:      | :-------------: |
-    /// |       Yes        |      No            |      Sequenced     |      Yes             |       Yes       |
+    /// |    Only old     |      No            |      Sequenced   |      Yes             |   Only newest   |
     ///
     /// Basically this is almost TCP-like but then sequencing instead of ordering.
     ///
