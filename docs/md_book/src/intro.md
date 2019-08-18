@@ -8,7 +8,7 @@ We will discuss important parts of network programming, why we made certain deci
 Laminar is free and open source software, distributed under a dual license of [MIT][ml]
 and [Apache][al]. This means that the engine is given to you at no cost
 and its source code is completely yours to tinker with. The code is available on
-[GitHub][am]. Contributions and feature requests will always be welcomed!Kan
+[GitHub][am]. Contributions and feature requests will always be welcomed!
 
 [ml]: https://github.com/amethyst/laminar/blob/master/docs/LICENSE-MIT
 [al]: https://github.com/amethyst/laminar/blob/master/docs/LICENSE-APACHE

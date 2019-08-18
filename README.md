@@ -20,7 +20,7 @@ and provides a lightweight, message-based interface which provides certain guara
 
 Laminar was designed to be used within the [Amethyst][amethyst] game engine but is usable without it.
 
-We recollect it very much to take a look at the [laminar book](https://amethyst.github.io/laminar/docs/index.html), there are many important things discussed here about the use of laminar. 
+We recollect it very much to take a look at the [laminar book][book], there are many important things discussed here about the use of laminar. 
 
 [amethyst]: https://github.com/amethyst/amethyst
 
