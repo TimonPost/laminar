@@ -1,4 +1,4 @@
-#This book is still in development and is just a draft. And much needs to be changed.
+# This book is still in development and is just a draft. And there's still a lot of maintenance to be done.
 
 ## Introduction
 
@@ -21,6 +21,8 @@ This library is written for the amethyst game-engine, but I fully intend to use 
 We do this because there are few options for a reliable UDP implementation written in rust.
 
 ## Similar Projects
+We used some inspiration from other similar projects.
+
 - [NetCode IO, C++ with go,rust, C# bindings](https://github.com/networkprotocol/netcode.io)
 - [RakNet, C++](https://github.com/SLikeSoft/SLikeNet)
 - [Steam Network Socket, , C++](https://github.com/ValveSoftware/GameNetworkingSockets)

@@ -20,6 +20,8 @@ and provides a lightweight, message-based interface which provides certain guara
 
 Laminar was designed to be used within the [Amethyst][amethyst] game engine but is usable without it.
 
+We recollect it very much to take a look at the [laminar book](https://amethyst.github.io/laminar/docs/index.html), there are many important things discussed here about the use of laminar. 
+
 [amethyst]: https://github.com/amethyst/amethyst
 
 # Concepts
@@ -30,41 +32,11 @@ The library itself provides a few low-level types of packets that provide differ
 basic are unreliable and reliable packets. Also ordering, sequencing can be done on multiple streams.
 For more information, read the projects [README.md][readme], [book][book], [docs][docs] or [examples][examples].
 
-## Important
-- Correct usage of laminar
-    
-    With game networking for fast-phased FPS games, you have to deal with a lot of data that has to go from point A to B.
-    We are talking about numbers of 20/30/60 hz. 
-    Laminar is based and optimized for the situation where a consistent flow of packets from the server to the client and from the client to the server that are being sent.
-    In a game, where everything runs at milliseconds and speed is important, you need fast communication and multiple updates per seconds.
-    
-    What are those scenario's, and how can I know, if laminar is useful for my purpose?
-    You can think of input synchronization, location updates, state updates, events, etc.  
-    Let's zoom in on input synchronization of an FPS game. 
-    The client sends the packages, the server receives it, validates it, and sends an update to all other clients. 
-    In an FPS game, a lot of input is shared, and it's not a strange idea for a client to share its input and receive updates 60 times a second.   
-    Laminar is based on this idea, and is optimized for it. 
-    When you are sending packets once a second, laminar might not be the best solution here. And your probably going to do fine with TCP. 
-    
-    To add to this, note that clients will be seen as 'disconnected' if they don't send packets for some duration, this duration can be found in the [configuration][config]. 
-    When there is a scenario's that you are sending packets less frequent, you can always send some heartbeat to keep the connection alive.
-
-- TCP isn't so bad
-
-    TCP is made for reliability and does this very well. 
-    We have been asked many times by people why reliability does not work well or is slow in laminar.
-    Important to know is that laminar has reliability as an option but it is not focused on that and isn't made to be faster and better than TCP. 
-    In the fast phased game industry, it is not possible to use TCP. Because a delay in a packet can have a major impact on all subsequent packets.
-    Reliability, after all, is less important for fast-phased FPS games; UDP. 
-    Consider to use TCP when 1) you need less frequent reliable packet communication 2) big file transfers 3) when not working with fast phased FPS games.
-
-[config]: https://github.com/amethyst/laminar/blob/master/src/config.rs#L8
 [gog]: https://gafferongames.com/
 [readme]: https://github.com/amethyst/laminar/blob/master/README.md
 [book]: https://amethyst.github.io/laminar/docs/index.html
 [docs]: https://docs.rs/laminar/
 [examples]: https://github.com/amethyst/laminar/tree/master/examples
-
 [amethyst]: https://github.com/amethyst/amethyst
 
 ## Table of contents:

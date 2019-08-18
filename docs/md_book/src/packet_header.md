@@ -2,7 +2,7 @@
 In this topic we'll discuss the different headers we are pre-pending to the data sent via laminar.
 We use different headers in different scenario's, we do this to reduce the packet size. 
 
-Take a look over here: [image](LINK) for the complete design.
+Take a look over here: [image](/docs/technical/hearder_design.png) for the complete design.
 
 - `Standard header`
     
