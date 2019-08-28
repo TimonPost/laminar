@@ -7,26 +7,24 @@ It can also be disabled.
 
 A client is considered a connection when it sends a packet. 
 If the client does not send a packet for x seconds, laminar sees this as an idling connection, and it is removed as an active connection.
-When this happens, the data related to the connection is also removed. 
-
-This data is for example: 
+When this happens, the following data is removed: 
 
 1) the reliabity data such as aknowleged packets 
-2) the buffers that keep track of the ordering and sequencing. 
-3) the rtt counter
+2) the buffers that keep track of the ordering/sequencing. 
+3) the RTT counter
 4) fragmentation data
 
-If all this data is removed from the memory is often undesirable. 
-So it is important to have a constant packet flow between the two endpoints which will prevent disconnection of the client.
+Losing this data from the memory is often undesirable.
+Therefore, it is important to have a consistent flow of packets between the two endpoints which will prevent disconnection of the client.
 The time before the client is disconnected can be changed in the [configuration](https://github.com/amethyst/laminar/blob/master/src/config.rs#L10).
 
-## Why an heartbeat?
-With game networking for fast-phased FPS games, you have to deal with a lot of data that has to go from point A to B.
+## Why a heartbeat?
+With game networking for fast-paced FPS games, you have to deal with a lot of data that has to go from point A to B.
 We are talking about numbers of 20/30/60 hz. 
 Laminar is based and optimized for the situation where a consistent flow of packets from the server to the client and from the client to the server that are being sent.
 In a game, where everything runs at milliseconds and speed is important, you need fast communication and multiple updates per seconds.
 
-What are those scenario's, and how can I know, if laminar is useful for my purpose?
+What are those scenarios and how can I know if laminar is useful for my use case?
 You can think of input synchronization, location updates, state updates, events, etc.  
 Let's zoom in on input synchronization of an FPS game. 
 The client sends the packages, the server receives it, validates it, and sends an update to all other clients. 

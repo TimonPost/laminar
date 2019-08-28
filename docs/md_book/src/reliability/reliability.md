@@ -2,7 +2,7 @@
 
 So let's talk about reliability. 
 This is a very important concept which could be at first sight difficult but which will be very handy later on.
-
+j
 As you know we have two opposites, TCP on one hand and UDP on the other. 
 TCP has a lot of feature UDP does not have, like shown below.
 
@@ -25,7 +25,7 @@ So it would be useful if we could somehow specify the features we want on top of
 Like that you say: I want the guarantee for my packets to arrive, however they don't need to be in order. 
 Or, I don't care if my packet arrives but I do want to receive only new ones.
 
-Before continuing make sure to understand the difference between ordering and sequencing: [ordering documentation](ordering.md).    
+Before continuing, it would be helpful to understand the difference between ordering and sequencing: [ordering documentation](ordering.md)
 
 ## The 5 Reliability Guarantees
 Laminar provides 5 different ways for you to send your data:
@@ -40,7 +40,7 @@ Laminar provides 5 different ways for you to send your data:
 
 
 ## Unreliable
-Unreliable: Packets can be dropped, duplicated or arrive at any order.
+Unreliable: Packets can be dropped, duplicated or arrive in any order.
 
 **Details**
 
@@ -73,7 +73,7 @@ Reliable UnOrder: All packets will be sent and received, but without order.
 Basically, this is almost TCP without ordering of packets.
 
 ## Reliable Ordered
-Reliable Ordered; All packets will be sent and received, with order.
+Reliable Unordered: All packets will be sent and received, but in the order in which they arrived.
 
 *Details*
 

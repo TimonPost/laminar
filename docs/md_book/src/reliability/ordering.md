@@ -13,14 +13,13 @@ _"Ordering: this is the process of putting something in a particular order."_ [2
 - Ordering: All items are returned in order `1,3,2,5,4` which results in `1,2,3,4,5`.
 - Arranging: We call the process for ordering and sequencing 'arranging' of packets
 
-Due to various factors with the internet, anything can happen to the data you send. 
-It is not always guaranteed that it will arrive or that it will be in the right order. 
-That's why laminar offers these options.
+Due to the design of the internet, it is not always guaranteed that packets will arrive or that they will be received in the order they were sent.
+Fortunately, Laminar's implementation grants the ability to optionally specify how reliable and the ordered (or not) the stream of packets is delivered to the client.
 
 ### How ordering works.
 If we were to send the following packets: `1,2,3,4,5`, 
-but something happens on the internet that ensures that this arrives at its final destination as: `1,5,4,2,3`, 
-then laminar makes sure that your packets arrive at the user's destination as `1,2,3,4,5`.
+but something happens on the internet which causes the packets to arrive at their final destination as: `1,5,4,2,3`, 
+then Laminar ensures that your packets arrive to the client as  `1,2,3,4,5`.
 
 ## Arranging Streams
 What are these 'arranging streams'?
@@ -57,7 +56,7 @@ let reliable_ordered = Packet::reliable_ordered(destination, bytes, Some(3));
 
 Take notice of the last `Option` parameter, with this parameter you can specify which streams to order your packets on.
 One thing that is important to understand is that 'sequenced streams' are different from 'ordered streams', 
-thus specifying `Some(1)` for a sequence stream and `Some(1)` for a ordered packet will not make have those packets ordered on the same stream. 
+thus specifying `Some(1)` for a sequence stream and `Some(1)` for an ordered stream will be arranged separately from one another.
 You can use 254 different ordering or sequencing streams, in reality you'd probably only need a few. When specifying `None`, stream '255' will be used.
 
 ## Interesting Reads
