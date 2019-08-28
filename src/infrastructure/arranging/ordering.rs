@@ -234,7 +234,7 @@ impl<T> Arranging for OrderingStream<T> {
     /// This can only happen in cases where we have a duplicated package. Again we don't give anything back.
     ///
     /// # Remark
-    /// - When we receive an item there is a possibility that a gab is filled and one or more items will could be returned.
+    /// - When we receive an item there is a possibility that a gap is filled and one or more items will could be returned.
     ///   You should use the `iter_mut` instead for reading the items in order.
     ///   However the item given to `arrange` will be returned directly when it matches the `expected_index`.
     fn arrange(
