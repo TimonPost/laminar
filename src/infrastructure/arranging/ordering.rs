@@ -244,6 +244,7 @@ impl<T> Arranging for OrderingStream<T> {
     ) -> Option<Self::ArrangingItem> {
         if incoming_offset == self.expected_index {
             self.expected_index += 1;
+            self.expected_index %= u16::max_value() as usize + 1;
             Some(item)
         } else if incoming_offset > self.expected_index {
             self.storage.insert(incoming_offset, item);
