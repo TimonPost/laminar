@@ -185,6 +185,6 @@ mod tests {
 
     #[test]
     fn able_to_box_errors() {
-        let _: Box<Error> = Box::new(ErrorKind::CouldNotReadHeader("".into()));
+        let _: Box<dyn Error> = Box::new(ErrorKind::CouldNotReadHeader("".into()));
     }
 }
