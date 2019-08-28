@@ -1057,4 +1057,49 @@ mod tests {
             Socket::bind(format!("127.0.0.1:{}", port).parse::<SocketAddr>().unwrap()).unwrap();
         assert_eq!(port, socket.local_addr().unwrap().port());
     }
+
+    #[test]
+    fn ordered_16_bit_overflow() {
+        let mut cfg = Config::default();
+
+        let mut client = Socket::bind_any_with_config(cfg.clone()).unwrap();
+        let client_addr = client.local_addr().unwrap();
+
+        cfg.blocking_mode = false;
+        let mut server = Socket::bind_any_with_config(cfg).unwrap();
+        let server_addr = server.local_addr().unwrap();
+
+        let time = Instant::now();
+
+        let mut last_payload = String::new();
+
+        for idx in 0..100_000u64 {
+            client
+                .send(Packet::reliable_ordered(
+                    server_addr,
+                    idx.to_string().as_bytes().to_vec(),
+                    None,
+                ))
+                .unwrap();
+
+            client.manual_poll(time);
+
+            while let Some(_) = client.recv() {}
+            server
+                .send(Packet::reliable_ordered(client_addr, vec![123], None))
+                .unwrap();
+            server.manual_poll(time);
+
+            while let Some(msg) = server.recv() {
+                match msg {
+                    SocketEvent::Packet(pkt) => {
+                        last_payload = std::str::from_utf8(pkt.payload()).unwrap().to_string();
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        assert_eq!["99999", last_payload];
+    }
 }
