@@ -216,6 +216,14 @@ impl<T> OrderingStream<T> {
     }
 }
 
+fn is_u16_within_half_window_from_start(start: u16, incoming: u16) -> bool {
+    // Check (with wrapping) if the incoming value lies within the next u16::max_value()/2 from
+    // start.
+    (start < u16::max_value() / 2 && incoming > start && incoming < start + u16::max_value() / 2)
+        || (start > u16::max_value() / 2
+            && (incoming > start || incoming < start.wrapping_add(u16::max_value() / 2)))
+}
+
 impl<T> Arranging for OrderingStream<T> {
     type ArrangingItem = T;
 
@@ -243,10 +251,9 @@ impl<T> Arranging for OrderingStream<T> {
         item: Self::ArrangingItem,
     ) -> Option<Self::ArrangingItem> {
         if incoming_offset == self.expected_index {
-            self.expected_index += 1;
-            self.expected_index %= u16::max_value() as usize + 1;
+            self.expected_index = self.expected_index.wrapping_add(1);
             Some(item)
-        } else if incoming_offset > self.expected_index {
+        } else if is_u16_within_half_window_from_start(self.expected_index, incoming_offset) {
             self.storage.insert(incoming_offset, item);
             None
         } else {
@@ -284,7 +291,7 @@ impl<'a, T> Iterator for IterMut<'a, T> {
         match self.items.remove(&self.expected_index) {
             None => None,
             Some(e) => {
-                *self.expected_index += 1;
+                *self.expected_index = self.expected_index.wrapping_add(1);
                 Some(e)
             }
         }
@@ -327,6 +334,25 @@ mod tests {
         let stream = system.get_or_create_stream(1);
 
         assert_eq!(stream.stream_id(), 1);
+    }
+
+    #[test]
+    fn packet_wraps_around_offset() {
+        let mut system: OrderingSystem<()> = OrderingSystem::new();
+
+        let stream = system.get_or_create_stream(1);
+        for idx in 1..=65500 {
+            assert![stream.arrange(idx, ()).is_some()];
+        }
+        assert![stream.arrange(123, ()).is_none()];
+        for idx in 65501..=65535u16 {
+            assert![stream.arrange(idx as usize, ()).is_some()];
+        }
+        assert![stream.arrange(0, ()).is_some()];
+        for idx in 1..123 {
+            assert![stream.arrange(idx, ()).is_some()];
+        }
+        assert![stream.iter_mut().next().is_some()];
     }
 
     #[test]
