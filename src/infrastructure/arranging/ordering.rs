@@ -159,7 +159,7 @@ impl<T> OrderingStream<T> {
     pub fn with_capacity(size: usize, stream_id: u8) -> OrderingStream<T> {
         OrderingStream {
             storage: HashMap::with_capacity(size),
-            expected_index: 1,
+            expected_index: 0,
             _stream_id: stream_id,
             unique_item_identifier: 0,
         }
@@ -179,8 +179,9 @@ impl<T> OrderingStream<T> {
 
     /// Returns the unique identifier which should be used for ordering on the other stream e.g. the remote endpoint.
     pub fn new_item_identifier(&mut self) -> SequenceNumber {
+        let id = self.unique_item_identifier;
         self.unique_item_identifier = self.unique_item_identifier.wrapping_add(1);
-        self.unique_item_identifier
+        id
     }
 
     /// Returns an iterator of stored items.
@@ -323,7 +324,7 @@ mod tests {
         let mut system: OrderingSystem<Packet> = OrderingSystem::new();
         let stream = system.get_or_create_stream(1);
 
-        assert_eq!(stream.expected_index(), 1);
+        assert_eq!(stream.expected_index(), 0);
         assert_eq!(stream.stream_id(), 1);
     }
 
@@ -342,7 +343,7 @@ mod tests {
         let mut system: OrderingSystem<()> = OrderingSystem::new();
 
         let stream = system.get_or_create_stream(1);
-        for idx in 1..=65500 {
+        for idx in 0..=65500 {
             assert![stream.arrange(idx, ()).is_some()];
         }
         assert![stream.arrange(123, ()).is_none()];
@@ -363,21 +364,21 @@ mod tests {
         system.get_or_create_stream(1);
         let stream = system.get_or_create_stream(1);
 
+        let stub_packet0 = Packet::new(0, 1);
         let stub_packet1 = Packet::new(1, 1);
         let stub_packet2 = Packet::new(2, 1);
         let stub_packet3 = Packet::new(3, 1);
         let stub_packet4 = Packet::new(4, 1);
-        let stub_packet5 = Packet::new(5, 1);
 
         {
             assert_eq!(
-                stream.arrange(1, stub_packet1.clone()).unwrap(),
-                stub_packet1
+                stream.arrange(0, stub_packet0.clone()).unwrap(),
+                stub_packet0
             );
 
-            assert![stream.arrange(4, stub_packet4.clone()).is_none()];
-            assert![stream.arrange(5, stub_packet5.clone()).is_none()];
             assert![stream.arrange(3, stub_packet3.clone()).is_none()];
+            assert![stream.arrange(4, stub_packet4.clone()).is_none()];
+            assert![stream.arrange(2, stub_packet2.clone()).is_none()];
         }
         {
             let mut iterator = stream.iter_mut();
@@ -387,17 +388,17 @@ mod tests {
         }
         {
             assert_eq!(
-                stream.arrange(2, stub_packet2.clone()).unwrap(),
-                stub_packet2
+                stream.arrange(1, stub_packet1.clone()).unwrap(),
+                stub_packet1
             );
         }
         {
             // since we processed packet 2 by now we should be able to iterate and get back: 3,4,5;
             let mut iterator = stream.iter_mut();
 
+            assert_eq!(iterator.next().unwrap(), stub_packet2);
             assert_eq!(iterator.next().unwrap(), stub_packet3);
             assert_eq!(iterator.next().unwrap(), stub_packet4);
-            assert_eq!(iterator.next().unwrap(), stub_packet5);
         }
     }
 
@@ -456,26 +457,26 @@ mod tests {
     #[test]
     fn expect_right_order() {
         // we order on stream 1
-        assert_order!([1, 3, 5, 4, 2], [1, 2, 3, 4, 5], 1);
-        assert_order!([1, 5, 4, 3, 2], [1, 2, 3, 4, 5], 1);
-        assert_order!([5, 3, 4, 2, 1], [1, 2, 3, 4, 5], 1);
-        assert_order!([4, 3, 2, 1, 5], [1, 2, 3, 4, 5], 1);
-        assert_order!([2, 1, 4, 3, 5], [1, 2, 3, 4, 5], 1);
-        assert_order!([5, 2, 1, 4, 3], [1, 2, 3, 4, 5], 1);
-        assert_order!([3, 2, 4, 1, 5], [1, 2, 3, 4, 5], 1);
-        assert_order!([2, 1, 4, 3, 5], [1, 2, 3, 4, 5], 1);
+        assert_order!([0, 2, 4, 3, 1], [0, 1, 2, 3, 4], 1);
+        assert_order!([0, 4, 3, 2, 1], [0, 1, 2, 3, 4], 1);
+        assert_order!([4, 2, 3, 1, 0], [0, 1, 2, 3, 4], 1);
+        assert_order!([3, 2, 1, 0, 4], [0, 1, 2, 3, 4], 1);
+        assert_order!([1, 0, 3, 2, 4], [0, 1, 2, 3, 4], 1);
+        assert_order!([4, 1, 0, 3, 2], [0, 1, 2, 3, 4], 1);
+        assert_order!([2, 1, 3, 0, 4], [0, 1, 2, 3, 4], 1);
+        assert_order!([1, 0, 3, 2, 4], [0, 1, 2, 3, 4], 1);
     }
 
     #[test]
     fn order_on_multiple_streams() {
         // we order on streams [1...8]
-        assert_order!([1, 3, 5, 4, 2], [1, 2, 3, 4, 5], 1);
-        assert_order!([1, 5, 4, 3, 2], [1, 2, 3, 4, 5], 2);
-        assert_order!([5, 3, 4, 2, 1], [1, 2, 3, 4, 5], 3);
-        assert_order!([4, 3, 2, 1, 5], [1, 2, 3, 4, 5], 4);
-        assert_order!([2, 1, 4, 3, 5], [1, 2, 3, 4, 5], 5);
-        assert_order!([5, 2, 1, 4, 3], [1, 2, 3, 4, 5], 6);
-        assert_order!([3, 2, 4, 1, 5], [1, 2, 3, 4, 5], 7);
-        assert_order!([2, 1, 4, 3, 5], [1, 2, 3, 4, 5], 8);
+        assert_order!([0, 2, 4, 3, 1], [0, 1, 2, 3, 4], 1);
+        assert_order!([0, 4, 3, 2, 1], [0, 1, 2, 3, 4], 2);
+        assert_order!([4, 2, 3, 1, 0], [0, 1, 2, 3, 4], 3);
+        assert_order!([3, 2, 1, 0, 4], [0, 1, 2, 3, 4], 4);
+        assert_order!([1, 0, 3, 2, 4], [0, 1, 2, 3, 4], 5);
+        assert_order!([4, 1, 0, 3, 2], [0, 1, 2, 3, 4], 6);
+        assert_order!([2, 1, 3, 0, 4], [0, 1, 2, 3, 4], 7);
+        assert_order!([1, 0, 3, 2, 4], [0, 1, 2, 3, 4], 8);
     }
 }

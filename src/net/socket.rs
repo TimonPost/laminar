@@ -593,7 +593,7 @@ mod tests {
         server.forget_all_incoming_packets();
 
         // Send a packet that the server receives
-        for id in 0..36 {
+        for id in 0..35 {
             client
                 .send(create_ordered_packet(id, "127.0.0.1:12333"))
                 .unwrap();

@@ -680,7 +680,15 @@ mod tests {
                 PAYLOAD.to_vec(),
                 Some(1),
             ))),
-            1,
+            0,
+        );
+
+        assert_incoming_with_order(
+            DeliveryGuarantee::Reliable,
+            OrderingGuarantee::Ordered(Some(1)),
+            &mut connection,
+            Err(TryRecvError::Empty),
+            2,
         );
 
         assert_incoming_with_order(
@@ -695,20 +703,12 @@ mod tests {
             DeliveryGuarantee::Reliable,
             OrderingGuarantee::Ordered(Some(1)),
             &mut connection,
-            Err(TryRecvError::Empty),
-            4,
-        );
-
-        assert_incoming_with_order(
-            DeliveryGuarantee::Reliable,
-            OrderingGuarantee::Ordered(Some(1)),
-            &mut connection,
             Ok(SocketEvent::Packet(Packet::reliable_ordered(
                 get_fake_addr(),
                 PAYLOAD.to_vec(),
                 Some(1),
             ))),
-            2,
+            1,
         );
     }
 
@@ -752,7 +752,7 @@ mod tests {
                 PAYLOAD.to_vec(),
                 Some(1),
             ))),
-            1,
+            0,
         );
     }
 
