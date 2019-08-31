@@ -132,9 +132,9 @@ pub struct OrderingStream<T> {
     _stream_id: u8,
     // the storage for items that are waiting for older items to arrive.
     // the items will be stored by key and value where the key is the incoming index and the value is the item value.
-    storage: HashMap<usize, T>,
+    storage: HashMap<u16, T>,
     // the next expected item index.
-    expected_index: usize,
+    expected_index: u16,
     // unique identifier which should be used for ordering on a different stream e.g. the remote endpoint.
     unique_item_identifier: u16,
 }
@@ -174,7 +174,7 @@ impl<T> OrderingStream<T> {
     /// Returns the next expected index.
     #[cfg(test)]
     pub fn expected_index(&self) -> usize {
-        self.expected_index
+        self.expected_index as usize
     }
 
     /// Returns the unique identifier which should be used for ordering on the other stream e.g. the remote endpoint.
@@ -216,6 +216,14 @@ impl<T> OrderingStream<T> {
     }
 }
 
+fn is_u16_within_half_window_from_start(start: u16, incoming: u16) -> bool {
+    // Check (with wrapping) if the incoming value lies within the next u16::max_value()/2 from
+    // start.
+    (start < u16::max_value() / 2 && incoming > start && incoming < start + u16::max_value() / 2)
+        || (start > u16::max_value() / 2
+            && (incoming > start || incoming < start.wrapping_add(u16::max_value() / 2)))
+}
+
 impl<T> Arranging for OrderingStream<T> {
     type ArrangingItem = T;
 
@@ -242,11 +250,11 @@ impl<T> Arranging for OrderingStream<T> {
         incoming_offset: usize,
         item: Self::ArrangingItem,
     ) -> Option<Self::ArrangingItem> {
+        let incoming_offset = incoming_offset as u16;
         if incoming_offset == self.expected_index {
-            self.expected_index += 1;
-            self.expected_index %= u16::max_value() as usize + 1;
+            self.expected_index = self.expected_index.wrapping_add(1);
             Some(item)
-        } else if incoming_offset > self.expected_index {
+        } else if is_u16_within_half_window_from_start(self.expected_index, incoming_offset) {
             self.storage.insert(incoming_offset, item);
             None
         } else {
@@ -271,8 +279,8 @@ impl<T> Arranging for OrderingStream<T> {
 /// - Iterator mutates the `expected_index`.
 /// - You can't use this iterator for iterating trough all cached values.
 pub struct IterMut<'a, T> {
-    items: &'a mut HashMap<usize, T>,
-    expected_index: &'a mut usize,
+    items: &'a mut HashMap<u16, T>,
+    expected_index: &'a mut u16,
 }
 
 impl<'a, T> Iterator for IterMut<'a, T> {
@@ -284,7 +292,7 @@ impl<'a, T> Iterator for IterMut<'a, T> {
         match self.items.remove(&self.expected_index) {
             None => None,
             Some(e) => {
-                *self.expected_index += 1;
+                *self.expected_index = self.expected_index.wrapping_add(1);
                 Some(e)
             }
         }
@@ -327,6 +335,25 @@ mod tests {
         let stream = system.get_or_create_stream(1);
 
         assert_eq!(stream.stream_id(), 1);
+    }
+
+    #[test]
+    fn packet_wraps_around_offset() {
+        let mut system: OrderingSystem<()> = OrderingSystem::new();
+
+        let stream = system.get_or_create_stream(1);
+        for idx in 1..=65500 {
+            assert![stream.arrange(idx, ()).is_some()];
+        }
+        assert![stream.arrange(123, ()).is_none()];
+        for idx in 65501..=65535u16 {
+            assert![stream.arrange(idx as usize, ()).is_some()];
+        }
+        assert![stream.arrange(0, ()).is_some()];
+        for idx in 1..123 {
+            assert![stream.arrange(idx, ()).is_some()];
+        }
+        assert![stream.iter_mut().next().is_some()];
     }
 
     #[test]
