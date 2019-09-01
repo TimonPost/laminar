@@ -618,11 +618,14 @@ mod tests {
 
     #[test]
     fn do_not_duplicate_sequenced_packets_when_received() {
-        let server_addr = "127.0.0.1:12325".parse::<SocketAddr>().unwrap();
-        let client_addr = "127.0.0.1:12326".parse::<SocketAddr>().unwrap();
+        let mut config = Config::default();
 
-        let mut server = Socket::bind(server_addr).unwrap();
-        let mut client = Socket::bind(client_addr).unwrap();
+        let mut client = Socket::bind_any_with_config(config.clone()).unwrap();
+        config.blocking_mode = true;
+        let mut server = Socket::bind_any_with_config(config).unwrap();
+
+        let server_addr = server.local_addr().unwrap();
+        let client_addr = client.local_addr().unwrap();
 
         let time = Instant::now();
 
@@ -631,9 +634,8 @@ mod tests {
                 .send(Packet::reliable_sequenced(server_addr, vec![id], None))
                 .unwrap();
             client.manual_poll(time);
+            server.manual_poll(time);
         }
-
-        server.manual_poll(time);
 
         let mut seen = HashSet::new();
 
