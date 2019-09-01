@@ -30,6 +30,8 @@ pub enum ErrorKind {
     SendError(SendError<SocketEvent>),
     /// Expected header but could not be read from buffer.
     CouldNotReadHeader(String),
+    /// Too many unacknowledged packets in the resend queue
+    TooManyUnacknowledgedPackets,
 }
 
 impl Display for ErrorKind {
@@ -66,6 +68,10 @@ impl Display for ErrorKind {
                 fmt,
                 "Expected {} header but could not be read from buffer.",
                 header
+            ),
+            ErrorKind::TooManyUnacknowledgedPackets => write!(
+                fmt,
+                "Can not uphold reliability guarantees due to too many unacknowledged packets",
             ),
         }
     }

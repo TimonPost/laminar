@@ -11,7 +11,7 @@ pub struct AcknowledgmentHandler {
     // Local sequence number which we'll bump each time we send a new packet over the network
     sequence_number: SequenceNumber,
     // The last acked sequence number of the packets we've sent to the remote host.
-    remote_ack_sequence_num: SequenceNumber,
+    remote_ack_sequence_num: Option<SequenceNumber>,
     // Using a Hashmap to track every packet we send out so we can ensure that we can resend when
     // dropped.
     sent_packets: HashMap<u16, SentPacket>,
@@ -25,7 +25,7 @@ impl AcknowledgmentHandler {
     pub fn new() -> Self {
         AcknowledgmentHandler {
             sequence_number: 0,
-            remote_ack_sequence_num: u16::max_value(),
+            remote_ack_sequence_num: None,
             sent_packets: HashMap::with_capacity(DEFAULT_SEND_PACKETS_SIZE),
             received_packets: SequenceBuffer::with_capacity(REDUNDANT_PACKET_ACKS_SIZE + 1),
         }
@@ -71,7 +71,7 @@ impl AcknowledgmentHandler {
         remote_ack_seq: u16,
         mut remote_ack_field: u32,
     ) {
-        self.remote_ack_sequence_num = remote_ack_seq;
+        self.remote_ack_sequence_num = Some(remote_ack_seq);
         self.received_packets
             .insert(remote_seq_num, ReceivedPacket {});
 
@@ -118,10 +118,14 @@ impl AcknowledgmentHandler {
         sent_sequences
             .into_iter()
             .filter(|s| {
-                if sequence_less_than(*s, remote_ack_sequence) {
-                    remote_ack_sequence.wrapping_sub(*s) > REDUNDANT_PACKET_ACKS_SIZE
+                if let Some(remote_ack_sequence) = remote_ack_sequence {
+                    if sequence_less_than(*s, remote_ack_sequence) {
+                        remote_ack_sequence.wrapping_sub(*s) > REDUNDANT_PACKET_ACKS_SIZE
+                    } else {
+                        false
+                    }
                 } else {
-                    false
+                    true
                 }
             })
             .flat_map(|s| self.sent_packets.remove(&s))
