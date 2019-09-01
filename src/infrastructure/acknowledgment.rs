@@ -31,6 +31,11 @@ impl AcknowledgmentHandler {
         }
     }
 
+    /// Get the current number of not yet acknowledged packets
+    pub fn packets_in_flight(&self) -> u16 {
+        self.sent_packets.len() as u16
+    }
+
     /// Returns the next sequence number to send.
     pub fn local_sequence_num(&self) -> SequenceNumber {
         self.sequence_number
