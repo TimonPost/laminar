@@ -1,6 +1,6 @@
 use crate::packet::OrderingGuarantee;
 use crate::packet::SequenceNumber;
-use crate::sequence_buffer::{sequence_less_than, SequenceBuffer};
+use crate::sequence_buffer::{sequence_greater_than, sequence_less_than, SequenceBuffer};
 use std::collections::HashMap;
 
 const REDUNDANT_PACKET_ACKS_SIZE: u16 = 32;
@@ -71,7 +71,11 @@ impl AcknowledgmentHandler {
         remote_ack_seq: u16,
         mut remote_ack_field: u32,
     ) {
-        self.remote_ack_sequence_num = remote_ack_seq;
+        // We must ensure that self.remote_ack_sequence_num is always increasing (with wrapping)
+        if sequence_greater_than(remote_ack_seq, self.remote_ack_sequence_num) {
+            self.remote_ack_sequence_num = remote_ack_seq;
+        }
+
         self.received_packets
             .insert(remote_seq_num, ReceivedPacket {});
 
@@ -284,5 +288,27 @@ mod test {
         handler.process_outgoing(vec![1, 2, 3].as_slice(), OrderingGuarantee::None, None);
         assert_eq!(handler.sent_packets.len(), 1);
         assert_eq!(handler.local_sequence_num(), 1);
+    }
+
+    #[test]
+    fn remote_ack_seq_must_never_be_less_than_prior() {
+        let mut handler = AcknowledgmentHandler::new();
+        // Second packet received before first
+        handler.process_incoming(1, 1, 1);
+        assert_eq!(handler.remote_ack_sequence_num, 1);
+        // First packet received
+        handler.process_incoming(0, 0, 0);
+        assert_eq!(handler.remote_ack_sequence_num, 1);
+    }
+
+    #[test]
+    fn remote_ack_seq_must_never_be_less_than_prior_wrap_boundary() {
+        let mut handler = AcknowledgmentHandler::new();
+        // newer packet received before first
+        handler.process_incoming(1, 0, 1);
+        assert_eq!(handler.remote_ack_sequence_num, 0);
+        // earlier packet received
+        handler.process_incoming(0, u16::max_value(), 0);
+        assert_eq!(handler.remote_ack_sequence_num, 0);
     }
 }
