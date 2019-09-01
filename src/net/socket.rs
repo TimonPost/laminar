@@ -657,6 +657,51 @@ mod tests {
     }
 
     #[test]
+    fn more_than_65536_sequenced_packets() {
+        let mut config = Config::default();
+
+        let mut client = Socket::bind_any_with_config(config.clone()).unwrap();
+        config.blocking_mode = true;
+        let mut server = Socket::bind_any_with_config(config).unwrap();
+
+        let server_addr = server.local_addr().unwrap();
+        let client_addr = client.local_addr().unwrap();
+
+        // Acknowledge the client
+        server
+            .send(Packet::unreliable(client_addr, vec![0]))
+            .unwrap();
+
+        let time = Instant::now();
+
+        for id in 0..65536 + 100 {
+            client
+                .send(Packet::unreliable_sequenced(
+                    server_addr,
+                    id.to_string().as_bytes().to_vec(),
+                    None,
+                ))
+                .unwrap();
+            client.manual_poll(time);
+            server.manual_poll(time);
+        }
+
+        let mut cnt = 0;
+        while let Some(message) = server.recv() {
+            match message {
+                SocketEvent::Connect(_) => {}
+                SocketEvent::Packet(packet) => {
+                    cnt += 1;
+                }
+                SocketEvent::Timeout(_) => {
+                    panic!["This should not happen, as we've not advanced time"];
+                }
+            }
+        }
+        assert_eq![65536 + 100, cnt];
+    }
+
+    #[test]
     fn manual_polling_socket() {
         let mut server = Socket::bind("127.0.0.1:12339".parse::<SocketAddr>().unwrap()).unwrap();
         let mut client = Socket::bind("127.0.0.1:12340".parse::<SocketAddr>().unwrap()).unwrap();

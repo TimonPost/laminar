@@ -98,9 +98,16 @@ impl<T> SequencingStream<T> {
 
     /// Returns the unique identifier which should be used for ordering on an other stream e.g. the remote endpoint.
     pub fn new_item_identifier(&mut self) -> SequenceNumber {
+        let id = self.unique_item_identifier;
         self.unique_item_identifier = self.unique_item_identifier.wrapping_add(1);
-        self.unique_item_identifier
+        id
     }
+}
+
+fn is_u16_within_half_window_from_start(start: u16, incoming: u16) -> bool {
+    // Check (with wrapping) if the incoming value lies within the next u16::max_value()/2 from
+    // start.
+    incoming.wrapping_sub(start) <= u16::max_value() / 2 + 1
 }
 
 impl<T> Arranging for SequencingStream<T> {
@@ -128,7 +135,7 @@ impl<T> Arranging for SequencingStream<T> {
         incoming_index: u16,
         item: Self::ArrangingItem,
     ) -> Option<Self::ArrangingItem> {
-        if incoming_index > self.top_index {
+        if is_u16_within_half_window_from_start(self.top_index, incoming_index) {
             self.top_index = incoming_index;
             return Some(item);
         }
