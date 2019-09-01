@@ -173,8 +173,9 @@ impl<T> OrderingStream<T> {
 
     /// Returns the next expected index.
     #[cfg(test)]
-    pub fn expected_index(&self) -> usize {
-        self.expected_index as usize
+
+    pub fn expected_index(&self) -> u16 {
+        self.expected_index
     }
 
     /// Returns the unique identifier which should be used for ordering on the other stream e.g. the remote endpoint.
@@ -248,7 +249,7 @@ impl<T> Arranging for OrderingStream<T> {
     ///   However the item given to `arrange` will be returned directly when it matches the `expected_index`.
     fn arrange(
         &mut self,
-        incoming_offset: usize,
+        incoming_offset: u16,
         item: Self::ArrangingItem,
     ) -> Option<Self::ArrangingItem> {
         let incoming_offset = incoming_offset as u16;
@@ -306,12 +307,12 @@ mod tests {
 
     #[derive(Debug, PartialEq, Clone)]
     struct Packet {
-        pub sequence: usize,
+        pub sequence: u16,
         pub ordering_stream: u8,
     }
 
     impl Packet {
-        fn new(sequence: usize, ordering_stream: u8) -> Packet {
+        fn new(sequence: u16, ordering_stream: u8) -> Packet {
             Packet {
                 sequence,
                 ordering_stream,
@@ -407,13 +408,13 @@ mod tests {
         ( [$( $x:expr ),*] , [$( $y:expr),*] , $stream_id:expr) => {
         {
             // initialize vector of given range on the left.
-            let mut before: Vec<usize> = Vec::new();
+            let mut before: Vec<u16> = Vec::new();
             $(
                 before.push($x);
             )*
 
             // initialize vector of given range on the right.
-            let mut after: Vec<usize> = Vec::new();
+            let mut after: Vec<u16> = Vec::new();
             $(
                 after.push($y);
             )*

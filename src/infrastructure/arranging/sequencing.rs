@@ -70,7 +70,7 @@ pub struct SequencingStream<T> {
     // the id of this stream.
     _stream_id: u8,
     // the highest seen item index.
-    top_index: usize,
+    top_index: u16,
     // I need `PhantomData`, otherwise, I can't use a generic in the `Arranging` implementation because `T` is not constrained.
     phantom: PhantomData<T>,
     // unique identifier which should be used for ordering on an other stream e.g. the remote endpoint.
@@ -125,7 +125,7 @@ impl<T> Arranging for SequencingStream<T> {
     /// - None is returned when an old packet is received.
     fn arrange(
         &mut self,
-        incoming_index: usize,
+        incoming_index: u16,
         item: Self::ArrangingItem,
     ) -> Option<Self::ArrangingItem> {
         if incoming_index > self.top_index {
@@ -142,12 +142,12 @@ mod tests {
 
     #[derive(Debug, PartialEq, Clone)]
     struct Packet {
-        pub sequence: usize,
+        pub sequence: u16,
         pub ordering_stream: u8,
     }
 
     impl Packet {
-        fn new(sequence: usize, ordering_stream: u8) -> Packet {
+        fn new(sequence: u16, ordering_stream: u8) -> Packet {
             Packet {
                 sequence,
                 ordering_stream,
@@ -178,13 +178,13 @@ mod tests {
         ( [$( $x:expr ),*], [$( $y:expr),*], $stream_id:expr) => {
             {
                 // initialize vector of given range on the left.
-                let mut before: Vec<usize> = Vec::new();
+                let mut before: Vec<u16> = Vec::new();
                 $(
                     before.push($x);
                 )*
 
                 // initialize vector of given range on the right.
-                let mut after: Vec<usize> = Vec::new();
+                let mut after: Vec<u16> = Vec::new();
                 $(
                     after.push($y);
                 )*
