@@ -132,9 +132,9 @@ pub struct OrderingStream<T> {
     _stream_id: u8,
     // the storage for items that are waiting for older items to arrive.
     // the items will be stored by key and value where the key is the incoming index and the value is the item value.
-    storage: HashMap<usize, T>,
+    storage: HashMap<u16, T>,
     // the next expected item index.
-    expected_index: usize,
+    expected_index: u16,
     // unique identifier which should be used for ordering on a different stream e.g. the remote endpoint.
     unique_item_identifier: u16,
 }
@@ -173,7 +173,7 @@ impl<T> OrderingStream<T> {
 
     /// Returns the next expected index.
     #[cfg(test)]
-    pub fn expected_index(&self) -> usize {
+    pub fn expected_index(&self) -> u16 {
         self.expected_index
     }
 
@@ -239,7 +239,7 @@ impl<T> Arranging for OrderingStream<T> {
     ///   However the item given to `arrange` will be returned directly when it matches the `expected_index`.
     fn arrange(
         &mut self,
-        incoming_offset: usize,
+        incoming_offset: u16,
         item: Self::ArrangingItem,
     ) -> Option<Self::ArrangingItem> {
         if incoming_offset == self.expected_index {
@@ -270,8 +270,8 @@ impl<T> Arranging for OrderingStream<T> {
 /// - Iterator mutates the `expected_index`.
 /// - You can't use this iterator for iterating trough all cached values.
 pub struct IterMut<'a, T> {
-    items: &'a mut HashMap<usize, T>,
-    expected_index: &'a mut usize,
+    items: &'a mut HashMap<u16, T>,
+    expected_index: &'a mut u16,
 }
 
 impl<'a, T> Iterator for IterMut<'a, T> {
@@ -296,12 +296,12 @@ mod tests {
 
     #[derive(Debug, PartialEq, Clone)]
     struct Packet {
-        pub sequence: usize,
+        pub sequence: u16,
         pub ordering_stream: u8,
     }
 
     impl Packet {
-        fn new(sequence: usize, ordering_stream: u8) -> Packet {
+        fn new(sequence: u16, ordering_stream: u8) -> Packet {
             Packet {
                 sequence,
                 ordering_stream,
@@ -378,13 +378,13 @@ mod tests {
         ( [$( $x:expr ),*] , [$( $y:expr),*] , $stream_id:expr) => {
         {
             // initialize vector of given range on the left.
-            let mut before: Vec<usize> = Vec::new();
+            let mut before: Vec<u16> = Vec::new();
             $(
                 before.push($x);
             )*
 
             // initialize vector of given range on the right.
-            let mut after: Vec<usize> = Vec::new();
+            let mut after: Vec<u16> = Vec::new();
             $(
                 after.push($y);
             )*

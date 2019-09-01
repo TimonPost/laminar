@@ -264,9 +264,7 @@ impl VirtualConnection {
                         .sequencing_system
                         .get_or_create_stream(arranging_header.stream_id());
 
-                    if let Some(packet) =
-                        stream.arrange(arranging_header.arranging_id() as usize, payload)
-                    {
+                    if let Some(packet) = stream.arrange(arranging_header.arranging_id(), payload) {
                         Self::queue_packet(
                             sender,
                             packet,
@@ -334,7 +332,7 @@ impl VirtualConnection {
                             .get_or_create_stream(arranging_header.stream_id());
 
                         if let Some(packet) =
-                            stream.arrange(arranging_header.arranging_id() as usize, payload)
+                            stream.arrange(arranging_header.arranging_id(), payload)
                         {
                             Self::queue_packet(
                                 sender,
@@ -356,7 +354,7 @@ impl VirtualConnection {
                             .get_or_create_stream(arranging_header.stream_id());
 
                         if let Some(packet) =
-                            stream.arrange(arranging_header.arranging_id() as usize, payload)
+                            stream.arrange(arranging_header.arranging_id(), payload)
                         {
                             Self::queue_packet(
                                 sender,
