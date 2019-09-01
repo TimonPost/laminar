@@ -54,7 +54,7 @@ pub trait Arranging {
     /// If the `incoming_offset` satisfies the arranging algorithm it returns `Some` with the passed item.
     fn arrange(
         &mut self,
-        incoming_index: usize,
+        incoming_index: u16,
         item: Self::ArrangingItem,
     ) -> Option<Self::ArrangingItem>;
 }
