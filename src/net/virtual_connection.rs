@@ -139,17 +139,16 @@ impl VirtualConnection {
                         );
 
                         if let OrderingGuarantee::Ordered(stream_id) = ordering_guarantee {
-                            let item_identifier = if let Some(item_identifier) =
-                                last_item_identifier
-                            {
-                                item_identifier
-                            } else {
-                                self.ordering_system
-                                    .get_or_create_stream(
-                                        stream_id.unwrap_or(DEFAULT_ORDERING_STREAM),
-                                    )
-                                    .new_item_identifier() as u16
-                            };
+                            let item_identifier =
+                                if let Some(item_identifier) = last_item_identifier {
+                                    item_identifier
+                                } else {
+                                    self.ordering_system
+                                        .get_or_create_stream(
+                                            stream_id.unwrap_or(DEFAULT_ORDERING_STREAM),
+                                        )
+                                        .new_item_identifier()
+                                };
 
                             item_identifier_value = Some(item_identifier);
 
@@ -157,17 +156,16 @@ impl VirtualConnection {
                         };
 
                         if let OrderingGuarantee::Sequenced(stream_id) = ordering_guarantee {
-                            let item_identifier = if let Some(item_identifier) =
-                                last_item_identifier
-                            {
-                                item_identifier
-                            } else {
-                                self.sequencing_system
-                                    .get_or_create_stream(
-                                        stream_id.unwrap_or(DEFAULT_SEQUENCING_STREAM),
-                                    )
-                                    .new_item_identifier() as u16
-                            };
+                            let item_identifier =
+                                if let Some(item_identifier) = last_item_identifier {
+                                    item_identifier
+                                } else {
+                                    self.sequencing_system
+                                        .get_or_create_stream(
+                                            stream_id.unwrap_or(DEFAULT_SEQUENCING_STREAM),
+                                        )
+                                        .new_item_identifier()
+                                };
 
                             item_identifier_value = Some(item_identifier);
 
