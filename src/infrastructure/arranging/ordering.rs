@@ -220,9 +220,7 @@ impl<T> OrderingStream<T> {
 fn is_u16_within_half_window_from_start(start: u16, incoming: u16) -> bool {
     // Check (with wrapping) if the incoming value lies within the next u16::max_value()/2 from
     // start.
-    (start < u16::max_value() / 2 && incoming > start && incoming < start + u16::max_value() / 2)
-        || (start > u16::max_value() / 2
-            && (incoming > start || incoming < start.wrapping_add(u16::max_value() / 2)))
+    incoming.wrapping_sub(start) <= u16::max_value() / 2 + 1
 }
 
 impl<T> Arranging for OrderingStream<T> {
@@ -301,7 +299,7 @@ impl<'a, T> Iterator for IterMut<'a, T> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Arranging, ArrangingSystem, OrderingSystem};
+    use super::{is_u16_within_half_window_from_start, Arranging, ArrangingSystem, OrderingSystem};
 
     #[derive(Debug, PartialEq, Clone)]
     struct Packet {
@@ -354,6 +352,34 @@ mod tests {
             assert![stream.arrange(idx, ()).is_some()];
         }
         assert![stream.iter_mut().next().is_some()];
+    }
+
+    #[test]
+    fn exactly_half_u16_packet_is_stored() {
+        let mut system: OrderingSystem<u16> = OrderingSystem::new();
+
+        let stream = system.get_or_create_stream(1);
+        for idx in 0..=32766 {
+            assert![stream.arrange(idx, idx).is_some()];
+        }
+        assert![stream.arrange(32768, 32768).is_none()];
+        assert![stream.arrange(32767, 32767).is_some()];
+        assert_eq![Some(32768), stream.iter_mut().next()];
+        assert_eq![None, stream.iter_mut().next()];
+    }
+
+    #[test]
+    fn u16_forward_half() {
+        assert![!is_u16_within_half_window_from_start(0, 65535)];
+        assert![!is_u16_within_half_window_from_start(0, 32769)];
+
+        assert![is_u16_within_half_window_from_start(0, 32768)];
+        assert![is_u16_within_half_window_from_start(0, 32767)];
+
+        assert![is_u16_within_half_window_from_start(32767, 65535)];
+        assert![!is_u16_within_half_window_from_start(32766, 65535)];
+        assert![is_u16_within_half_window_from_start(32768, 65535)];
+        assert![is_u16_within_half_window_from_start(32769, 0)];
     }
 
     #[test]
