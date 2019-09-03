@@ -17,9 +17,10 @@ jobs:
     - name: installing rust
       run: |
         curl https://sh.rustup.rs -sSf | sh -s -- -y
-        ls $HOME/.cargo/bin/
+        ls HOME/.cargo/bin/
         rustc --version
     - name: building laminar
-      run: $HOME/.cargo/bin/cargo build --verbose
+      run: |
+        HOME/.cargo/bin/cargo build --verbose
     - name: testing lamianr
-      run: $HOME/.cargo/bin/cargo test --verbose    
+      run: HOME/.cargo/bin/cargo test --verbose    
