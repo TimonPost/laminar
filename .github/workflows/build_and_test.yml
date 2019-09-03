@@ -16,6 +16,7 @@ jobs:
     - uses: actions/checkout@v1
     - name: installing rust
       run: |
+        echo Hello world ${HOME}
         curl https://sh.rustup.rs -sSf | sh -s -- -y
         ls ${HOME}/.cargo/bin/
         rustc --version
@@ -23,21 +24,5 @@ jobs:
       run: ${HOME}/.cargo/bin/cargo build --verbose
     - name: testing lamianr
       run: ${HOME}/.cargo/bin/cargo test --verbose    
-  windows:
-    name: Running on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [windows-latest]
-    steps:
-    - uses: actions/checkout@v1
-    - name: installing rust
-      run: |
-        curl -sSf -o rustup-init.exe https://win.rustup.rs
-        rustup-init.exe -y --default-toolchain %RUSTUP_TOOLCHAIN%
-        rustc --version
-    - name: building laminar
-      run: %USERPROFILE%/.cargo/bin/cargo build --verbose
-    - name: testing lamianr
-      run: %USERPROFILE%/.cargo/bin/cargo test --verbose  
+ 
 
