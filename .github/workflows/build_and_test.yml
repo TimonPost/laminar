@@ -18,9 +18,9 @@ jobs:
       run: |
         curl https://sh.rustup.rs -sSf --output rustup.sh
         sh ./rustup.sh -y    
-        export PATH="$HOME/.cargo/bin:$PATH"
+        ls $HOME/.cargo/bin/
         rustc --version
     - name: building laminar
-      run: cargo build --verbose
+      run: $HOME/.cargo/bin/cargo build --verbose
     - name: testing lamianr
-      run: cargo test --verbose    
+      run: $HOME/.cargo/bin/cargo test --verbose    
