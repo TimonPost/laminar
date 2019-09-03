@@ -1,9 +1,9 @@
-name: Rust
+name: Laminar build & test
 
 on:
   push:
     branches:
-    - master
+    - TimonPost-patch-1
     
 jobs:
   test:
@@ -14,7 +14,11 @@ jobs:
         os: [ubuntu-latest, windows-latest, macOS-latest]
     steps:
     - uses: actions/checkout@v1
-    - name: Build
+    - name: installing rust
+      run: |
+        curl https://sh.rustup.rs -sSf | sh
+        echo rustc --version
+    - name: building laminar
       run: cargo build --verbose
-    - name: Run tests
+    - name: testing lamianr
       run: cargo test --verbose    
