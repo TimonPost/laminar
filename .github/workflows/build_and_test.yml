@@ -6,12 +6,12 @@ on:
     - TimonPost-patch-1
     
 jobs:
-  test:
+  linux_mac:
     name: Running on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+        os: [ubuntu-latest, macOS-latest]
     steps:
     - uses: actions/checkout@v1
     - name: installing rust
@@ -20,7 +20,24 @@ jobs:
         ls ${HOME}/.cargo/bin/
         rustc --version
     - name: building laminar
-      run: |
-        ${HOME}/.cargo/bin/cargo build --verbose
+      run: ${HOME}/.cargo/bin/cargo build --verbose
     - name: testing lamianr
       run: ${HOME}/.cargo/bin/cargo test --verbose    
+  windows:
+    name: Running on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest]
+    steps:
+    - uses: actions/checkout@v1
+    - name: installing rust
+      run: |
+        curl -sSf -o rustup-init.exe https://win.rustup.rs
+        rustup-init.exe -y --default-toolchain %RUSTUP_TOOLCHAIN%
+        rustc --version
+    - name: building laminar
+      run: %USERPROFILE%/.cargo/bin/cargo build --verbose
+    - name: testing lamianr
+      run: %USERPROFILE%/.cargo/bin/cargo test --verbose  
+
