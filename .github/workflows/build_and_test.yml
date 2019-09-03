@@ -16,13 +16,12 @@ jobs:
     - uses: actions/checkout@v1
     - name: installing rust
       run: |
-        echo Hello world ${HOME}
+        echo Home dir ${HOME}
         curl https://sh.rustup.rs -sSf | sh -s -- -y
-        ls ${HOME}/.cargo/bin/
-        rustc --version
+        ${HOME}/.cargo/bin/rustc --version
     - name: building laminar
       run: ${HOME}/.cargo/bin/cargo build --verbose
-    - name: testing lamianr
+    - name: testing laminar
       run: ${HOME}/.cargo/bin/cargo test --verbose    
  
 
