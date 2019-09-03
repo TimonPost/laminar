@@ -17,9 +17,9 @@ jobs:
     - name: installing rust
       run: |
         curl https://sh.rustup.rs -sSf --output rustup.sh
-        sh ./rustup.sh -y
-        ls        
-        echo rustc --version
+        sh ./rustup.sh -y    
+        export PATH="$HOME/.cargo/bin:$PATH"
+        rustc --version
     - name: building laminar
       run: cargo build --verbose
     - name: testing lamianr
