@@ -16,7 +16,7 @@ jobs:
     - uses: actions/checkout@v1
     - name: installing rust
       run: |
-        curl https://sh.rustup.rs -sSf | sh -S -- -y
+        curl https://sh.rustup.rs -sSf | sh -y
         echo rustc --version
     - name: building laminar
       run: cargo build --verbose
