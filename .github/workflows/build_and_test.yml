@@ -11,7 +11,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows_latest]
+        os: [windows-2019]
         rust: [stable]
     steps:
     - uses: hecrj/setup-rust-action@master
