@@ -15,8 +15,8 @@ and its source code is completely yours to tinker with. The code is available on
 [am]: https://github.com/amethyst/laminar/tree/master
 
 ## Motivation
-With this library we want to make optimal use of the fundamental rust features. 
-By doing this library might become a good replacement for other game protocol implementations written with other languages. 
+Laminar is fully written in Rust and therefore it has no garbage collector, no data-races, and memory safety. 
+That's why laminar is a good candidate to be a safe and better replacement for other reliable-UDP implementations.
 This library is written for use in the Amethyst game engine, however, we fully believe that this library can become an excellent reliable UDP implementation in its own right.
 
 ## Similar Projects

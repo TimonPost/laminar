@@ -2,7 +2,7 @@
 
 Laminar provides a way to arrange packets, over different streams.
 
-The above sentence contains a lot of important information, let us zoom a little more in at the above sentence.
+The above sentence contains a lot of important information, let us zoom in a little more at the above sentence.
 
 ## Ordering VS Sequencing
 Let's define two concepts here:
@@ -14,7 +14,7 @@ _"Ordering: this is the process of putting something in a particular order."_ [2
 - Arranging: We call the process for ordering and sequencing 'arranging' of packets
 
 Due to the design of the internet, it is not always guaranteed that packets will arrive or that they will be received in the order they were sent.
-Fortunately, Laminar's implementation grants the ability to optionally specify how reliable and the ordered (or not) the stream of packets is delivered to the client.
+Fortunately, Laminar's implementation grants the ability to optionally specify how reliable and ordered (or not) the stream of packets is delivered to the client.
 
 ### How ordering works.
 If we were to send the following packets: `1,2,3,4,5`, 

@@ -2,7 +2,7 @@
 
 So let's talk about reliability. 
 This is a very important concept which could be at first sight difficult but which will be very handy later on.
-j
+
 As you know we have two opposites, TCP on one hand and UDP on the other. 
 TCP has a lot of feature UDP does not have, like shown below.
 
@@ -21,7 +21,7 @@ _UDP_
 - Duplication possible.
 - No [fragmentation](./../fragmentation.md).
 
-So it would be useful if we could somehow specify the features we want on top of UDP. 
+It would be useful if we could somehow specify the features we want on top of UDP. 
 Like that you say: I want the guarantee for my packets to arrive, however they don't need to be in order. 
 Or, I don't care if my packet arrives but I do want to receive only new ones.
 

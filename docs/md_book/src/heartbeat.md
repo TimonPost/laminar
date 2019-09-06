@@ -9,7 +9,7 @@ A client is considered a connection when it sends a packet.
 If the client does not send a packet for x seconds, laminar sees this as an idling connection, and it is removed as an active connection.
 When this happens, the following data is removed: 
 
-1) the reliabity data such as aknowleged packets 
+1) the reliability data such as acknowledged packets 
 2) the buffers that keep track of the ordering/sequencing. 
 3) the RTT counter
 4) fragmentation data
