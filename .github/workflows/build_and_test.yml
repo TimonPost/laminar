@@ -11,17 +11,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macOS-latest, windows_latest]
+        os: [windows_latest]
         rust: [stable]
     steps:
     - uses: hecrj/setup-rust-action@master
       with:
         rust-version: ${{ matrix.rust }}
     - uses: actions/checkout@master
-    - name: Install rustfmt
-      run: rustup component add rustfmt
-    - name: Run fmt
-      run: cargo fmt -- --check
     - name: Run check
       run: cargo check --all
     - name: Run tests
