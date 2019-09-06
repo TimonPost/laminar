@@ -1,0 +1,28 @@
+name: Code Cov
+
+on:
+  push:
+    branches:
+    - TimonPost-patch-1
+    
+jobs:
+  codecov:
+    name: Running on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+  steps:
+  - uses: actions/checkout@master
+  - uses: codecov/codecov-action@v1.0.2
+    with:
+      token: ${{secrets.CODECOV_TOKEN}} #required
+      file: ./coverage.xml #optional
+      flags: unittests #optional
+      name: codecov-umbrella #optional
+    run:
+      echo 'Calculating code coverage...'
+      sh 'for file in target/debug/laminar-[a-f0-9]*[^\\.d]; do mkdir -p \"target/cov/$(basename $file)\"; kcov --exclude-pattern=/.cargo,/usr/lib --verify \"target/cov/$(basename $file)\" \"$file\"; done'
+      echo "Uploading coverage..."
+      sh "curl -s https://codecov.io/bash | bash -s - -t $CODECOV_TOKEN"
+      echo "Uploaded code coverage!"
