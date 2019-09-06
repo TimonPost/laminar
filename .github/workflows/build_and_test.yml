@@ -14,7 +14,7 @@ jobs:
         os: [ubuntu-latest, macOS-latest, windows_latest]
         rust: [nightly]
     steps:
-    - uses: hecrj/setup-rust-action
+    - uses: hecrj/setup-rust-action@master
       with:
         rust-version: ${{ matrix.rust }}
     - name: Run fmt
