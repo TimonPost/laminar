@@ -593,7 +593,7 @@ mod tests {
         server.forget_all_incoming_packets();
 
         // Send a packet that the server receives
-        for id in 0..36 {
+        for id in 0..35 {
             client
                 .send(create_ordered_packet(id, "127.0.0.1:12333"))
                 .unwrap();
@@ -618,11 +618,14 @@ mod tests {
 
     #[test]
     fn do_not_duplicate_sequenced_packets_when_received() {
-        let server_addr = "127.0.0.1:12325".parse::<SocketAddr>().unwrap();
-        let client_addr = "127.0.0.1:12326".parse::<SocketAddr>().unwrap();
+        let mut config = Config::default();
 
-        let mut server = Socket::bind(server_addr).unwrap();
-        let mut client = Socket::bind(client_addr).unwrap();
+        let mut client = Socket::bind_any_with_config(config.clone()).unwrap();
+        config.blocking_mode = true;
+        let mut server = Socket::bind_any_with_config(config).unwrap();
+
+        let server_addr = server.local_addr().unwrap();
+        let client_addr = client.local_addr().unwrap();
 
         let time = Instant::now();
 
@@ -631,9 +634,8 @@ mod tests {
                 .send(Packet::reliable_sequenced(server_addr, vec![id], None))
                 .unwrap();
             client.manual_poll(time);
+            server.manual_poll(time);
         }
-
-        server.manual_poll(time);
 
         let mut seen = HashSet::new();
 
@@ -652,6 +654,51 @@ mod tests {
         }
 
         assert_eq![100, seen.len()];
+    }
+
+    #[test]
+    fn more_than_65536_sequenced_packets() {
+        let mut config = Config::default();
+
+        let mut client = Socket::bind_any_with_config(config.clone()).unwrap();
+        config.blocking_mode = true;
+        let mut server = Socket::bind_any_with_config(config).unwrap();
+
+        let server_addr = server.local_addr().unwrap();
+        let client_addr = client.local_addr().unwrap();
+
+        // Acknowledge the client
+        server
+            .send(Packet::unreliable(client_addr, vec![0]))
+            .unwrap();
+
+        let time = Instant::now();
+
+        for id in 0..65536 + 100 {
+            client
+                .send(Packet::unreliable_sequenced(
+                    server_addr,
+                    id.to_string().as_bytes().to_vec(),
+                    None,
+                ))
+                .unwrap();
+            client.manual_poll(time);
+            server.manual_poll(time);
+        }
+
+        let mut cnt = 0;
+        while let Some(message) = server.recv() {
+            match message {
+                SocketEvent::Connect(_) => {}
+                SocketEvent::Packet(packet) => {
+                    cnt += 1;
+                }
+                SocketEvent::Timeout(_) => {
+                    panic!["This should not happen, as we've not advanced time"];
+                }
+            }
+        }
+        assert_eq![65536 + 100, cnt];
     }
 
     #[test]
@@ -1056,5 +1103,50 @@ mod tests {
         let socket =
             Socket::bind(format!("127.0.0.1:{}", port).parse::<SocketAddr>().unwrap()).unwrap();
         assert_eq!(port, socket.local_addr().unwrap().port());
+    }
+
+    #[test]
+    fn ordered_16_bit_overflow() {
+        let mut cfg = Config::default();
+
+        let mut client = Socket::bind_any_with_config(cfg.clone()).unwrap();
+        let client_addr = client.local_addr().unwrap();
+
+        cfg.blocking_mode = false;
+        let mut server = Socket::bind_any_with_config(cfg).unwrap();
+        let server_addr = server.local_addr().unwrap();
+
+        let time = Instant::now();
+
+        let mut last_payload = String::new();
+
+        for idx in 0..100_000u64 {
+            client
+                .send(Packet::reliable_ordered(
+                    server_addr,
+                    idx.to_string().as_bytes().to_vec(),
+                    None,
+                ))
+                .unwrap();
+
+            client.manual_poll(time);
+
+            while let Some(_) = client.recv() {}
+            server
+                .send(Packet::reliable_ordered(client_addr, vec![123], None))
+                .unwrap();
+            server.manual_poll(time);
+
+            while let Some(msg) = server.recv() {
+                match msg {
+                    SocketEvent::Packet(pkt) => {
+                        last_payload = std::str::from_utf8(pkt.payload()).unwrap().to_string();
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        assert_eq!["99999", last_payload];
     }
 }

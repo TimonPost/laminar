@@ -139,17 +139,16 @@ impl VirtualConnection {
                         );
 
                         if let OrderingGuarantee::Ordered(stream_id) = ordering_guarantee {
-                            let item_identifier = if let Some(item_identifier) =
-                                last_item_identifier
-                            {
-                                item_identifier
-                            } else {
-                                self.ordering_system
-                                    .get_or_create_stream(
-                                        stream_id.unwrap_or(DEFAULT_ORDERING_STREAM),
-                                    )
-                                    .new_item_identifier() as u16
-                            };
+                            let item_identifier =
+                                if let Some(item_identifier) = last_item_identifier {
+                                    item_identifier
+                                } else {
+                                    self.ordering_system
+                                        .get_or_create_stream(
+                                            stream_id.unwrap_or(DEFAULT_ORDERING_STREAM),
+                                        )
+                                        .new_item_identifier()
+                                };
 
                             item_identifier_value = Some(item_identifier);
 
@@ -157,17 +156,16 @@ impl VirtualConnection {
                         };
 
                         if let OrderingGuarantee::Sequenced(stream_id) = ordering_guarantee {
-                            let item_identifier = if let Some(item_identifier) =
-                                last_item_identifier
-                            {
-                                item_identifier
-                            } else {
-                                self.sequencing_system
-                                    .get_or_create_stream(
-                                        stream_id.unwrap_or(DEFAULT_SEQUENCING_STREAM),
-                                    )
-                                    .new_item_identifier() as u16
-                            };
+                            let item_identifier =
+                                if let Some(item_identifier) = last_item_identifier {
+                                    item_identifier
+                                } else {
+                                    self.sequencing_system
+                                        .get_or_create_stream(
+                                            stream_id.unwrap_or(DEFAULT_SEQUENCING_STREAM),
+                                        )
+                                        .new_item_identifier()
+                                };
 
                             item_identifier_value = Some(item_identifier);
 
@@ -264,9 +262,7 @@ impl VirtualConnection {
                         .sequencing_system
                         .get_or_create_stream(arranging_header.stream_id());
 
-                    if let Some(packet) =
-                        stream.arrange(arranging_header.arranging_id() as usize, payload)
-                    {
+                    if let Some(packet) = stream.arrange(arranging_header.arranging_id(), payload) {
                         Self::queue_packet(
                             sender,
                             packet,
@@ -334,7 +330,7 @@ impl VirtualConnection {
                             .get_or_create_stream(arranging_header.stream_id());
 
                         if let Some(packet) =
-                            stream.arrange(arranging_header.arranging_id() as usize, payload)
+                            stream.arrange(arranging_header.arranging_id(), payload)
                         {
                             Self::queue_packet(
                                 sender,
@@ -356,7 +352,7 @@ impl VirtualConnection {
                             .get_or_create_stream(arranging_header.stream_id());
 
                         if let Some(packet) =
-                            stream.arrange(arranging_header.arranging_id() as usize, payload)
+                            stream.arrange(arranging_header.arranging_id(), payload)
                         {
                             Self::queue_packet(
                                 sender,
@@ -680,7 +676,15 @@ mod tests {
                 PAYLOAD.to_vec(),
                 Some(1),
             ))),
-            1,
+            0,
+        );
+
+        assert_incoming_with_order(
+            DeliveryGuarantee::Reliable,
+            OrderingGuarantee::Ordered(Some(1)),
+            &mut connection,
+            Err(TryRecvError::Empty),
+            2,
         );
 
         assert_incoming_with_order(
@@ -695,20 +699,12 @@ mod tests {
             DeliveryGuarantee::Reliable,
             OrderingGuarantee::Ordered(Some(1)),
             &mut connection,
-            Err(TryRecvError::Empty),
-            4,
-        );
-
-        assert_incoming_with_order(
-            DeliveryGuarantee::Reliable,
-            OrderingGuarantee::Ordered(Some(1)),
-            &mut connection,
             Ok(SocketEvent::Packet(Packet::reliable_ordered(
                 get_fake_addr(),
                 PAYLOAD.to_vec(),
                 Some(1),
             ))),
-            2,
+            1,
         );
     }
 
@@ -752,7 +748,7 @@ mod tests {
                 PAYLOAD.to_vec(),
                 Some(1),
             ))),
-            1,
+            0,
         );
     }
 
