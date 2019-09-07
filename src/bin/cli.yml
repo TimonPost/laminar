@@ -12,15 +12,8 @@ subcommands:
                 required: true
                 takes_value: true
                 long: bind-host
-                default_value: "127.0.0.1"
+                default_value: "127.0.0.1:2264"
                 short: h
-            - LISTEN_PORT:
-                help: "Which port the server should listen on"
-                required: true
-                takes_value: true
-                long: bind-port
-                default_value: "2264"
-                short: p
             - SHUTDOWN_TIMER:
                 help: "The number of seconds the server will remain running, then shut itself down"
                 required: false
@@ -31,34 +24,20 @@ subcommands:
     - client:
         about: Starts the tester in client mode
         args:
-            - CONNECT_HOST:
+            - CONNECT_ADDR:
                 help: "Which host the client will connect to, as a hostname or IP address"
                 required: true
                 takes_value: true
                 long: connect-host
-                default_value: "127.0.0.1"
+                default_value: "127.0.0.1:2264"
                 short: H
-            - CONNECT_PORT:
-                help: "Which port the client will connect to"
-                required: true
-                takes_value: true
-                long: connect-port
-                default_value: "2264"
-                short: P
             - LISTEN_HOST:
                 help: "Which host the client should bind to. 0.0.0.0/0 will bind to all"
                 required: true
                 takes_value: true
                 long: bind-host
-                default_value: "127.0.0.1"
+                default_value: "127.0.0.1:2265"
                 short: h
-            - LISTEN_PORT:
-                help: "Which port the client should listen on"
-                required: true
-                takes_value: true
-                long: bind-port
-                default_value: "2265"
-                short: p
             - TEST_TO_RUN:
                 help: "Which client test to run. Run 'laminar-tester show-tests' to see all available"
                 required: true
@@ -84,6 +63,13 @@ subcommands:
                 takes_value: true
                 long: pps
                 default_value: "60"
+            - SHUTDOWN_TIMER:
+                help: "The number of seconds the client will remain running, then shut itself down"
+                required: false
+                default_value: "600"
+                takes_value: true
+                long: shutdown
+                short: s
     - show-tests:
         about: Shows all tests available
         subcommands:

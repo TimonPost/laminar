@@ -1,6 +1,6 @@
 [package]
 name = "laminar"
-version = "0.2.0"
+version = "0.3.0"
 authors = [
     "Lucio Franco <luciofranco14@gmail.com>",
     "Fletcher Haynes <fletcher@capitalprawn.com>",
@@ -19,9 +19,6 @@ repository = "https://github.com/amethyst/laminar"
 autobenches = false
 edition = "2018"
 
-[badges]
-travis-ci = { repository = "amethyst/laminar", branch = "master" }
-
 [dependencies]
 byteorder = "1.2"
 crc = "1.8"
@@ -29,7 +26,8 @@ crossbeam-channel = "0.3"
 lazy_static = "1.1"
 log = "0.4"
 mio = "0.6"
-rand = "0.5"
+rand = "0.6"
+rand_pcg = "0.1"
 clap = { version = "2.32", features = ["yaml"], optional = true }
 env_logger = { version = "0.6", optional = true }
 
@@ -38,6 +36,8 @@ bincode = "1.0"
 criterion = "0.2"
 serde = "1.0"
 serde_derive = "1.0"
+quickcheck = "0.8"
+quickcheck_macros = "0.8"
 
 [features]
 tester = [

@@ -4,6 +4,7 @@ use crate::net::constants::STANDARD_HEADER_SIZE;
 use crate::packet::{DeliveryGuarantee, EnumConverter, OrderingGuarantee, PacketType};
 use crate::protocol_version::ProtocolVersion;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use std::convert::TryFrom;
 use std::io::Cursor;
 
 #[derive(Copy, Clone, Debug)]
@@ -16,7 +17,7 @@ pub struct StandardHeader {
 }
 
 impl StandardHeader {
-    /// Create new heartbeat header.
+    /// Create new header.
     pub fn new(
         delivery_guarantee: DeliveryGuarantee,
         ordering_guarantee: OrderingGuarantee,
@@ -50,6 +51,11 @@ impl StandardHeader {
     #[cfg(test)]
     pub fn packet_type(&self) -> PacketType {
         self.packet_type
+    }
+
+    /// Returns true if the packet is a heartbeat packet, false otherwise
+    pub fn is_heartbeat(&self) -> bool {
+        self.packet_type == PacketType::Heartbeat
     }
 
     /// Returns true if the packet is a fragment, false if not
@@ -96,9 +102,9 @@ impl HeaderReader for StandardHeader {
 
         let header = StandardHeader {
             protocol_version,
-            packet_type: PacketType::from_u8(packet_id),
-            delivery_guarantee: DeliveryGuarantee::from_u8(delivery_guarantee_id),
-            ordering_guarantee: OrderingGuarantee::from_u8(order_guarantee_id),
+            packet_type: PacketType::try_from(packet_id)?,
+            delivery_guarantee: DeliveryGuarantee::try_from(delivery_guarantee_id)?,
+            ordering_guarantee: OrderingGuarantee::try_from(order_guarantee_id)?,
         };
 
         Ok(header)
@@ -125,7 +131,7 @@ mod tests {
             OrderingGuarantee::Sequenced(None),
             PacketType::Packet,
         );
-        header.parse(&mut buffer).is_ok();
+        assert![header.parse(&mut buffer).is_ok()];
 
         // [0 .. 3] protocol version
         assert_eq!(buffer[2], PacketType::Packet.to_u8());

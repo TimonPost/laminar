@@ -32,17 +32,14 @@ impl Client {
         let packets_to_send = self.packets_to_send;
 
         let handle = thread::spawn(move || {
-            let (mut socket, packet_sender, _) = Socket::bind(endpoint).unwrap();
-
-            let _thread = thread::spawn(move || socket.start_polling());
+            let mut socket = Socket::bind(endpoint).unwrap();
 
             info!("Client {:?} starts to send packets.", endpoint);
 
             for _ in 0..packets_to_send {
                 let packet = create_packet();
-                if let Err(e) = packet_sender.send(packet) {
-                    error!("Client can not send packet {:?}", e);
-                }
+                socket.send(packet);
+                socket.manual_poll(Instant::now());
 
                 let beginning_park = Instant::now();
                 let mut timeout_remaining = timeout;

@@ -3,15 +3,15 @@ use crate::{
     error::{ErrorKind, PacketErrorKind, Result},
     infrastructure::{
         arranging::{Arranging, ArrangingSystem, OrderingSystem, SequencingSystem},
-        AcknowledgementHandler, CongestionHandler, Fragmentation,
+        AcknowledgmentHandler, CongestionHandler, Fragmentation, SentPacket,
     },
     net::constants::{
         ACKED_PACKET_HEADER, DEFAULT_ORDERING_STREAM, DEFAULT_SEQUENCING_STREAM,
         STANDARD_HEADER_SIZE,
     },
     packet::{
-        DeliveryGuarantee, OrderingGuarantee, Outgoing, OutgoingPacketBuilder, Packet,
-        PacketReader, PacketType,
+        DeliveryGuarantee, OrderingGuarantee, Outgoing, OutgoingPacket, OutgoingPacketBuilder,
+        Packet, PacketReader, PacketType, SequenceNumber,
     },
     SocketEvent,
 };
@@ -26,12 +26,14 @@ use std::time::{Duration, Instant};
 pub struct VirtualConnection {
     /// Last time we received a packet from this client
     pub last_heard: Instant,
+    /// Last time we sent a packet to this client
+    pub last_sent: Instant,
     /// The address of the remote endpoint
     pub remote_address: SocketAddr,
 
     ordering_system: OrderingSystem<Box<[u8]>>,
     sequencing_system: SequencingSystem<Box<[u8]>>,
-    acknowledge_handler: AcknowledgementHandler,
+    acknowledge_handler: AcknowledgmentHandler,
     congestion_handler: CongestionHandler,
 
     config: Config,
@@ -40,31 +42,62 @@ pub struct VirtualConnection {
 
 impl VirtualConnection {
     /// Creates and returns a new Connection that wraps the provided socket address
-    pub fn new(addr: SocketAddr, config: &Config) -> VirtualConnection {
+    pub fn new(addr: SocketAddr, config: &Config, time: Instant) -> VirtualConnection {
         VirtualConnection {
-            last_heard: Instant::now(),
+            last_heard: time,
+            last_sent: time,
             remote_address: addr,
             ordering_system: OrderingSystem::new(),
             sequencing_system: SequencingSystem::new(),
-            acknowledge_handler: AcknowledgementHandler::new(),
+            acknowledge_handler: AcknowledgmentHandler::new(),
             congestion_handler: CongestionHandler::new(config),
             fragmentation: Fragmentation::new(config),
             config: config.to_owned(),
         }
     }
 
-    /// Returns a Duration representing the interval since we last heard from the client
-    pub fn last_heard(&self) -> Duration {
-        let now = Instant::now();
-        now.duration_since(self.last_heard)
+    /// Determine if this connection should be dropped due to its state
+    pub fn should_be_dropped(&self) -> bool {
+        self.acknowledge_handler.packets_in_flight() > self.config.max_packets_in_flight
     }
 
-    /// This pre-process the given buffer to be send over the network.
+    /// Returns a [Duration] representing the interval since we last heard from the client
+    pub fn last_heard(&self, time: Instant) -> Duration {
+        // TODO: Replace with saturating_duration_since once it becomes stable.
+        // This function panics if the user supplies a time instant earlier than last_heard.
+        time.duration_since(self.last_heard)
+    }
+
+    /// Returns a [Duration] representing the interval since we last sent to the client
+    pub fn last_sent(&self, time: Instant) -> Duration {
+        // TODO: Replace with saturating_duration_since once it becomes stable.
+        // This function panics if the user supplies a time instant earlier than last_heard.
+        time.duration_since(self.last_sent)
+    }
+
+    /// This will create a heartbeat packet that is expected to be sent over the network
+    pub fn create_and_process_heartbeat(&mut self, time: Instant) -> OutgoingPacket<'static> {
+        self.last_sent = time;
+        self.congestion_handler
+            .process_outgoing(self.acknowledge_handler.local_sequence_num(), time);
+
+        OutgoingPacketBuilder::new(&[])
+            .with_default_header(
+                PacketType::Heartbeat,
+                DeliveryGuarantee::Unreliable,
+                OrderingGuarantee::None,
+            )
+            .build()
+    }
+
+    /// This will pre-process the given buffer to be sent over the network.
     pub fn process_outgoing<'a>(
         &mut self,
         payload: &'a [u8],
         delivery_guarantee: DeliveryGuarantee,
         ordering_guarantee: OrderingGuarantee,
+        last_item_identifier: Option<SequenceNumber>,
+        time: Instant,
     ) -> Result<Outgoing<'a>> {
         match delivery_guarantee {
             DeliveryGuarantee::Unreliable => {
@@ -94,6 +127,7 @@ impl VirtualConnection {
             DeliveryGuarantee::Reliable => {
                 let payload_length = payload.len() as u16;
 
+                let mut item_identifier_value = None;
                 let outgoing = {
                     // spit the packet if the payload length is greater than the allowed fragment size.
                     if payload_length <= self.config.fragment_size {
@@ -103,32 +137,44 @@ impl VirtualConnection {
                             ordering_guarantee,
                         );
 
-                        builder = builder.with_acknowledgement_header(
-                            self.acknowledge_handler.seq_num,
-                            self.acknowledge_handler.last_seq(),
-                            self.acknowledge_handler.bit_mask(),
+                        builder = builder.with_acknowledgment_header(
+                            self.acknowledge_handler.local_sequence_num(),
+                            self.acknowledge_handler.remote_sequence_num(),
+                            self.acknowledge_handler.ack_bitfield(),
                         );
 
                         if let OrderingGuarantee::Ordered(stream_id) = ordering_guarantee {
-                            let item_identifier = self
-                                .ordering_system
-                                .get_or_create_stream(stream_id.unwrap_or(DEFAULT_ORDERING_STREAM))
-                                .new_item_identifier();
+                            let item_identifier =
+                                if let Some(item_identifier) = last_item_identifier {
+                                    item_identifier
+                                } else {
+                                    self.ordering_system
+                                        .get_or_create_stream(
+                                            stream_id.unwrap_or(DEFAULT_ORDERING_STREAM),
+                                        )
+                                        .new_item_identifier()
+                                };
 
-                            builder =
-                                builder.with_ordering_header(item_identifier as u16, stream_id);
+                            item_identifier_value = Some(item_identifier);
+
+                            builder = builder.with_ordering_header(item_identifier, stream_id);
                         };
 
                         if let OrderingGuarantee::Sequenced(stream_id) = ordering_guarantee {
-                            let item_identifier = self
-                                .sequencing_system
-                                .get_or_create_stream(
-                                    stream_id.unwrap_or(DEFAULT_SEQUENCING_STREAM),
-                                )
-                                .new_item_identifier();
+                            let item_identifier =
+                                if let Some(item_identifier) = last_item_identifier {
+                                    item_identifier
+                                } else {
+                                    self.sequencing_system
+                                        .get_or_create_stream(
+                                            stream_id.unwrap_or(DEFAULT_SEQUENCING_STREAM),
+                                        )
+                                        .new_item_identifier()
+                                };
 
-                            builder =
-                                builder.with_sequencing_header(item_identifier as u16, stream_id);
+                            item_identifier_value = Some(item_identifier);
+
+                            builder = builder.with_sequencing_header(item_identifier, stream_id);
                         };
 
                         Outgoing::Packet(builder.build())
@@ -152,16 +198,16 @@ impl VirtualConnection {
                                         );
 
                                     builder = builder.with_fragment_header(
-                                        self.acknowledge_handler.seq_num,
+                                        self.acknowledge_handler.local_sequence_num(),
                                         fragment_id as u8,
                                         fragments_needed,
                                     );
 
                                     if fragment_id == 0 {
-                                        builder = builder.with_acknowledgement_header(
-                                            self.acknowledge_handler.seq_num,
-                                            self.acknowledge_handler.last_seq(),
-                                            self.acknowledge_handler.bit_mask(),
+                                        builder = builder.with_acknowledgment_header(
+                                            self.acknowledge_handler.local_sequence_num(),
+                                            self.acknowledge_handler.remote_sequence_num(),
+                                            self.acknowledge_handler.ack_bitfield(),
                                         );
                                     }
 
@@ -172,24 +218,28 @@ impl VirtualConnection {
                     }
                 };
 
+                self.last_sent = time;
                 self.congestion_handler
-                    .process_outgoing(self.acknowledge_handler.seq_num);
-                self.acknowledge_handler.process_outgoing(payload);
-
-                self.acknowledge_handler.seq_num = self.acknowledge_handler.seq_num.wrapping_add(1);
+                    .process_outgoing(self.acknowledge_handler.local_sequence_num(), time);
+                self.acknowledge_handler.process_outgoing(
+                    payload,
+                    ordering_guarantee,
+                    item_identifier_value,
+                );
 
                 Ok(outgoing)
             }
         }
     }
 
-    /// This processes the incoming data and returns an packet if the data is complete.
+    /// This processes the incoming data and returns a packet if the data is complete.
     pub fn process_incoming(
         &mut self,
         received_data: &[u8],
         sender: &Sender<SocketEvent>,
+        time: Instant,
     ) -> crate::Result<()> {
-        self.last_heard = Instant::now();
+        self.last_heard = time;
 
         let mut packet_reader = PacketReader::new(received_data);
 
@@ -197,6 +247,12 @@ impl VirtualConnection {
 
         if !header.is_current_protocol() {
             return Err(ErrorKind::ProtocolVersionMismatch);
+        }
+
+        if header.is_heartbeat() {
+            // Heartbeat packets are unreliable, unordered and empty packets.
+            // We already updated our `self.last_heard` time, nothing else to be done.
+            return Ok(());
         }
 
         match header.delivery_guarantee() {
@@ -211,9 +267,7 @@ impl VirtualConnection {
                         .sequencing_system
                         .get_or_create_stream(arranging_header.stream_id());
 
-                    if let Some(packet) =
-                        stream.arrange(arranging_header.arranging_id() as usize, payload)
-                    {
+                    if let Some(packet) = stream.arrange(arranging_header.arranging_id(), payload) {
                         Self::queue_packet(
                             sender,
                             packet,
@@ -259,8 +313,11 @@ impl VirtualConnection {
                         if let Some(acked_header) = acked_header {
                             self.congestion_handler
                                 .process_incoming(acked_header.sequence());
-                            self.acknowledge_handler
-                                .process_incoming(acked_header.sequence());
+                            self.acknowledge_handler.process_incoming(
+                                acked_header.sequence(),
+                                acked_header.ack_seq(),
+                                acked_header.ack_field(),
+                            );
                         }
                     }
                 } else {
@@ -278,7 +335,7 @@ impl VirtualConnection {
                             .get_or_create_stream(arranging_header.stream_id());
 
                         if let Some(packet) =
-                            stream.arrange(arranging_header.arranging_id() as usize, payload)
+                            stream.arrange(arranging_header.arranging_id(), payload)
                         {
                             Self::queue_packet(
                                 sender,
@@ -288,9 +345,7 @@ impl VirtualConnection {
                                 OrderingGuarantee::Sequenced(Some(arranging_header.stream_id())),
                             )?;
                         }
-                    }
-
-                    if let OrderingGuarantee::Ordered(_id) = header.ordering_guarantee() {
+                    } else if let OrderingGuarantee::Ordered(_id) = header.ordering_guarantee() {
                         let arranging_header = packet_reader.read_arranging_header(u16::from(
                             STANDARD_HEADER_SIZE + ACKED_PACKET_HEADER,
                         ))?;
@@ -302,7 +357,7 @@ impl VirtualConnection {
                             .get_or_create_stream(arranging_header.stream_id());
 
                         if let Some(packet) =
-                            stream.arrange(arranging_header.arranging_id() as usize, payload)
+                            stream.arrange(arranging_header.arranging_id(), payload)
                         {
                             Self::queue_packet(
                                 sender,
@@ -336,8 +391,11 @@ impl VirtualConnection {
 
                     self.congestion_handler
                         .process_incoming(acked_header.sequence());
-                    self.acknowledge_handler
-                        .process_incoming(acked_header.sequence());
+                    self.acknowledge_handler.process_incoming(
+                        acked_header.sequence(),
+                        acked_header.ack_seq(),
+                        acked_header.ack_field(),
+                    );
                 }
             }
         }
@@ -361,11 +419,11 @@ impl VirtualConnection {
         Ok(())
     }
 
-    /// This will gather dropped packets from the reliable channels.
+    /// This will gather dropped packets from the acknowledgment handler.
     ///
     /// Note that after requesting dropped packets the dropped packets will be removed from this client.
-    pub fn gather_dropped_packets(&mut self) -> Vec<Box<[u8]>> {
-        self.acknowledge_handler.dropped_packets.drain(..).collect()
+    pub fn gather_dropped_packets(&mut self) -> Vec<SentPacket> {
+        self.acknowledge_handler.dropped_packets()
     }
 }
 
@@ -392,6 +450,7 @@ mod tests {
     use byteorder::{BigEndian, WriteBytesExt};
     use crossbeam_channel::{unbounded, TryRecvError};
     use std::io::Write;
+    use std::time::Instant;
 
     const PAYLOAD: [u8; 4] = [1, 2, 3, 4];
 
@@ -418,6 +477,7 @@ mod tests {
                     .concat()
                     .as_slice(),
                 &tx,
+                Instant::now(),
             )
             .unwrap();
         assert!(rx.try_recv().is_err());
@@ -431,6 +491,7 @@ mod tests {
                 .concat()
                 .as_slice(),
                 &tx,
+                Instant::now(),
             )
             .unwrap();
         assert!(rx.try_recv().is_err());
@@ -444,6 +505,7 @@ mod tests {
                 .concat()
                 .as_slice(),
                 &tx,
+                Instant::now(),
             )
             .unwrap();
         assert!(rx.try_recv().is_err());
@@ -457,6 +519,7 @@ mod tests {
                 .concat()
                 .as_slice(),
                 &tx,
+                Instant::now(),
             )
             .unwrap();
 
@@ -484,6 +547,8 @@ mod tests {
                 &buffer,
                 DeliveryGuarantee::Reliable,
                 OrderingGuarantee::Ordered(None),
+                None,
+                Instant::now(),
             )
             .unwrap();
 
@@ -506,6 +571,8 @@ mod tests {
                 &buffer,
                 DeliveryGuarantee::Unreliable,
                 OrderingGuarantee::None,
+                None,
+                Instant::now(),
             )
             .unwrap();
 
@@ -514,6 +581,8 @@ mod tests {
                 &buffer,
                 DeliveryGuarantee::Unreliable,
                 OrderingGuarantee::Sequenced(None),
+                None,
+                Instant::now(),
             )
             .unwrap();
 
@@ -522,6 +591,8 @@ mod tests {
                 &buffer,
                 DeliveryGuarantee::Reliable,
                 OrderingGuarantee::Ordered(None),
+                None,
+                Instant::now(),
             )
             .unwrap();
 
@@ -530,6 +601,8 @@ mod tests {
                 &buffer,
                 DeliveryGuarantee::Reliable,
                 OrderingGuarantee::Sequenced(None),
+                None,
+                Instant::now(),
             )
             .unwrap();
     }
@@ -608,7 +681,15 @@ mod tests {
                 PAYLOAD.to_vec(),
                 Some(1),
             ))),
-            1,
+            0,
+        );
+
+        assert_incoming_with_order(
+            DeliveryGuarantee::Reliable,
+            OrderingGuarantee::Ordered(Some(1)),
+            &mut connection,
+            Err(TryRecvError::Empty),
+            2,
         );
 
         assert_incoming_with_order(
@@ -623,20 +704,12 @@ mod tests {
             DeliveryGuarantee::Reliable,
             OrderingGuarantee::Ordered(Some(1)),
             &mut connection,
-            Err(TryRecvError::Empty),
-            4,
-        );
-
-        assert_incoming_with_order(
-            DeliveryGuarantee::Reliable,
-            OrderingGuarantee::Ordered(Some(1)),
-            &mut connection,
             Ok(SocketEvent::Packet(Packet::reliable_ordered(
                 get_fake_addr(),
                 PAYLOAD.to_vec(),
                 Some(1),
             ))),
-            2,
+            1,
         );
     }
 
@@ -680,7 +753,7 @@ mod tests {
                 PAYLOAD.to_vec(),
                 Some(1),
             ))),
-            1,
+            0,
         );
     }
 
@@ -712,7 +785,7 @@ mod tests {
 
     /// ======= helper functions =========
     fn create_virtual_connection() -> VirtualConnection {
-        VirtualConnection::new(get_fake_addr(), &Config::default())
+        VirtualConnection::new(get_fake_addr(), &Config::default(), Instant::now())
     }
 
     fn get_fake_addr() -> std::net::SocketAddr {
@@ -763,7 +836,9 @@ mod tests {
 
         let (tx, rx) = unbounded::<SocketEvent>();
 
-        connection.process_incoming(packet.as_slice(), &tx).unwrap();
+        connection
+            .process_incoming(packet.as_slice(), &tx, Instant::now())
+            .unwrap();
 
         let event = rx.try_recv();
 
@@ -794,7 +869,9 @@ mod tests {
 
         let (tx, rx) = unbounded::<SocketEvent>();
 
-        connection.process_incoming(packet.as_slice(), &tx).unwrap();
+        connection
+            .process_incoming(packet.as_slice(), &tx, Instant::now())
+            .unwrap();
 
         let event = rx.try_recv();
 
@@ -812,7 +889,7 @@ mod tests {
         let buffer = vec![1; 500];
 
         let outgoing = connection
-            .process_outgoing(&buffer, delivery, ordering)
+            .process_outgoing(&buffer, delivery, ordering, None, Instant::now())
             .unwrap();
 
         match outgoing {

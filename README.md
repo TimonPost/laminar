@@ -20,22 +20,23 @@ and provides a lightweight, message-based interface which provides certain guara
 
 Laminar was designed to be used within the [Amethyst][amethyst] game engine but is usable without it.
 
+If you are new to laminar or networking in general, We strongly recommend taking a look at the [laminar book][book]
+
 [amethyst]: https://github.com/amethyst/amethyst
 
 # Concepts
 
 This library is loosely based off of [Gaffer on Games][gog] and shares features similar as RakNet, Steam Socket, netcode.io.
-The idea is to provide an in rust written, low-level UDP-protocol which supports the use of cases of video games that require multilayer features.
+The idea is to provide an in rust written, low-level UDP-protocol which supports the use of cases of video games that require multiplayer features.
 The library itself provides a few low-level types of packets that provide different types of guarantees. The most
 basic are unreliable and reliable packets. Also ordering, sequencing can be done on multiple streams.
 For more information, read the projects [README.md][readme], [book][book], [docs][docs] or [examples][examples].
 
 [gog]: https://gafferongames.com/
 [readme]: https://github.com/amethyst/laminar/blob/master/README.md
-[book]: https://github.com/amethyst/laminar/tree/master/docs/md_book
+[book]: https://amethyst.github.io/laminar/docs/index.html
 [docs]: https://docs.rs/laminar/
 [examples]: https://github.com/amethyst/laminar/tree/master/examples
-
 [amethyst]: https://github.com/amethyst/amethyst
 
 ## Table of contents:
@@ -54,19 +55,23 @@ These are the features this crate provides:
 - UDP-based Protocol
 - Connection Tracking
 - Automatic Fragmentation
-- Packets Types: Unreliable and Sequenced, Reliable and Unordered, Sequenced and Ordered.
+- Reliability Options: Unreliable and Reliable
+- Arranging Options: Sequenced, Unordered, and Ordered.
 - Arranging Streams
 - Protocol Versioning
 - RTT Estimation
 - Link conditioner to simulate packet loss and latency
 - Well-tested by integration and unit tests
+- Basic DoS mitigation
+- High Timing control
+- Can be used by multiple threads (Sender, Receiver)
 
 ## Getting Stated
 Add the laminar package to your `Cargo.toml` file.
 
 ```toml
 [dependencies]
-laminar = "0.1"
+laminar = "0.3.0"
 ```
 
 ### Useful Links
@@ -75,6 +80,7 @@ laminar = "0.1"
 - [Crates.io](https://crates.io/crates/laminar)
 - [Examples](https://github.com/amethyst/laminar/tree/master/examples)
 - [Contributing](https://github.com/amethyst/laminar/blob/master/docs/CONTRIBUTING)
+- [Book](https://amethyst.github.io/laminar/docs/index.html)
 
 ## Examples
 Please check out our [examples](https://github.com/amethyst/laminar/tree/master/examples) for more information.
@@ -85,61 +91,62 @@ This is an example of how to use the UDP API.
 _Send packets_
 
 ```rust
-use laminar::{DeliveryMethod, Packet};
-use laminar::net::{UdpSocket, NetworkConfig};
+use laminar::{Socket, Packet};
 
-// Create the necessary config, you can edit it or just use the default.
-let config = NetworkConfig::default();
-
-// Setup an udp socket and bind it to the client address.
-let mut udp_socket = UdpSocket::bind("127.0.0.1:12346", config).unwrap();
+// create the socket
+let mut socket = Socket::bind("127.0.0.1:12345")?;
+let packet_sender = socket.get_packet_sender();
+// this will start the socket, which will start a poll mechanism to receive and send messages.
+let _thread = thread::spawn(move || socket.start_polling());
 
 // our data
 let bytes = vec![...];
 
-// Create a packet that can be send with the given destination and raw data.
-let packet = Packet::new(destination, bytes, DeliveryMethod::Unreliable);
+// You can create packets with different reliabilities
+let unreliable = Packet::unreliable(destination, bytes);
+let reliable = Packet::reliable_unordered(destination, bytes);
 
-// Or we could also use the function syntax for more clarity:
-let packet = Packet::unreliable(destination, bytes);
-let packet = Packet::reliable_unordered(destination, bytes);
+// We can specify on which stream and how to order our packets, checkout our book and documentation for more information
+let unreliable = Packet::unreliable_sequenced(destination, bytes, Some(1));
+let reliable_sequenced = Packet::reliable_sequenced(destination, bytes, Some(2));
+let reliable_ordered = Packet::reliable_ordered(destination, bytes, Some(3));
 
-// Send the packet to the endpoint we earlier placed into the packet.
-udp_socket.send(packet);
+// send the created packets
+packet_sender.send(unreliable_sequenced).unwrap();
+packet_sender.send(reliable).unwrap();
+packet_sender.send(unreliable_sequenced).unwrap();
+packet_sender.send(reliable_sequenced).unwrap();
+packet_sender.send(reliable_ordered).unwrap();
 ```
 
 _Receive Packets_
-
 ```rust
-use laminar::net::{UdpSocket, NetworkConfig};
-use std::net::SocketAddr;
-// Create the necessarily config, you can edit it or just use the default.
-let config = NetworkConfig::default();
+use laminar::{SocketEvent, Socket};
 
-// Setup an udp socket and bind it to the client address.
-let mut udp_socket = UdpSocket::bind("127.0.0.1:12345", config).unwrap();
+// create the socket
+let socket = Socket::bind("127.0.0.1:12346")?;
+let event_receiver = socket.get_event_receiver();
+// this will start the socket, which will start a poll mechanism to receive and send messages.
+let _thread = thread::spawn(move || socket.start_polling());
 
-// Start receiving (blocks the current thread), use `udp_socket.set_nonblocking()` for not blocking the current thread.
-let result = udp_socket.recv();
+// wait until a socket event occurs
+let result = event_receiver.recv();
 
 match result {
-    Ok(Some(packet)) => {
-        let endpoint: SocketAddr = packet.addr();
-        let received_data: &[u8] = packet.payload();
-
-        // You can deserialize your bytes here into the data you have passed it when sending.
-
-        println!("Received packet from: {:?} with length {}", endpoint, received_data.len());
-    }
-    Ok(None) => {
-        println!("This could happen when we have not received all the data from this packet yet");
+    Ok(socket_event) => {
+        match  socket_event {
+            SocketEvent::Packet(packet) => {
+                let endpoint: SocketAddr = packet.addr();
+                let received_data: &[u8] = packet.payload();
+            },
+            SocketEvent::Connect(connect_event) => { /* a client connected */ },
+            SocketEvent::Timeout(timeout_event) => { /* a client timed out */},
+        }
     }
     Err(e) => {
-        // We get an error if something went wrong, like the address is already in use.
         println!("Something went wrong when receiving, error: {:?}", e);
     }
 }
-
 ```
 
 ## Authors

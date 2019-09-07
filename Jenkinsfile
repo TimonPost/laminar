@@ -31,15 +31,17 @@ pipeline {
         }
         stage('Run Tests') {
             parallel {
-                stage("Test on Windows") {                    
+                stage("Test on Windows") {
                     environment {
                         CARGO_HOME = 'C:\\Users\\root\\.cargo'
                         RUSTUP_HOME = 'C:\\Users\\root\\.rustup'
                     }
-                    agent { 
-                        label 'windows' 
+                    agent {
+                        label 'windows'
                     }
                     steps {
+                        echo 'Cleaning...'
+                        bat 'C:\\Users\\root\\.cargo\\bin\\cargo clean'
                         echo 'Beginning tests...'
                         bat 'C:\\Users\\root\\.cargo\\bin\\cargo test --features="tester"'
                         echo 'Tests done!'
@@ -54,12 +56,15 @@ pipeline {
                         label 'linux'
                     }
                     steps {
+                        echo 'Cleaning...'
+                        sh '/home/jenkins/.cargo/bin/cargo clean'
                         echo 'Beginning tests...'
                         sh '/home/jenkins/.cargo/bin/cargo test --features="tester"'
                         echo 'Tests done!'
                     }
                 }
-                stage("Test on macOS") {
+                // Skip macOS stage for now until we can get a stable machine to run on
+                /* stage("Test on macOS") {
                     environment {
                         CARGO_HOME = '/Users/jenkins/.cargo'
                         RUSTUP_HOME = '/Users/jenkins/.rustup'
@@ -68,12 +73,13 @@ pipeline {
                         label 'mac'
                     }
                     steps {
+                        echo 'Cleaning...'
+                        sh '/Users/jenkins/.cargo/bin/cargo clean'
                         echo 'Beginning tests...'
-                        sh '/Users/jenkins/.cargo/bin/cargo test'
                         sh '/Users/jenkins/.cargo/bin/cargo test --features="tester"'
                         echo 'Tests done!'
                     }
-                }
+                } */
             }
         }
         stage('Calculate Coverage') {

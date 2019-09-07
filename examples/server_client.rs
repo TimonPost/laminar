@@ -2,43 +2,45 @@
 //! Technically, they both work the same.
 //! Note that in practice you don't want to implement a chat client using UDP.
 use std::io::stdin;
-
-use laminar::{Config, ErrorKind, Packet, Socket, SocketEvent};
 use std::thread;
+use std::time::Instant;
+
+use laminar::{ErrorKind, Packet, Socket, SocketEvent};
 
 const SERVER: &str = "127.0.0.1:12351";
 
 fn server() -> Result<(), ErrorKind> {
-    let (mut socket, packet_sender, event_receiver) = Socket::bind(SERVER)?;
+    let mut socket = Socket::bind(SERVER)?;
+    let (sender, receiver) = (socket.get_packet_sender(), socket.get_event_receiver());
     let _thread = thread::spawn(move || socket.start_polling());
 
-    println!("Listening for connections to {}", SERVER);
-
     loop {
-        match event_receiver.recv().expect("Should get a message") {
-            SocketEvent::Packet(packet) => {
-                let msg = packet.payload();
+        if let Ok(event) = receiver.recv() {
+            match event {
+                SocketEvent::Packet(packet) => {
+                    let msg = packet.payload();
 
-                if msg == b"Bye!" {
-                    break;
+                    if msg == b"Bye!" {
+                        break;
+                    }
+
+                    let msg = String::from_utf8_lossy(msg);
+                    let ip = packet.addr().ip();
+
+                    println!("Received {:?} from {:?}", msg, ip);
+
+                    sender
+                        .send(Packet::reliable_unordered(
+                            packet.addr(),
+                            "Copy that!".as_bytes().to_vec(),
+                        ))
+                        .expect("This should send");
                 }
-
-                let msg = String::from_utf8_lossy(msg);
-                let ip = packet.addr().ip();
-
-                println!("Received {:?} from {:?}", msg, ip);
-
-                packet_sender
-                    .send(Packet::reliable_unordered(
-                        packet.addr(),
-                        "Copy that!".as_bytes().to_vec(),
-                    ))
-                    .unwrap();
+                SocketEvent::Timeout(address) => {
+                    println!("Client timed out: {}", address);
+                }
+                _ => {}
             }
-            SocketEvent::Timeout(address) => {
-                println!("Client timed out: {}", address);
-            }
-            _ => {}
         }
     }
 
@@ -47,9 +49,8 @@ fn server() -> Result<(), ErrorKind> {
 
 fn client() -> Result<(), ErrorKind> {
     let addr = "127.0.0.1:12352";
-    let (mut socket, packet_sender, event_receiver) = Socket::bind(addr)?;
+    let mut socket = Socket::bind(addr)?;
     println!("Connected on {}", addr);
-    let _thread = thread::spawn(move || socket.start_polling());
 
     let server = SERVER.parse().unwrap();
 
@@ -63,26 +64,26 @@ fn client() -> Result<(), ErrorKind> {
         stdin.read_line(&mut s_buffer)?;
         let line = s_buffer.replace(|x| x == '\n' || x == '\r', "");
 
-        packet_sender
-            .send(Packet::reliable_unordered(
-                server,
-                line.clone().into_bytes(),
-            ))
-            .unwrap();
+        socket.send(Packet::reliable_unordered(
+            server,
+            line.clone().into_bytes(),
+        ))?;
+
+        socket.manual_poll(Instant::now());
 
         if line == "Bye!" {
             break;
         }
 
-        match event_receiver.recv().unwrap() {
-            SocketEvent::Packet(packet) => {
+        match socket.recv() {
+            Some(SocketEvent::Packet(packet)) => {
                 if packet.addr() == server {
                     println!("Server sent: {}", String::from_utf8_lossy(packet.payload()));
                 } else {
                     println!("Unknown sender.");
                 }
             }
-            SocketEvent::Timeout(_) => {}
+            Some(SocketEvent::Timeout(_)) => {}
             _ => println!("Silence.."),
         }
     }

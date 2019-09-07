@@ -1,6 +1,6 @@
 /// The size of the fragment header.
 pub const FRAGMENT_HEADER_SIZE: u8 = 4;
-/// The size of the acknowledgement header.
+/// The size of the acknowledgment header.
 pub const ACKED_PACKET_HEADER: u8 = 8;
 /// The size of the arranging header.
 pub const ARRANGING_PACKET_HEADER: u8 = 3;

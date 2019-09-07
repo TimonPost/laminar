@@ -34,13 +34,11 @@ impl AckedPacketHeader {
     }
 
     /// Get bit field of all last 32 acknowledged packages
-    #[cfg(test)]
     pub fn ack_field(&self) -> u32 {
         self.ack_field
     }
 
     /// Get last acknowledged sequence number.
-    #[cfg(test)]
     pub fn ack_seq(&self) -> u16 {
         self.ack_seq
     }
@@ -87,11 +85,12 @@ mod tests {
     fn serialize() {
         let mut buffer = Vec::new();
         let header = AckedPacketHeader::new(1, 2, 3);
-        header.parse(&mut buffer).is_ok();
+        assert![header.parse(&mut buffer).is_ok()];
 
         assert_eq!(buffer[1], 1);
         assert_eq!(buffer[3], 2);
         assert_eq!(buffer[7], 3);
+        assert_eq!(buffer.len() as u8, AckedPacketHeader::size());
     }
 
     #[test]
