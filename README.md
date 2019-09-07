@@ -20,6 +20,8 @@ and provides a lightweight, message-based interface which provides certain guara
 
 Laminar was designed to be used within the [Amethyst][amethyst] game engine but is usable without it.
 
+If you are new to laminar or networking in general, We strongly recommend taking a look at the [laminar book][book]
+
 [amethyst]: https://github.com/amethyst/amethyst
 
 # Concepts
@@ -35,7 +37,6 @@ For more information, read the projects [README.md][readme], [book][book], [docs
 [book]: https://amethyst.github.io/laminar/docs/index.html
 [docs]: https://docs.rs/laminar/
 [examples]: https://github.com/amethyst/laminar/tree/master/examples
-
 [amethyst]: https://github.com/amethyst/amethyst
 
 ## Table of contents:
@@ -61,6 +62,9 @@ These are the features this crate provides:
 - RTT Estimation
 - Link conditioner to simulate packet loss and latency
 - Well-tested by integration and unit tests
+- Basic DoS mitigation
+- High Timing control
+- Can be used by multiple threads (Sender, Receiver)
 
 ## Getting Stated
 Add the laminar package to your `Cargo.toml` file.

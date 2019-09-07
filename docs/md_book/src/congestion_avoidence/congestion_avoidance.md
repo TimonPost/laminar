@@ -6,5 +6,6 @@ We need to try to avoid sending too much bandwidth in the first place, and then 
 
 There are a few methods we can implement to defeat congestion.
 1. With [RTT](./rtt.md)
-2. With packet loss
+2. With packet loss [TODO]
 
+Unfortunately, congestion avoidance has not yet been implemented for laminar. 
