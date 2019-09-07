@@ -21,7 +21,7 @@ The TCP protocol will also split up and reassemble packets if those are too larg
 **Characteristics**
 - Reliable
 - Ordered
-- Automatic [fragmentation](LINK) of packets
+- Automatic [fragmentation](fragmentation.md) of packets
 - Stream based
 - Control Flow ([Congestion Avoidance](congestion_avoidence/congestion_avoidance.md))
  
