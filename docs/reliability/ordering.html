@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Basics - Laminar</title>
+        <title>Ordering - Laminar</title>
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -75,7 +75,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li><a href="../intro.html"><strong aria-hidden="true">1.</strong> Intro</a></li><li><a href="../protocols.html"><strong aria-hidden="true">2.</strong> Protocols</a></li><li><a href="../congestion_avoidence/congestion_avoidance.html"><strong aria-hidden="true">3.</strong> Congestion Avoidance</a></li><li><ol class="section"><li><a href="../congestion_avoidence/rtt.html"><strong aria-hidden="true">3.1.</strong> Whit RTT</a></li><li><a href="../congestion_avoidence/packet_loss.html"><strong aria-hidden="true">3.2.</strong> Whit Packet loss</a></li></ol></li><li><a href="../fragmentation.html"><strong aria-hidden="true">4.</strong> Fragmentation</a></li><li><a href="../reliability/basicis.html" class="active"><strong aria-hidden="true">5.</strong> Reliability</a></li><li><ol class="section"><li><a href="../reliability/basicis.html" class="active"><strong aria-hidden="true">5.1.</strong> Basics</a></li><li><a href="../reliability/reliability.html"><strong aria-hidden="true">5.2.</strong> Reliability</a></li></ol></li></ol>
+            <ol class="chapter"><li><a href="../intro.html"><strong aria-hidden="true">1.</strong> Intro</a></li><li><a href="../important.html"><strong aria-hidden="true">2.</strong> Important Notices</a></li><li><a href="../protocols.html"><strong aria-hidden="true">3.</strong> Protocols</a></li><li><a href="../heartbeat.html"><strong aria-hidden="true">4.</strong> Heartbeat</a></li><li><a href="../fragmentation.html"><strong aria-hidden="true">5.</strong> Fragmentation</a></li><li><a href="../reliability/basics.html"><strong aria-hidden="true">6.</strong> Reliability</a></li><li><ol class="section"><li><a href="../reliability/basics.html"><strong aria-hidden="true">6.1.</strong> Basics</a></li><li><a href="../reliability/reliability.html"><strong aria-hidden="true">6.2.</strong> Reliability</a></li><li><a href="../reliability/ordering.html" class="active"><strong aria-hidden="true">6.3.</strong> Ordering</a></li></ol></li><li><a href="../congestion_avoidence/congestion_avoidance.html"><strong aria-hidden="true">7.</strong> Congestion Avoidance</a></li><li><ol class="section"><li><a href="../congestion_avoidence/rtt.html"><strong aria-hidden="true">7.1.</strong> Whit RTT</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -140,20 +140,76 @@
 
                 <div id="content" class="content">
                     <main>
-                        <a class="header" href="#reliability" id="reliability"><h1>Reliability</h1></a>
+                        <a class="header" href="#arranging-packets" id="arranging-packets"><h2>Arranging packets</h2></a>
+<p>Laminar provides a way to arrange packets, over different streams.</p>
+<p>The above sentence contains a lot of important information, let us zoom in a little more at the above sentence.</p>
+<a class="header" href="#ordering-vs-sequencing" id="ordering-vs-sequencing"><h2>Ordering VS Sequencing</h2></a>
+<p>Let's define two concepts here:
+<em>&quot;Sequencing: this is the process of only caring about the newest items.&quot;</em> <a href="https://dictionary.cambridge.org/dictionary/english/sequencing">1</a>
+<em>&quot;Ordering: this is the process of putting something in a particular order.&quot;</em> <a href="https://dictionary.cambridge.org/dictionary/english/ordering">2</a></p>
+<ul>
+<li>Sequencing: Only the newest items will be passed trough e.g. <code>1,3,2,5,4</code> which results in <code>1,3,5</code>.</li>
+<li>Ordering: All items are returned in order <code>1,3,2,5,4</code> which results in <code>1,2,3,4,5</code>.</li>
+<li>Arranging: We call the process for ordering and sequencing 'arranging' of packets</li>
+</ul>
+<p>Due to the design of the internet, it is not always guaranteed that packets will arrive or that they will be received in the order they were sent.
+Fortunately, Laminar's implementation grants the ability to optionally specify how reliable and ordered (or not) the stream of packets is delivered to the client.</p>
+<a class="header" href="#how-ordering-works" id="how-ordering-works"><h3>How ordering works.</h3></a>
+<p>If we were to send the following packets: <code>1,2,3,4,5</code>,
+but something happens on the internet which causes the packets to arrive at their final destination as: <code>1,5,4,2,3</code>,
+then Laminar ensures that your packets arrive to the client as  <code>1,2,3,4,5</code>.</p>
+<a class="header" href="#arranging-streams" id="arranging-streams"><h2>Arranging Streams</h2></a>
+<p>What are these 'arranging streams'?
+You can see 'arranging streams' as something to arrange packets that have no relationship at all with one another.
+You could either arrange packets in order or in sequence.</p>
+<a class="header" href="#simple-example" id="simple-example"><h3>Simple Example</h3></a>
+<p>Think of a highway where you have several lanes where cars are driving.
+Because there are these lanes, cars can move on faster.
+For example, the cargo drivers drive on the right and the high-speed cars on the left.
+The cargo drivers do not influence fast cars and vice versa.</p>
+<a class="header" href="#real-example" id="real-example"><h3>Real Example</h3></a>
+<p>If a game developer wants to send data to a client, he might want to send data either ordered, unordered or sequenced.</p>
+<p>'Data' could be the following:</p>
+<ol>
+<li>Player movement, we want to order player movements because we don't want the player to glitch.</li>
+<li>Bullet movement, we want to sequence bullet movement because we don't care about old positions of bullets.</li>
+<li>Chat messages, we want to order chat messages because it is nice to see the text in the right order.</li>
+</ol>
+<p>Player movement and chat messages are totally unrelated to each other and you absolutely do not want to interrupt the movement packets if a chat message is not sent.</p>
+<p>It would be nice if we could order player movements and chat messages separately. Guess what! This is exactly what 'arranging streams' do.
+A game developer can indicate which stream it likes to arrange the packets.
+For example, the game developer can say: &quot;Let me order all chat messages to 'stream 1' and sequence all motion packets on 'stream 2'.</p>
+<a class="header" href="#example" id="example"><h3>Example</h3></a>
+<pre><pre class="playpen"><code class="language-rust">
+# #![allow(unused_variables)]
+#fn main() {
+// We can specify on which stream and how to order our packets, checkout our book and documentation for more information
+let unreliable_sequenced = Packet::unreliable_sequenced(destination, bytes, Some(1));
+let reliable_sequenced = Packet::reliable_sequenced(destination, bytes, Some(2));
+let reliable_ordered = Packet::reliable_ordered(destination, bytes, Some(3));
+#}</code></pre></pre>
+<p>Take notice of the last <code>Option</code> parameter, with this parameter you can specify which streams to order your packets on.
+One thing that is important to understand is that 'sequenced streams' are different from 'ordered streams',
+thus specifying <code>Some(1)</code> for a sequence stream and <code>Some(1)</code> for an ordered stream will be arranged separately from one another.
+You can use 254 different ordering or sequencing streams, in reality you'd probably only need a few. When specifying <code>None</code>, stream '255' will be used.</p>
+<a class="header" href="#interesting-reads" id="interesting-reads"><h2>Interesting Reads</h2></a>
+<ul>
+<li><a href="http://www.raknet.net/raknet/manual/sendingpackets.html">RakNet Ordering Streams</a></li>
+<li><a href="https://github.com/RevenantX/LiteNetLib/issues/67">LiteNetLib Implementation</a></li>
+</ul>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
-                            <a rel="prev" href="../fragmentation.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../reliability/reliability.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
                         
 
                         
-                            <a rel="next" href="../reliability/basicis.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="../congestion_avoidence/congestion_avoidance.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -165,13 +221,13 @@
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
-                    <a href="../fragmentation.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a href="../reliability/reliability.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
                 
 
                 
-                    <a href="../reliability/basicis.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a href="../congestion_avoidence/congestion_avoidance.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                 

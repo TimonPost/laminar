@@ -3,27 +3,27 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Whit Packet loss - Laminar</title>
+        <title>Heartbeat - Laminar</title>
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
-        <link rel="shortcut icon" href="../favicon.png">
-        <link rel="stylesheet" href="../css/variables.css">
-        <link rel="stylesheet" href="../css/general.css">
-        <link rel="stylesheet" href="../css/chrome.css">
-        <link rel="stylesheet" href="../css/print.css" media="print">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
 
         <!-- Fonts -->
-        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
         <link href="https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800" rel="stylesheet" type="text/css">
         <link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:500" rel="stylesheet" type="text/css">
 
         <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" href="../highlight.css">
-        <link rel="stylesheet" href="../tomorrow-night.css">
-        <link rel="stylesheet" href="../ayu-highlight.css">
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
         
@@ -33,7 +33,7 @@
     <body class="light">
         <!-- Provide site root to javascript -->
         <script type="text/javascript">
-            var path_to_root = "../";
+            var path_to_root = "";
             var default_theme = "light";
         </script>
 
@@ -75,7 +75,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li><a href="../intro.html"><strong aria-hidden="true">1.</strong> Intro</a></li><li><a href="../protocols.html"><strong aria-hidden="true">2.</strong> Protocols</a></li><li><a href="../congestion_avoidence/congestion_avoidance.html"><strong aria-hidden="true">3.</strong> Congestion Avoidance</a></li><li><ol class="section"><li><a href="../congestion_avoidence/rtt.html"><strong aria-hidden="true">3.1.</strong> Whit RTT</a></li><li><a href="../congestion_avoidence/packet_loss.html" class="active"><strong aria-hidden="true">3.2.</strong> Whit Packet loss</a></li></ol></li><li><a href="../fragmentation.html"><strong aria-hidden="true">4.</strong> Fragmentation</a></li><li><a href="../reliability/basicis.html"><strong aria-hidden="true">5.</strong> Reliability</a></li><li><ol class="section"><li><a href="../reliability/basicis.html"><strong aria-hidden="true">5.1.</strong> Basics</a></li><li><a href="../reliability/reliability.html"><strong aria-hidden="true">5.2.</strong> Reliability</a></li></ol></li></ol>
+            <ol class="chapter"><li><a href="intro.html"><strong aria-hidden="true">1.</strong> Intro</a></li><li><a href="important.html"><strong aria-hidden="true">2.</strong> Important Notices</a></li><li><a href="protocols.html"><strong aria-hidden="true">3.</strong> Protocols</a></li><li><a href="heartbeat.html" class="active"><strong aria-hidden="true">4.</strong> Heartbeat</a></li><li><a href="fragmentation.html"><strong aria-hidden="true">5.</strong> Fragmentation</a></li><li><a href="reliability/basics.html"><strong aria-hidden="true">6.</strong> Reliability</a></li><li><ol class="section"><li><a href="reliability/basics.html"><strong aria-hidden="true">6.1.</strong> Basics</a></li><li><a href="reliability/reliability.html"><strong aria-hidden="true">6.2.</strong> Reliability</a></li><li><a href="reliability/ordering.html"><strong aria-hidden="true">6.3.</strong> Ordering</a></li></ol></li><li><a href="congestion_avoidence/congestion_avoidance.html"><strong aria-hidden="true">7.</strong> Congestion Avoidance</a></li><li><ol class="section"><li><a href="congestion_avoidence/rtt.html"><strong aria-hidden="true">7.1.</strong> Whit RTT</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -108,7 +108,7 @@
                         <h1 class="menu-title">Laminar</h1> 
 
                         <div class="right-buttons">
-                            <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <a href="print.html" title="Print this book" aria-label="Print this book">
                                 <i id="print-button" class="fa fa-print"></i>
                             </a>
                             
@@ -140,20 +140,54 @@
 
                 <div id="content" class="content">
                     <main>
-                        <a class="header" href="#whit-packet-loss" id="whit-packet-loss"><h1>Whit Packet loss</h1></a>
+                        <a class="header" href="#heartbeat" id="heartbeat"><h2>Heartbeat</h2></a>
+<p>Laminar offers the possibility to keep the connection with a client open.
+This is done with heartbeat packets.
+This option is enabled by default.
+The behavior of the heart beat can be changed in the <a href="https://github.com/amethyst/laminar/pull/224">configuration</a>.
+It can also be disabled.</p>
+<p>A client is considered a connection when it sends a packet.
+If the client does not send a packet for x seconds, laminar sees this as an idling connection, and it is removed as an active connection.
+When this happens, the following data is removed:</p>
+<ol>
+<li>the reliability data such as acknowledged packets</li>
+<li>the buffers that keep track of the ordering/sequencing.</li>
+<li>the RTT counter</li>
+<li>fragmentation data</li>
+</ol>
+<p>Losing this data from the memory is often undesirable.
+Therefore, it is important to have a consistent flow of packets between the two endpoints which will prevent disconnection of the client.
+The time before the client is disconnected can be changed in the <a href="https://github.com/amethyst/laminar/blob/master/src/config.rs#L10">configuration</a>.</p>
+<a class="header" href="#why-a-heartbeat" id="why-a-heartbeat"><h2>Why a heartbeat?</h2></a>
+<p>With game networking for fast-paced FPS games, you have to deal with a lot of data that has to go from point A to B.
+We are talking about numbers of 20/30/60 hz.
+Laminar is based and optimized for the situation where a consistent flow of packets from the server to the client and from the client to the server that are being sent.
+In a game, where everything runs at milliseconds and speed is important, you need fast communication and multiple updates per seconds.</p>
+<p>What are those scenarios and how can I know if laminar is useful for my use case?
+You can think of input synchronization, location updates, state updates, events, etc.<br />
+Let's zoom in on input synchronization of an FPS game.
+The client sends the packages, the server receives it, validates it, and sends an update to all other clients.
+In an FPS game, a lot of input is shared, and it's not a strange idea for a client to share its input and receive updates 60 times a second.<br />
+Laminar is based on this idea, and is optimized for it.
+When you are sending packets once a second, laminar might not be the best solution here. And your probably going to do fine with TCP.</p>
+<p>To add to this, note that clients will be seen as 'disconnected' if they don't send packets for some duration, this duration can be found in the [configuration][config].
+When there is a scenario's that you are sending packets less frequent, laminar has the option to keep the connection alive by sending an heath beat message at a configurable interval.</p>
+<ul>
+<li><a href="https://github.com/amethyst/laminar/pull/224">Original PR</a></li>
+</ul>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
-                            <a rel="prev" href="../congestion_avoidence/rtt.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="protocols.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
                         
 
                         
-                            <a rel="next" href="../fragmentation.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="fragmentation.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -165,13 +199,13 @@
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
-                    <a href="../congestion_avoidence/rtt.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a href="protocols.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
                 
 
                 
-                    <a href="../fragmentation.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a href="fragmentation.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                 
@@ -186,14 +220,14 @@
         
 
         
-        <script src="../elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
-        <script src="../mark.min.js" type="text/javascript" charset="utf-8"></script>
-        <script src="../searcher.js" type="text/javascript" charset="utf-8"></script>
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
         
 
-        <script src="../clipboard.min.js" type="text/javascript" charset="utf-8"></script>
-        <script src="../highlight.js" type="text/javascript" charset="utf-8"></script>
-        <script src="../book.js" type="text/javascript" charset="utf-8"></script>
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
 
         <!-- Custom JS scripts -->
         

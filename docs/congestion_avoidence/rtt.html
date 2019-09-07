@@ -75,7 +75,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li><a href="../intro.html"><strong aria-hidden="true">1.</strong> Intro</a></li><li><a href="../protocols.html"><strong aria-hidden="true">2.</strong> Protocols</a></li><li><a href="../congestion_avoidence/congestion_avoidance.html"><strong aria-hidden="true">3.</strong> Congestion Avoidance</a></li><li><ol class="section"><li><a href="../congestion_avoidence/rtt.html" class="active"><strong aria-hidden="true">3.1.</strong> Whit RTT</a></li><li><a href="../congestion_avoidence/packet_loss.html"><strong aria-hidden="true">3.2.</strong> Whit Packet loss</a></li></ol></li><li><a href="../fragmentation.html"><strong aria-hidden="true">4.</strong> Fragmentation</a></li><li><a href="../reliability/basicis.html"><strong aria-hidden="true">5.</strong> Reliability</a></li><li><ol class="section"><li><a href="../reliability/basicis.html"><strong aria-hidden="true">5.1.</strong> Basics</a></li><li><a href="../reliability/reliability.html"><strong aria-hidden="true">5.2.</strong> Reliability</a></li></ol></li></ol>
+            <ol class="chapter"><li><a href="../intro.html"><strong aria-hidden="true">1.</strong> Intro</a></li><li><a href="../important.html"><strong aria-hidden="true">2.</strong> Important Notices</a></li><li><a href="../protocols.html"><strong aria-hidden="true">3.</strong> Protocols</a></li><li><a href="../heartbeat.html"><strong aria-hidden="true">4.</strong> Heartbeat</a></li><li><a href="../fragmentation.html"><strong aria-hidden="true">5.</strong> Fragmentation</a></li><li><a href="../reliability/basics.html"><strong aria-hidden="true">6.</strong> Reliability</a></li><li><ol class="section"><li><a href="../reliability/basics.html"><strong aria-hidden="true">6.1.</strong> Basics</a></li><li><a href="../reliability/reliability.html"><strong aria-hidden="true">6.2.</strong> Reliability</a></li><li><a href="../reliability/ordering.html"><strong aria-hidden="true">6.3.</strong> Ordering</a></li></ol></li><li><a href="../congestion_avoidence/congestion_avoidance.html"><strong aria-hidden="true">7.</strong> Congestion Avoidance</a></li><li><ol class="section"><li><a href="../congestion_avoidence/rtt.html" class="active"><strong aria-hidden="true">7.1.</strong> Whit RTT</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -146,7 +146,7 @@ To avoid congestion we first need to find a way to calculate the <code>RTT</code
 <p><em>Smoothing factor</em></p>
 <p>So you could say: &quot;very simple, measure the time between sending and receiving you got the <code>RTT</code> and you're done right?&quot; No! This is because a packet can travel any path over the internet the <code>RTT</code> can always defer every time you calculate it. And imagine a short internet lag we will directly get a huge RTT back. So we need to smooth out that RTT factor by some amount. Gaffer says that 10% of the RTT will be just fine. With this smoothed RTT we will be able to add it to our current RTT.</p>
 <p><em>Allowed RTT value</em></p>
-<p>So now we have the smoothed RTT and or current RTT, GREAT! But RTT on its own is not bad. So there may be some max allowed RTT. We need to subtract that amount from our measured RTT multiplied by the smoothing factor.</p>
+<p>So now we have the smoothed RTT and our current RTT, GREAT! But RTT on its own is not bad. So there may be some max allowed RTT. We need to subtract that amount from our measured RTT multiplied by the smoothing factor.</p>
 <p>The formula would look like the following:</p>
 <pre><code>// rtt_max_value is in ms
 // rtt_smoothing_factor is in %
@@ -161,12 +161,12 @@ let new_rtt_value = (300 - 250) * 0.10.
 <pre><code>// this will result into: -15
 let new_rtt_value = (100 - 250) * 0.10.
 </code></pre>
-<p>As you see when or calculation is under 250ms we get a negative result, which is in this case positive.
-When or calculation is above 250ms it will be positive, which is in this case negative.</p>
+<p>As you see when our calculation is under 250ms we get a negative result, which is in this case positive.
+When our calculation is above 250ms it will be positive, which is in this case negative.</p>
 <p>So each time we receive an acknowledgment we can add our result, of the above formula, to the RTT time saved in the connection.</p>
 <a class="header" href="#interesting-reads" id="interesting-reads"><h2>Interesting Reads</h2></a>
 <ul>
-<li><a href="https://en.wikipedia.org/wiki/Round-trip_delay_time">Wikipedia</a> </li>
+<li><a href="https://en.wikipedia.org/wiki/Round-trip_delay_time">Wikipedia</a></li>
 </ul>
 
                     </main>
@@ -179,10 +179,6 @@ When or calculation is above 250ms it will be positive, which is in this case ne
                             </a>
                         
 
-                        
-                            <a rel="next" href="../congestion_avoidence/packet_loss.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
-                                <i class="fa fa-angle-right"></i>
-                            </a>
                         
 
                         <div style="clear: both"></div>
@@ -197,10 +193,6 @@ When or calculation is above 250ms it will be positive, which is in this case ne
                     </a>
                 
 
-                
-                    <a href="../congestion_avoidence/packet_loss.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
-                        <i class="fa fa-angle-right"></i>
-                    </a>
                 
             </nav>
 

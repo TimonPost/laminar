@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Intro - Laminar</title>
+        <title>Important Notices - Laminar</title>
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -75,7 +75,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li><a href="intro.html" class="active"><strong aria-hidden="true">1.</strong> Intro</a></li><li><a href="important.html"><strong aria-hidden="true">2.</strong> Important Notices</a></li><li><a href="protocols.html"><strong aria-hidden="true">3.</strong> Protocols</a></li><li><a href="heartbeat.html"><strong aria-hidden="true">4.</strong> Heartbeat</a></li><li><a href="fragmentation.html"><strong aria-hidden="true">5.</strong> Fragmentation</a></li><li><a href="reliability/basics.html"><strong aria-hidden="true">6.</strong> Reliability</a></li><li><ol class="section"><li><a href="reliability/basics.html"><strong aria-hidden="true">6.1.</strong> Basics</a></li><li><a href="reliability/reliability.html"><strong aria-hidden="true">6.2.</strong> Reliability</a></li><li><a href="reliability/ordering.html"><strong aria-hidden="true">6.3.</strong> Ordering</a></li></ol></li><li><a href="congestion_avoidence/congestion_avoidance.html"><strong aria-hidden="true">7.</strong> Congestion Avoidance</a></li><li><ol class="section"><li><a href="congestion_avoidence/rtt.html"><strong aria-hidden="true">7.1.</strong> Whit RTT</a></li></ol></li></ol>
+            <ol class="chapter"><li><a href="intro.html"><strong aria-hidden="true">1.</strong> Intro</a></li><li><a href="important.html" class="active"><strong aria-hidden="true">2.</strong> Important Notices</a></li><li><a href="protocols.html"><strong aria-hidden="true">3.</strong> Protocols</a></li><li><a href="heartbeat.html"><strong aria-hidden="true">4.</strong> Heartbeat</a></li><li><a href="fragmentation.html"><strong aria-hidden="true">5.</strong> Fragmentation</a></li><li><a href="reliability/basics.html"><strong aria-hidden="true">6.</strong> Reliability</a></li><li><ol class="section"><li><a href="reliability/basics.html"><strong aria-hidden="true">6.1.</strong> Basics</a></li><li><a href="reliability/reliability.html"><strong aria-hidden="true">6.2.</strong> Reliability</a></li><li><a href="reliability/ordering.html"><strong aria-hidden="true">6.3.</strong> Ordering</a></li></ol></li><li><a href="congestion_avoidence/congestion_avoidance.html"><strong aria-hidden="true">7.</strong> Congestion Avoidance</a></li><li><ol class="section"><li><a href="congestion_avoidence/rtt.html"><strong aria-hidden="true">7.1.</strong> Whit RTT</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -140,39 +140,42 @@
 
                 <div id="content" class="content">
                     <main>
-                        <a class="header" href="#this-book-is-still-in-active-development" id="this-book-is-still-in-active-development"><h1>This book is still in active development.</h1></a>
-<a class="header" href="#introduction" id="introduction"><h2>Introduction</h2></a>
-<p>Welcome! This book will teach you everything you need to know about of the networking in laminar.
-We will discuss important parts of network programming, why we made certain decisions and some explanations about networking concepts in general.</p>
-<p>Laminar is free and open source software, distributed under a dual license of <a href="https://github.com/amethyst/laminar/blob/master/docs/LICENSE-MIT">MIT</a>
-and <a href="https://github.com/amethyst/laminar/blob/master/docs/LICENSE-APACHE">Apache</a>. This means that the engine is given to you at no cost
-and its source code is completely yours to tinker with. The code is available on
-<a href="https://github.com/amethyst/laminar/tree/master">GitHub</a>. Contributions and feature requests will always be welcomed!</p>
-<a class="header" href="#motivation" id="motivation"><h2>Motivation</h2></a>
-<p>Laminar is fully written in Rust and therefore it has no garbage collector, no data-races, and memory safety.
-That's why laminar is a good candidate to be a safe and better replacement for other reliable-UDP implementations.
-This library is written for use in the Amethyst game engine, however, we fully believe that this library can become an excellent reliable UDP implementation in its own right.</p>
-<a class="header" href="#similar-projects" id="similar-projects"><h2>Similar Projects</h2></a>
-<p>We used some inspiration from other similar projects.</p>
-<ul>
-<li><a href="https://github.com/networkprotocol/netcode.io">NetCode IO, C++ with Go, Rust, C# bindings</a></li>
-<li><a href="https://github.com/SLikeSoft/SLikeNet">RakNet, C++</a></li>
-<li><a href="https://github.com/ValveSoftware/GameNetworkingSockets">Steam Network Socket, , C++</a></li>
-<li><a href="https://github.com/RevenantX/LiteNetLib">LiteNetLib, C#</a></li>
-<li><a href="http://enet.bespin.org/">ENet, C</a></li>
-</ul>
-<a class="header" href="#contributing" id="contributing"><h2>Contributing</h2></a>
-<p>We are always happy to welcome new contributors!</p>
-<p>If you want to contribute, or have questions, let us know either on <a href="https://github.com/amethyst/laminar/">GitHub</a>, or on <a href="https://discord.gg/amethyst">Discord</a> (#net).</p>
+                        <a class="header" href="#some-important-notices" id="some-important-notices"><h2>Some Important Notices</h2></a>
+<p>There are a few important things you need to know in order to use laminar appropriately.
+If you do not follow these rules, then it is possible that either laminar is not suitable for your use case, and/or it will not work as expected.</p>
+<ol>
+<li>
+<p>Packet Consistency
+Make sure that the client and the server send messages to each other at a consistent rate, e.g. 30Hz. If you don't do this,
+the connection may break, and cause the reliability and order aspect of laminar not to work. For more information checkout <a href="heartbeat.html">heartbeat implementation</a>.</p>
+</li>
+<li>
+<p>Reliability, transferring big data
+Laminar is not designed for transferring large files.
+The <a href="fragmentation.html">fragments</a> of the fragmented packet will not be acknowledged.
+So if a fragment is lost, the whole packet is lost. Although this will be improved in the future, for more information checkout <a href="fragmentation.html">fragmentation</a> and <a href="reliability/basics.html">reliability</a>.</p>
+</li>
+<li>
+<p>DDOS Protection</p>
+<p>DDOS protection ensures that a client that sends something is not simply identified as a trustworthy connection.
+If this were the case, someone could easily spoof packets and DDOS our server with new connections.</p>
+<p><strong>Make sure the server responds to a message from the client. Only if the server responds, will the connection to the client be tracked.</strong></p>
+<p>In the future we want to have a <a href="https://github.com/amethyst/laminar/issues/156">handshaking process</a> to simplify this process.</p>
+</li>
+</ol>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
+                            <a rel="prev" href="intro.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                        
 
                         
-                            <a rel="next" href="important.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="protocols.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -184,9 +187,13 @@ This library is written for use in the Amethyst game engine, however, we fully b
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
+                    <a href="intro.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                
 
                 
-                    <a href="important.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a href="protocols.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                 

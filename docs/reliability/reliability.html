@@ -75,7 +75,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li><a href="../intro.html"><strong aria-hidden="true">1.</strong> Intro</a></li><li><a href="../protocols.html"><strong aria-hidden="true">2.</strong> Protocols</a></li><li><a href="../congestion_avoidence/congestion_avoidance.html"><strong aria-hidden="true">3.</strong> Congestion Avoidance</a></li><li><ol class="section"><li><a href="../congestion_avoidence/rtt.html"><strong aria-hidden="true">3.1.</strong> Whit RTT</a></li><li><a href="../congestion_avoidence/packet_loss.html"><strong aria-hidden="true">3.2.</strong> Whit Packet loss</a></li></ol></li><li><a href="../fragmentation.html"><strong aria-hidden="true">4.</strong> Fragmentation</a></li><li><a href="../reliability/basicis.html"><strong aria-hidden="true">5.</strong> Reliability</a></li><li><ol class="section"><li><a href="../reliability/basicis.html"><strong aria-hidden="true">5.1.</strong> Basics</a></li><li><a href="../reliability/reliability.html" class="active"><strong aria-hidden="true">5.2.</strong> Reliability</a></li></ol></li></ol>
+            <ol class="chapter"><li><a href="../intro.html"><strong aria-hidden="true">1.</strong> Intro</a></li><li><a href="../important.html"><strong aria-hidden="true">2.</strong> Important Notices</a></li><li><a href="../protocols.html"><strong aria-hidden="true">3.</strong> Protocols</a></li><li><a href="../heartbeat.html"><strong aria-hidden="true">4.</strong> Heartbeat</a></li><li><a href="../fragmentation.html"><strong aria-hidden="true">5.</strong> Fragmentation</a></li><li><a href="../reliability/basics.html"><strong aria-hidden="true">6.</strong> Reliability</a></li><li><ol class="section"><li><a href="../reliability/basics.html"><strong aria-hidden="true">6.1.</strong> Basics</a></li><li><a href="../reliability/reliability.html" class="active"><strong aria-hidden="true">6.2.</strong> Reliability</a></li><li><a href="../reliability/ordering.html"><strong aria-hidden="true">6.3.</strong> Ordering</a></li></ol></li><li><a href="../congestion_avoidence/congestion_avoidance.html"><strong aria-hidden="true">7.</strong> Congestion Avoidance</a></li><li><ol class="section"><li><a href="../congestion_avoidence/rtt.html"><strong aria-hidden="true">7.1.</strong> Whit RTT</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -162,60 +162,71 @@ TCP has a lot of feature UDP does not have, like shown below.</p>
 <li>Duplication possible.</li>
 <li>No <a href="./../fragmentation.html">fragmentation</a>.</li>
 </ul>
-<p>So it would be useful if we could somehow specify the features we want on top of UDP.
+<p>It would be useful if we could somehow specify the features we want on top of UDP.
 Like that you say: I want the guarantee for my packets to arrive, however they don't need to be in order.
 Or, I don't care if my packet arrives but I do want to receive only new ones.</p>
-<p>Please check out <a href="ordering.html">ordering documentation</a>, it describes what ordering and sequencing is.</p>
+<p>Before continuing, it would be helpful to understand the difference between ordering and sequencing: <a href="ordering.html">ordering documentation</a></p>
+<a class="header" href="#the-5-reliability-guarantees" id="the-5-reliability-guarantees"><h2>The 5 Reliability Guarantees</h2></a>
 <p>Laminar provides 5 different ways for you to send your data:</p>
-<table><thead><tr><th align="center"> Reliability Type                 </th><th align="center"> Packet Drop </th><th align="center"> Packet Duplication </th><th align="center"> Packet Order  </th><th align="center"> Packet Fragmentation </th><th align="center">Packet Delivery</th></tr></thead><tbody>
-<tr><td align="center">       <strong>Unreliable</strong>              </td><td align="center">       Yes       </td><td align="center">       Yes          </td><td align="center">      No          </td><td align="center">      No          </td><td align="center">       No</td></tr>
-<tr><td align="center">       <strong>Unreliable Sequenced</strong>    </td><td align="center">       Yes       </td><td align="center">      No            </td><td align="center">      Sequenced   </td><td align="center">      No          </td><td align="center">       No</td></tr>
-<tr><td align="center">       <strong>Reliable Unordered</strong>      </td><td align="center">       No        </td><td align="center">      No            </td><td align="center">      No          </td><td align="center">      Yes         </td><td align="center">       Yes</td></tr>
-<tr><td align="center">       <strong>Reliable Ordered</strong>        </td><td align="center">       No        </td><td align="center">      No            </td><td align="center">      Ordered     </td><td align="center">      Yes         </td><td align="center">       Yes</td></tr>
-<tr><td align="center">       <strong>Reliable Sequenced</strong>      </td><td align="center">       No        </td><td align="center">      No            </td><td align="center">      Sequenced   </td><td align="center">      Yes         </td><td align="center">       Yes</td></tr>
+<table><thead><tr><th align="center"> Reliability Type             </th><th align="center"> Packet Drop     </th><th align="center"> Packet Duplication </th><th align="center"> Packet Order     </th><th align="center"> Packet Fragmentation </th><th align="center">Packet Delivery</th></tr></thead><tbody>
+<tr><td align="center">   <strong>Unreliable Unordered</strong>   </td><td align="center">       Any       </td><td align="center">      Yes           </td><td align="center">     No           </td><td align="center">      No              </td><td align="center">   No</td></tr>
+<tr><td align="center">   <strong>Unreliable Sequenced</strong>   </td><td align="center">    Any + old    </td><td align="center">      No            </td><td align="center">     Sequenced    </td><td align="center">      No              </td><td align="center">   No</td></tr>
+<tr><td align="center">   <strong>Reliable Unordered</strong>     </td><td align="center">       No        </td><td align="center">      No            </td><td align="center">     No           </td><td align="center">      Yes             </td><td align="center">   Yes</td></tr>
+<tr><td align="center">   <strong>Reliable Ordered</strong>       </td><td align="center">       No        </td><td align="center">      No            </td><td align="center">     Ordered      </td><td align="center">      Yes             </td><td align="center">   Yes</td></tr>
+<tr><td align="center">   <strong>Reliable Sequenced</strong>     </td><td align="center">    Only old     </td><td align="center">      No            </td><td align="center">     Sequenced    </td><td align="center">      Yes             </td><td align="center">   Only newest</td></tr>
 </tbody></table>
 <a class="header" href="#unreliable" id="unreliable"><h2>Unreliable</h2></a>
-<p>Unreliable: Packets can be dropped, duplicated or arrive without order.</p>
+<p>Unreliable: Packets can be dropped, duplicated or arrive in any order.</p>
 <p><strong>Details</strong></p>
 <table><thead><tr><th> Packet Drop     </th><th> Packet Duplication </th><th> Packet Order     </th><th> Packet Fragmentation </th><th> Packet Delivery </th></tr></thead><tbody>
-<tr><td align="center">       Yes       </td><td align="center">        Yes         </td><td align="center">      No          </td><td align="center">      No              </td><td align="center">       No        </td></tr>
+<tr><td align="center">       Any       </td><td align="center">      Yes           </td><td align="center">     No           </td><td align="center">      No              </td><td align="center">   No</td></tr>
 </tbody></table>
 <p>Basically just bare UDP. The packet may or may not be delivered.</p>
-<p>// todo: add use cases</p>
 <a class="header" href="#unreliable-sequenced" id="unreliable-sequenced"><h2>Unreliable Sequenced</h2></a>
 <p>Unreliable Sequenced: Packets can be dropped, but could not be duplicated and arrive in sequence.</p>
 <p><em>Details</em></p>
 <table><thead><tr><th> Packet Drop     </th><th> Packet Duplication </th><th> Packet Order     </th><th> Packet Fragmentation </th><th> Packet Delivery </th></tr></thead><tbody>
-<tr><td align="center">       Yes       </td><td align="center">        Yes         </td><td align="center">      Sequenced          </td><td align="center">      No              </td><td align="center">       No        </td></tr>
+<tr><td align="center">    Any + old    </td><td align="center">      No            </td><td align="center">     Sequenced    </td><td align="center">      No              </td><td align="center">   No</td></tr>
 </tbody></table>
 <p>Basically just bare UDP, free to be dropped, but has some sequencing to it so that only the newest packets are kept.</p>
-<p>// todo: add use cases</p>
 <a class="header" href="#reliable-unordered" id="reliable-unordered"><h2>Reliable Unordered</h2></a>
-<p>Reliable: All packets will be sent and received, but without order.</p>
+<p>Reliable UnOrder: All packets will be sent and received, but without order.</p>
 <p><em>Details</em></p>
 <table><thead><tr><th>   Packet Drop   </th><th> Packet Duplication </th><th> Packet Order     </th><th> Packet Fragmentation </th><th> Packet Delivery </th></tr></thead><tbody>
-<tr><td align="center">       No        </td><td align="center">      No            </td><td align="center">      No          </td><td align="center">      Yes             </td><td align="center">       Yes       </td></tr>
+<tr><td align="center">       No        </td><td align="center">      No            </td><td align="center">     No           </td><td align="center">      Yes             </td><td align="center">   Yes</td></tr>
 </tbody></table>
 <p>Basically, this is almost TCP without ordering of packets.</p>
-<p>// todo: add use cases</p>
 <a class="header" href="#reliable-ordered" id="reliable-ordered"><h2>Reliable Ordered</h2></a>
-<p>Reliable; All packets will be sent and received, with order.</p>
+<p>Reliable Unordered: All packets will be sent and received, but in the order in which they arrived.</p>
 <p><em>Details</em></p>
 <table><thead><tr><th>   Packet Drop   </th><th> Packet Duplication </th><th> Packet Order     </th><th> Packet Fragmentation </th><th> Packet Delivery </th></tr></thead><tbody>
-<tr><td align="center">       No        </td><td align="center">      No            </td><td align="center">      Ordered     </td><td align="center">      Yes             </td><td align="center">       Yes       </td></tr>
+<tr><td align="center">       No        </td><td align="center">      No            </td><td align="center">     Ordered      </td><td align="center">      Yes             </td><td align="center">   Yes</td></tr>
 </tbody></table>
 <p>Basically this is almost like TCP.</p>
-<p>// todo: add use cases</p>
 <a class="header" href="#reliable-sequenced" id="reliable-sequenced"><h2>Reliable Sequenced</h2></a>
 <p>Reliable; All packets will be sent and received but arranged in sequence.
 Which means that only the newest packets will be let through, older packets will be received but they won't get to the user.</p>
 <p><em>Details</em></p>
 <table><thead><tr><th>   Packet Drop   </th><th> Packet Duplication </th><th> Packet Order     </th><th> Packet Fragmentation </th><th> Packet Delivery </th></tr></thead><tbody>
-<tr><td align="center">       No        </td><td align="center">      No            </td><td align="center">      Sequenced     </td><td align="center">      Yes             </td><td align="center">       Yes       </td></tr>
+<tr><td align="center">    Only old     </td><td align="center">      No            </td><td align="center">     Sequenced    </td><td align="center">      Yes             </td><td align="center">   Only newest</td></tr>
 </tbody></table>
 <p>Basically this is almost TCP-like but then sequencing instead of ordering.</p>
-<p>// todo: add use cases</p>
-<a class="header" href="#interesting-reads" id="interesting-reads"><h2>Interesting Reads</h2></a>
+<a class="header" href="#example" id="example"><h3>Example</h3></a>
+<pre><pre class="playpen"><code class="language-rust">
+# #![allow(unused_variables)]
+#fn main() {
+use laminar::Packet;
+
+// You can create packets with different reliabilities
+let unreliable = Packet::unreliable(destination, bytes);
+let reliable = Packet::reliable_unordered(destination, bytes);
+
+// We can specify on which stream and how to order our packets, checkout our book and documentation for more information
+let unreliable = Packet::unreliable_sequenced(destination, bytes, Some(1));
+let reliable_sequenced = Packet::reliable_sequenced(destination, bytes, Some(2));
+let reliable_ordered = Packet::reliable_ordered(destination, bytes, Some(3));
+#}</code></pre></pre>
+<a class="header" href="#related" id="related"><h1>Related</h1></a>
 <ul>
 <li><a href="http://www.jenkinssoftware.com/raknet/manual/reliabilitytypes.html">RakNet Reliability Types</a></li>
 </ul>
@@ -225,11 +236,15 @@ Which means that only the newest packets will be let through, older packets will
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
-                            <a rel="prev" href="../reliability/basicis.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../reliability/basics.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
                         
 
+                        
+                            <a rel="next" href="../reliability/ordering.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
                         
 
                         <div style="clear: both"></div>
@@ -239,11 +254,15 @@ Which means that only the newest packets will be let through, older packets will
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
-                    <a href="../reliability/basicis.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a href="../reliability/basics.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
                 
 
+                
+                    <a href="../reliability/ordering.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
                 
             </nav>
 

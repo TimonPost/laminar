@@ -75,7 +75,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li><a href="intro.html"><strong aria-hidden="true">1.</strong> Intro</a></li><li><a href="protocols.html"><strong aria-hidden="true">2.</strong> Protocols</a></li><li><a href="congestion_avoidence/congestion_avoidance.html"><strong aria-hidden="true">3.</strong> Congestion Avoidance</a></li><li><ol class="section"><li><a href="congestion_avoidence/rtt.html"><strong aria-hidden="true">3.1.</strong> Whit RTT</a></li><li><a href="congestion_avoidence/packet_loss.html"><strong aria-hidden="true">3.2.</strong> Whit Packet loss</a></li></ol></li><li><a href="fragmentation.html" class="active"><strong aria-hidden="true">4.</strong> Fragmentation</a></li><li><a href="reliability/basicis.html"><strong aria-hidden="true">5.</strong> Reliability</a></li><li><ol class="section"><li><a href="reliability/basicis.html"><strong aria-hidden="true">5.1.</strong> Basics</a></li><li><a href="reliability/reliability.html"><strong aria-hidden="true">5.2.</strong> Reliability</a></li></ol></li></ol>
+            <ol class="chapter"><li><a href="intro.html"><strong aria-hidden="true">1.</strong> Intro</a></li><li><a href="important.html"><strong aria-hidden="true">2.</strong> Important Notices</a></li><li><a href="protocols.html"><strong aria-hidden="true">3.</strong> Protocols</a></li><li><a href="heartbeat.html"><strong aria-hidden="true">4.</strong> Heartbeat</a></li><li><a href="fragmentation.html" class="active"><strong aria-hidden="true">5.</strong> Fragmentation</a></li><li><a href="reliability/basics.html"><strong aria-hidden="true">6.</strong> Reliability</a></li><li><ol class="section"><li><a href="reliability/basics.html"><strong aria-hidden="true">6.1.</strong> Basics</a></li><li><a href="reliability/reliability.html"><strong aria-hidden="true">6.2.</strong> Reliability</a></li><li><a href="reliability/ordering.html"><strong aria-hidden="true">6.3.</strong> Ordering</a></li></ol></li><li><a href="congestion_avoidence/congestion_avoidance.html"><strong aria-hidden="true">7.</strong> Congestion Avoidance</a></li><li><ol class="section"><li><a href="congestion_avoidence/rtt.html"><strong aria-hidden="true">7.1.</strong> Whit RTT</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -154,6 +154,11 @@ So if you would send 200.000 bytes (+- 133 fragments) the risk of one fragment b
 If you really want to send large amounts of data over the line go for TCP instead, since that protocol is built for reliability and large data.</p>
 <p>When sending small packets with the size of about 4000 bytes (4 fragments) this method will work fine. And won't probably cause any problems.
 We are planning to support also <a href="https://gafferongames.com/post/sending_large_blocks_of_data/">sending larger packets</a> with acknowledgments.</p>
+<a class="header" href="#laminars-implementation" id="laminars-implementation"><h2>Laminar's implementation</h2></a>
+<p>Laminar fragments your packet if it exceeds the <a href="https://github.com/amethyst/laminar/blob/master/src/config.rs#L29">fragment size</a>.</p>
+<p>Fragments of a large packet are not yet acknowledged This is a problem if you want to send too large files.
+If you want to send really large files, I advise you to split up your package and send it in pieces with the option 'reliable ordered'.
+In the future laminar will be able to send large packets with acknowledgement.</p>
 <a class="header" href="#interesting-reads" id="interesting-reads"><h2>Interesting Reads</h2></a>
 <ul>
 <li><a href="https://gafferongames.com/post/packet_fragmentation_and_reassembly/">Gaffer about Fragmentation</a></li>
@@ -166,13 +171,13 @@ We are planning to support also <a href="https://gafferongames.com/post/sending_
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
-                            <a rel="prev" href="congestion_avoidence/packet_loss.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="heartbeat.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
                         
 
                         
-                            <a rel="next" href="reliability/basicis.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="reliability/basics.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -184,13 +189,13 @@ We are planning to support also <a href="https://gafferongames.com/post/sending_
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
-                    <a href="congestion_avoidence/packet_loss.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a href="heartbeat.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
                 
 
                 
-                    <a href="reliability/basicis.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a href="reliability/basics.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                 

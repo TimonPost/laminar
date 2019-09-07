@@ -75,7 +75,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li><a href="intro.html"><strong aria-hidden="true">1.</strong> Intro</a></li><li><a href="protocols.html"><strong aria-hidden="true">2.</strong> Protocols</a></li><li><a href="congestion_avoidence/congestion_avoidance.html"><strong aria-hidden="true">3.</strong> Congestion Avoidance</a></li><li><ol class="section"><li><a href="congestion_avoidence/rtt.html"><strong aria-hidden="true">3.1.</strong> Whit RTT</a></li><li><a href="congestion_avoidence/packet_loss.html"><strong aria-hidden="true">3.2.</strong> Whit Packet loss</a></li></ol></li><li><a href="fragmentation.html"><strong aria-hidden="true">4.</strong> Fragmentation</a></li><li><a href="reliability/basicis.html"><strong aria-hidden="true">5.</strong> Reliability</a></li><li><ol class="section"><li><a href="reliability/basicis.html"><strong aria-hidden="true">5.1.</strong> Basics</a></li><li><a href="reliability/reliability.html"><strong aria-hidden="true">5.2.</strong> Reliability</a></li></ol></li></ol>
+            <ol class="chapter"><li><a href="intro.html"><strong aria-hidden="true">1.</strong> Intro</a></li><li><a href="important.html"><strong aria-hidden="true">2.</strong> Important Notices</a></li><li><a href="protocols.html"><strong aria-hidden="true">3.</strong> Protocols</a></li><li><a href="heartbeat.html"><strong aria-hidden="true">4.</strong> Heartbeat</a></li><li><a href="fragmentation.html"><strong aria-hidden="true">5.</strong> Fragmentation</a></li><li><a href="reliability/basics.html"><strong aria-hidden="true">6.</strong> Reliability</a></li><li><ol class="section"><li><a href="reliability/basics.html"><strong aria-hidden="true">6.1.</strong> Basics</a></li><li><a href="reliability/reliability.html"><strong aria-hidden="true">6.2.</strong> Reliability</a></li><li><a href="reliability/ordering.html"><strong aria-hidden="true">6.3.</strong> Ordering</a></li></ol></li><li><a href="congestion_avoidence/congestion_avoidance.html"><strong aria-hidden="true">7.</strong> Congestion Avoidance</a></li><li><ol class="section"><li><a href="congestion_avoidence/rtt.html"><strong aria-hidden="true">7.1.</strong> Whit RTT</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -140,7 +140,7 @@
 
                 <div id="content" class="content">
                     <main>
-                        <p>#This book is still in development and is just a draft. And much needs to be changed.</p>
+                        <a class="header" href="#this-book-is-still-in-active-development" id="this-book-is-still-in-active-development"><h1>This book is still in active development.</h1></a>
 <a class="header" href="#introduction" id="introduction"><h2>Introduction</h2></a>
 <p>Welcome! This book will teach you everything you need to know about of the networking in laminar.
 We will discuss important parts of network programming, why we made certain decisions and some explanations about networking concepts in general.</p>
@@ -149,11 +149,21 @@ and <a href="https://github.com/amethyst/laminar/blob/master/docs/LICENSE-APACHE
 and its source code is completely yours to tinker with. The code is available on
 <a href="https://github.com/amethyst/laminar/tree/master">GitHub</a>. Contributions and feature requests will always be welcomed!</p>
 <a class="header" href="#motivation" id="motivation"><h2>Motivation</h2></a>
-<p>some decisions about why we are working on this like the rust safety compared to other implementations out there etc.
-And that there are not really good implementations yet which for fill all or needs.</p>
+<p>Laminar is fully written in Rust and therefore it has no garbage collector, no data-races, and memory safety.
+That's why laminar is a good candidate to be a safe and better replacement for other reliable-UDP implementations.
+This library is written for use in the Amethyst game engine, however, we fully believe that this library can become an excellent reliable UDP implementation in its own right.</p>
+<a class="header" href="#similar-projects" id="similar-projects"><h2>Similar Projects</h2></a>
+<p>We used some inspiration from other similar projects.</p>
+<ul>
+<li><a href="https://github.com/networkprotocol/netcode.io">NetCode IO, C++ with Go, Rust, C# bindings</a></li>
+<li><a href="https://github.com/SLikeSoft/SLikeNet">RakNet, C++</a></li>
+<li><a href="https://github.com/ValveSoftware/GameNetworkingSockets">Steam Network Socket, , C++</a></li>
+<li><a href="https://github.com/RevenantX/LiteNetLib">LiteNetLib, C#</a></li>
+<li><a href="http://enet.bespin.org/">ENet, C</a></li>
+</ul>
 <a class="header" href="#contributing" id="contributing"><h2>Contributing</h2></a>
 <p>We are always happy to welcome new contributors!</p>
-<p>If you want to contribute, or have questions, let us know either on <a href="https://github.com/amethyst/laminar/">GitHub</a>, or on <a href="https://discord.gg/amethyst">Discord</a>.</p>
+<p>If you want to contribute, or have questions, let us know either on <a href="https://github.com/amethyst/laminar/">GitHub</a>, or on <a href="https://discord.gg/amethyst">Discord</a> (#net).</p>
 
                     </main>
 
