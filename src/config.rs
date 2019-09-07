@@ -48,6 +48,12 @@ pub struct Config {
     ///
     /// Value that specifies how long we should block polling for socket events, in milliseconds. Defaults to `1ms`.
     pub socket_polling_timeout: Option<Duration>,
+    /// The maximum amount of reliable packets in flight on this connection before we drop the
+    /// connection.
+    ///
+    /// When we send a reliable packet, it is stored locally until an acknowledgement comes back to
+    /// us, if that store grows to a size
+    pub max_packets_in_flight: u16,
 }
 
 impl Default for Config {
@@ -65,6 +71,7 @@ impl Default for Config {
             rtt_max_value: 250,
             socket_event_buffer_size: 1024,
             socket_polling_timeout: Some(Duration::from_millis(1)),
+            max_packets_in_flight: 512,
         }
     }
 }

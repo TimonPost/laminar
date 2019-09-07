@@ -56,6 +56,11 @@ impl VirtualConnection {
         }
     }
 
+    /// Determine if this connection should be dropped due to its state
+    pub fn should_be_dropped(&self) -> bool {
+        self.acknowledge_handler.packets_in_flight() > self.config.max_packets_in_flight
+    }
+
     /// Returns a [Duration] representing the interval since we last heard from the client
     pub fn last_heard(&self, time: Instant) -> Duration {
         // TODO: Replace with saturating_duration_since once it becomes stable.

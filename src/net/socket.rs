@@ -161,6 +161,9 @@ impl Socket {
             error!("Encountered an error when sending TimeoutEvent: {:?}", e);
         }
 
+        // Handle any dead clients
+        self.handle_dead_clients().expect("Internal laminar error");
+
         // Finally send heartbeat packets to connections that require them, if enabled
         if let Some(heartbeat_interval) = self.config.heartbeat_interval {
             if let Err(e) = self.send_heartbeat_packets(heartbeat_interval, time) {
@@ -180,6 +183,18 @@ impl Socket {
     /// Get the local socket address
     pub fn local_addr(&self) -> Result<SocketAddr> {
         Ok(self.socket.local_addr()?)
+    }
+
+    /// Iterate through the dead connections and disconnect them by removing them from the
+    /// connection map while informing the user of this by sending an event.
+    fn handle_dead_clients(&mut self) -> Result<()> {
+        let dead_addresses = self.connections.dead_connections();
+        for address in dead_addresses {
+            self.connections.remove_connection(&address);
+            self.event_sender.send(SocketEvent::Timeout(address))?;
+        }
+
+        Ok(())
     }
 
     /// Iterate through all of the idle connections based on `idle_connection_timeout` config and
@@ -699,6 +714,46 @@ mod tests {
             }
         }
         assert_eq![65536 + 100, cnt];
+    }
+
+    #[test]
+    fn sequenced_packets_pathological_case() {
+        let mut config = Config::default();
+
+        config.max_packets_in_flight = 100;
+        let mut client = Socket::bind_any_with_config(config.clone()).unwrap();
+        config.blocking_mode = true;
+        let mut server = Socket::bind_any_with_config(config).unwrap();
+
+        let server_addr = server.local_addr().unwrap();
+
+        let time = Instant::now();
+
+        for id in 0..101 {
+            client
+                .send(Packet::reliable_sequenced(
+                    server_addr,
+                    id.to_string().as_bytes().to_vec(),
+                    None,
+                ))
+                .unwrap();
+            client.manual_poll(time);
+
+            while let Some(event) = client.recv() {
+                match event {
+                    SocketEvent::Timeout(remote_addr) => {
+                        assert_eq![100, id];
+                        assert_eq![remote_addr, server_addr];
+                        return;
+                    }
+                    _ => {
+                        panic!["No other event possible"];
+                    }
+                }
+            }
+        }
+
+        panic!["Should have received a timeout event"];
     }
 
     #[test]

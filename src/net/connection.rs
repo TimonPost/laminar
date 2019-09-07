@@ -67,6 +67,15 @@ impl ActiveConnections {
             .collect()
     }
 
+    /// Get a list of addresses of dead connections
+    pub fn dead_connections(&mut self) -> Vec<SocketAddr> {
+        self.connections
+            .iter()
+            .filter(|(_, connection)| connection.should_be_dropped())
+            .map(|(address, _)| *address)
+            .collect()
+    }
+
     /// Check for and return `VirtualConnection`s which have not sent anything for a duration of at least `heartbeat_interval`.
     pub fn heartbeat_required_connections(
         &mut self,
