@@ -41,7 +41,7 @@ Like IP, UDP is an unreliable protocol. In practice however, most packets that a
 ## Why UDP and not TCP | More
 Those of you familiar with TCP know that it already has its own concept of connection, reliability-ordering and congestion avoidance, so why are we rewriting our own mini version of TCP on top of UDP?
 
-The issue is that multilayer action games rely on a steady stream of packets sent at rates of 10 to 30 packets per second, and for the most part, the data contained in these packets is so time sensitive that only the most recent data is useful. 
+The issue is that multiplayer action games rely on a steady stream of packets sent at rates of 10 to 30 packets per second, and for the most part, the data contained in these packets is so time sensitive that only the most recent data is useful. 
 This includes data such as player inputs, the position, orientation and velocity of each player character, and the state of physics objects in the world.
 
 The problem with TCP is that it abstracts data delivery as a reliable ordered stream. Because of this, if a packet is lost, TCP has to stop and wait for that packet to be resent.
