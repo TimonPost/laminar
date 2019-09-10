@@ -1,11 +1,11 @@
-pub use crate::net::{NetworkQuality, RttMeasurer, VirtualConnection};
+pub use crate::net::{NetworkQuality, RttMeasurer, VirtualConnection, ConnectionManager};
 
 use crate::config::Config;
 use crate::either::Either::{self, Left, Right};
 use std::{
     collections::HashMap,
     net::SocketAddr,
-    time::{Duration, Instant},
+    time::{Duration, Instant},    
 };
 
 /// Maintains a registry of active "connections". Essentially, when we receive a packet on the
@@ -29,11 +29,13 @@ impl ActiveConnections {
         address: SocketAddr,
         config: &Config,
         time: Instant,
+        state_manager: Box<dyn ConnectionManager>,
     ) -> &mut VirtualConnection {
         self.connections
             .entry(address)
-            .or_insert_with(|| VirtualConnection::new(address, config, time))
+            .or_insert_with(|| VirtualConnection::new(address, config, time, state_manager))
     }
+
 
     /// Try to get or create a [VirtualConnection] by address. If the connection does not exist, it will be
     /// created and returned, but not inserted into the table of active connections.
@@ -42,12 +44,17 @@ impl ActiveConnections {
         address: SocketAddr,
         config: &Config,
         time: Instant,
+        state_manager: Box<dyn ConnectionManager>,
     ) -> Either<&mut VirtualConnection, VirtualConnection> {
         if let Some(connection) = self.connections.get_mut(&address) {
             Left(connection)
         } else {
-            Right(VirtualConnection::new(address, config, time))
+            Right(VirtualConnection::new(address, config, time, state_manager))
         }
+    }
+
+    pub fn try_get(&mut self, address: &SocketAddr) -> Option<&mut VirtualConnection> {
+        self.connections.get_mut(address)
     }
 
     /// Removes the connection from `ActiveConnections` by socket address.
@@ -102,11 +109,24 @@ impl ActiveConnections {
 
 #[cfg(test)]
 mod tests {
+
     use super::{ActiveConnections, Config};
     use std::{
         sync::Arc,
         time::{Duration, Instant},
     };
+
+    use super::managers::ConnectionManager;
+
+
+    #[derive(Debug)]
+    struct DummyConnManager {
+    }
+
+    impl ConnectionManager for DummyConnManager {
+
+    }
+
 
     const ADDRESS: &str = "127.0.0.1:12345";
 

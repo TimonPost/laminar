@@ -7,12 +7,13 @@ use crate::{
     },
     net::constants::{
         ACKED_PACKET_HEADER, DEFAULT_ORDERING_STREAM, DEFAULT_SEQUENCING_STREAM,
-        STANDARD_HEADER_SIZE,
+        STANDARD_HEADER_SIZE,        
     },
+    net::managers::ConnectionManager,
     packet::{
         DeliveryGuarantee, OrderingGuarantee, Outgoing, OutgoingPacket, OutgoingPacketBuilder,
         Packet, PacketReader, PacketType, SequenceNumber,
-    },
+    },    
     SocketEvent,
 };
 
@@ -38,11 +39,12 @@ pub struct VirtualConnection {
 
     config: Config,
     fragmentation: Fragmentation,
+    state_manager: Box<dyn ConnectionManager>,
 }
 
 impl VirtualConnection {
     /// Creates and returns a new Connection that wraps the provided socket address
-    pub fn new(addr: SocketAddr, config: &Config, time: Instant) -> VirtualConnection {
+    pub fn new(addr: SocketAddr, config: &Config, time: Instant, state_manager: Box<dyn ConnectionManager>) -> VirtualConnection {
         VirtualConnection {
             last_heard: time,
             last_sent: time,
@@ -53,6 +55,7 @@ impl VirtualConnection {
             congestion_handler: CongestionHandler::new(config),
             fragmentation: Fragmentation::new(config),
             config: config.to_owned(),
+            state_manager,
         }
     }
 
