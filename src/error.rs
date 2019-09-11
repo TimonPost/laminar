@@ -7,6 +7,7 @@ use std::{
     fmt::{self, Display, Formatter},
     io, result,
 };
+use crate::net::managers::ConnectionManagerError;
 
 /// Wrapped result type for Laminar errors.
 pub type Result<T> = result::Result<T, ErrorKind>;
@@ -30,6 +31,8 @@ pub enum ErrorKind {
     SendError(SendError<SocketEvent>),
     /// Expected header but could not be read from buffer.
     CouldNotReadHeader(String),
+    /// Errors that is returned from ConnectionManager either preprocessing data or processing packet
+    ConnectionError(ConnectionManagerError),
 }
 
 impl Display for ErrorKind {
@@ -67,6 +70,11 @@ impl Display for ErrorKind {
                 "Expected {} header but could not be read from buffer.",
                 header
             ),
+            ErrorKind::ConnectionError(err) => write!(
+                fmt,
+                "Something when wrong in ConnectionManager. Reason: {:?}.",
+                err
+            )
         }
     }
 }
@@ -176,6 +184,12 @@ impl From<FragmentErrorKind> for ErrorKind {
 impl From<crossbeam_channel::SendError<SocketEvent>> for ErrorKind {
     fn from(inner: SendError<SocketEvent>) -> Self {
         ErrorKind::SendError(inner)
+    }
+}
+
+impl From<ConnectionManagerError> for ErrorKind {
+    fn from(inner: ConnectionManagerError) -> Self {
+        ErrorKind::ConnectionError(inner)
     }
 }
 

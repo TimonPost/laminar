@@ -1,4 +1,4 @@
-pub use crate::net::{NetworkQuality, RttMeasurer, VirtualConnection, ConnectionManager};
+pub use crate::net::{NetworkQuality, RttMeasurer, VirtualConnection, managers::ConnectionManager};
 
 use crate::config::Config;
 use crate::either::Either::{self, Left, Right};

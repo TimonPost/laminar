@@ -41,3 +41,4 @@ pub use self::config::Config;
 pub use self::error::{ErrorKind, Result};
 pub use self::net::{LinkConditioner, Socket, SocketEvent};
 pub use self::packet::{DeliveryGuarantee, OrderingGuarantee, Packet};
+pub use self::net::managers::{ConnectionManager, ConnectionManagerError};

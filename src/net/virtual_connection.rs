@@ -1,6 +1,7 @@
 use crate::{
     config::Config,
     error::{ErrorKind, PacketErrorKind, Result},
+    either::Either,
     infrastructure::{
         arranging::{Arranging, ArrangingSystem, OrderingSystem, SequencingSystem},
         AcknowledgmentHandler, CongestionHandler, Fragmentation, SentPacket,
@@ -9,7 +10,7 @@ use crate::{
         ACKED_PACKET_HEADER, DEFAULT_ORDERING_STREAM, DEFAULT_SEQUENCING_STREAM,
         STANDARD_HEADER_SIZE,        
     },
-    net::managers::ConnectionManager,
+    net::managers::{ConnectionManager, ConnectionState},
     packet::{
         DeliveryGuarantee, OrderingGuarantee, Outgoing, OutgoingPacket, OutgoingPacketBuilder,
         Packet, PacketReader, PacketType, SequenceNumber,
@@ -40,6 +41,7 @@ pub struct VirtualConnection {
     config: Config,
     fragmentation: Fragmentation,
     state_manager: Box<dyn ConnectionManager>,
+    current_state: ConnectionState,
 }
 
 impl VirtualConnection {
@@ -56,6 +58,7 @@ impl VirtualConnection {
             fragmentation: Fragmentation::new(config),
             config: config.to_owned(),
             state_manager,
+            current_state: ConnectionState::Connecting
         }
     }
 
@@ -235,8 +238,20 @@ impl VirtualConnection {
         }
     }
 
-    /// This processes the incoming data and returns a packet if the data is complete.
+
     pub fn process_incoming(
+        &mut self,
+        received_data: &[u8],
+        sender: &Sender<SocketEvent>,
+        time: Instant,
+    ) -> crate::Result<()> {
+        match self.state_manager.preprocess_incoming(received_data)? {
+            Either::Left(bytes) => self.process_incoming_impl(bytes, sender, time),
+            Either::Right(bytes) => self.process_incoming_impl(bytes.as_slice(), sender, time)
+        }
+    }
+    /// This processes the incoming data and returns a packet if the data is complete.
+    fn process_incoming_impl(
         &mut self,
         received_data: &[u8],
         sender: &Sender<SocketEvent>,
@@ -271,25 +286,20 @@ impl VirtualConnection {
                         .get_or_create_stream(arranging_header.stream_id());
 
                     if let Some(packet) = stream.arrange(arranging_header.arranging_id(), payload) {
-                        Self::queue_packet(
+                        self.process_packet(
                             sender,
-                            packet,
-                            self.remote_address,
+                            packet, 
                             header.delivery_guarantee(),
-                            OrderingGuarantee::Sequenced(Some(arranging_header.stream_id())),
-                        )?;
+                            OrderingGuarantee::Sequenced(Some(arranging_header.stream_id())))?;
                     }
 
                     return Ok(());
                 }
-
-                Self::queue_packet(
+                self.process_packet(
                     sender,
-                    packet_reader.read_payload(),
-                    self.remote_address,
+                    packet_reader.read_payload(), 
                     header.delivery_guarantee(),
-                    header.ordering_guarantee(),
-                )?;
+                    header.ordering_guarantee())?;
             }
             DeliveryGuarantee::Reliable => {
                 if header.is_fragment() {
@@ -301,10 +311,9 @@ impl VirtualConnection {
                             .handle_fragment(fragment_header, &payload)
                         {
                             Ok(Some(payload)) => {
-                                Self::queue_packet(
+                                self.process_packet(
                                     sender,
                                     payload.into_boxed_slice(),
-                                    self.remote_address,
                                     header.delivery_guarantee(),
                                     OrderingGuarantee::None,
                                 )?;
@@ -340,10 +349,9 @@ impl VirtualConnection {
                         if let Some(packet) =
                             stream.arrange(arranging_header.arranging_id(), payload)
                         {
-                            Self::queue_packet(
+                            self.process_packet(
                                 sender,
                                 packet,
-                                self.remote_address,
                                 header.delivery_guarantee(),
                                 OrderingGuarantee::Sequenced(Some(arranging_header.stream_id())),
                             )?;
@@ -358,35 +366,24 @@ impl VirtualConnection {
                         let stream = self
                             .ordering_system
                             .get_or_create_stream(arranging_header.stream_id());
-
-                        if let Some(packet) =
-                            stream.arrange(arranging_header.arranging_id(), payload)
-                        {
-                            Self::queue_packet(
+                        let arranged_packet = stream.arrange(arranging_header.arranging_id(), payload);
+                        let packets = arranged_packet
+                            .into_iter()
+                            .chain(stream.iter_mut())
+                            .collect::<Vec<_>>();
+                        for packet in packets {
+                            self.process_packet(
                                 sender,
-                                packet,
-                                self.remote_address,
-                                header.delivery_guarantee(),
-                                OrderingGuarantee::Ordered(Some(arranging_header.stream_id())),
-                            )?;
-
-                            while let Some(packet) = stream.iter_mut().next() {
-                                Self::queue_packet(
-                                    sender,
-                                    packet,
-                                    self.remote_address,
-                                    header.delivery_guarantee(),
-                                    OrderingGuarantee::Ordered(Some(arranging_header.stream_id())),
-                                )?;
-                            }
+                                packet, 
+                                header.delivery_guarantee(), 
+                                OrderingGuarantee::Ordered(Some(arranging_header.stream_id())))?;
                         }
                     } else {
                         let payload = packet_reader.read_payload();
 
-                        Self::queue_packet(
+                        self.process_packet(
                             sender,
                             payload,
-                            self.remote_address,
                             header.delivery_guarantee(),
                             header.ordering_guarantee(),
                         )?;
@@ -406,19 +403,31 @@ impl VirtualConnection {
         Ok(())
     }
 
-    fn queue_packet(
-        tx: &Sender<SocketEvent>,
-        payload: Box<[u8]>,
-        remote_addr: SocketAddr,
-        delivery: DeliveryGuarantee,
-        ordering: OrderingGuarantee,
+    fn process_packet(
+        &mut self, 
+        sender: &Sender<SocketEvent>,
+        payload: Box<[u8]>, 
+        delivery: DeliveryGuarantee, 
+        ordering: OrderingGuarantee
     ) -> Result<()> {
-        tx.send(SocketEvent::Packet(Packet::new(
-            remote_addr,
-            payload,
-            delivery,
-            ordering,
-        )))?;
+        let packet = Packet::new(self.remote_address, payload,delivery, ordering);
+        let result = self.state_manager.process_incoming(&packet)?;
+
+        if self.current_state == result.state {
+            if self.current_state == ConnectionState::Connected {
+                sender.send(SocketEvent::Packet(packet))?;
+            }
+        } else {
+            match (&self.current_state, &result.state) {
+                (ConnectionState::Connecting, ConnectionState::Connected) => "",
+                (ConnectionState::Connecting, ConnectionState::Disconnected) => "",
+                (ConnectionState::Connected, ConnectionState::Disconnected) => "",
+                (ConnectionState::Disconnected, ConnectionState::Connecting) => "",
+                _ => panic!("Invalid state transition {:?} -> {:?}", self.current_state, result.state)
+            };
+            self.current_state = result.state;
+        }
+        // todo implement ability to return generated packets
         Ok(())
     }
 
