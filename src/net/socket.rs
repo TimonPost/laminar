@@ -1,7 +1,7 @@
 use crate::{
     config::Config,
     error::{ErrorKind, Result},
-    net::{connection::ActiveConnections, events::SocketEvent, link_conditioner::LinkConditioner},
+    net::{connection::ActiveConnections, events::SocketEvent, events::DestroyReason, link_conditioner::LinkConditioner},
     net::managers::{SocketManager},
     packet::{DeliveryGuarantee, Outgoing, Packet},
 };
@@ -193,10 +193,8 @@ impl Socket {
     fn handle_dead_clients(&mut self) -> Result<()> {
         let dead_addresses = self.connections.dead_connections();
         for address in dead_addresses {
-            self.connections.remove_connection(&address);
-            self.event_sender.send(SocketEvent::Timeout(address))?;
+            self.connections.remove_connection(&address, &self.event_sender, self.manager.as_mut(), DestroyReason::TooManyPacketsInFlight)?;
         }
-
         Ok(())
     }
 
@@ -208,10 +206,8 @@ impl Socket {
             .connections
             .idle_connections(self.config.idle_connection_timeout, time);
         for address in idle_addresses {
-            self.connections.remove_connection(&address);
-            self.event_sender.send(SocketEvent::Timeout(address))?;
+            self.connections.remove_connection(&address, &self.event_sender, self.manager.as_mut(), DestroyReason::Timeout)?;
         }
-
         Ok(())
     }
 
@@ -306,8 +302,7 @@ impl Socket {
                     Some(conn)
                 } else {
                     if let Some(manager) = self.manager.accept_new_connection(&address, received_payload) {
-                        // TODO emit create event
-                        self.event_sender.send(SocketEvent::Connect(address))?;
+                        self.event_sender.send(SocketEvent::Created(address))?;
                         Some(self.connections.get_or_insert_connection(address, &self.config, time, manager))                        
                     } else {
                         None

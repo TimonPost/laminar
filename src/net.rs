@@ -11,7 +11,7 @@ mod virtual_connection;
 pub mod constants;
 pub mod managers;
 
-pub use self::events::{SocketEvent, ConnectionSendEvent, ConnectionReceiveEvent };
+pub use self::events::{SocketEvent, DisconnectReason, DestroyReason, ConnectionSendEvent, ConnectionReceiveEvent };
 pub use self::link_conditioner::LinkConditioner;
 pub use self::quality::{NetworkQuality, RttMeasurer};
 pub use self::socket::Socket;

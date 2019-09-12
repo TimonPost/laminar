@@ -1,7 +1,13 @@
 pub use crate::net::{NetworkQuality, RttMeasurer, VirtualConnection, managers::ConnectionManager};
+use crate::{
+    config::Config,
+    either::Either::{self, Left, Right},
+    net::events::{SocketEvent, DisconnectReason, DestroyReason},
+    net::managers::{ConnectionState, SocketManager},
+    packet::Packet,
+};
+use crossbeam_channel::{self, Sender, SendError};
 
-use crate::config::Config;
-use crate::either::Either::{self, Left, Right};
 use std::{
     collections::HashMap,
     net::SocketAddr,
@@ -61,8 +67,20 @@ impl ActiveConnections {
     pub fn remove_connection(
         &mut self,
         address: &SocketAddr,
-    ) -> Option<(SocketAddr, VirtualConnection)> {
-        self.connections.remove_entry(address)
+        sender: &Sender<SocketEvent>,
+        manager: &mut dyn SocketManager,
+        reason: DestroyReason
+    ) -> Result<bool, SendError<SocketEvent>> {
+        if let Some((_, conn)) = self.connections.remove_entry(address) {
+            manager.track_connection_destroyed(address);
+            if conn.get_current_state() == ConnectionState::Connected {
+                sender.send(SocketEvent::Disconnected(DisconnectReason::UnrecoverableError(reason.clone())))?;
+            }
+            sender.send(SocketEvent::Destroyed(reason))?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 
     /// Check for and return `VirtualConnection`s which have been idling longer than `max_idle_time`.
@@ -93,6 +111,17 @@ impl ActiveConnections {
             .iter_mut()
             .filter(move |(_, connection)| connection.last_sent(time) >= heartbeat_interval)
             .map(|(_, connection)| connection)
+    }
+
+    pub fn connection_manager_generated_packets(
+        &mut self
+    ) -> Vec<Packet> {
+        // TODO implement
+        vec!{}
+        // self.connections
+        //     .iter_mut()
+        //     .map(|(_, connection)| connection.get_connection_manager_packets())
+        //     .flatten()
     }
 
     /// Returns true if the given connection exists.

@@ -63,6 +63,11 @@ impl StandardHeader {
         self.packet_type == PacketType::Fragment
     }
 
+    // Returns true if packet is only used ConnectionManager
+    pub fn is_connection_manager(&self) -> bool {
+        self.packet_type == PacketType::ConnectionManager
+    }
+
     /// Checks if the protocol version in the packet is a valid version
     pub fn is_current_protocol(&self) -> bool {
         ProtocolVersion::valid_version(self.protocol_version)

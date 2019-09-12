@@ -90,6 +90,8 @@ pub enum PacketType {
     Fragment = 1,
     /// Heartbeat packet
     Heartbeat = 2,
+    /// ConnectionManager specific header
+    ConnectionManager = 3
 }
 
 impl EnumConverter for PacketType {
@@ -107,6 +109,7 @@ impl TryFrom<u8> for PacketType {
             0 => Ok(PacketType::Packet),
             1 => Ok(PacketType::Fragment),
             2 => Ok(PacketType::Heartbeat),
+            3 => Ok(PacketType::ConnectionManager),
             _ => Err(ErrorKind::DecodingError(DecodingErrorKind::PacketType)),
         }
     }
