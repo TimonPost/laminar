@@ -145,47 +145,35 @@ impl Socket {
             match self.recv_from(time) {
                 Ok(UdpSocketState::MaybeMore) => continue,
                 Ok(UdpSocketState::MaybeEmpty) => break,
-                Err(e) => error!("Encountered an error receiving data: {:?}", e),
+                Err(ref e) => self.manager.track_global_error(e, "receiving data from socket"),
             }
         }
 
         // Now grab all the packets waiting to be sent and send them
         while let Ok(p) = self.packet_receiver.try_recv() {
-            if let Err(e) = self.send_to(p, time) {
-                match e {
-                    ErrorKind::IOError(ref e) if e.kind() == io::ErrorKind::WouldBlock => {}
-                    _ => error!("There was an error sending packet: {:?}", e),
-                }
+            if let Err(ref e) = self.send_to(p, time) {
+                self.manager.track_global_error(e, "sending data from socket")
             }
         }
 
-        // TODO provide real buffer, from config.max_receive_buffer
-        // update all connections, update connection states and send generated packets
-        //
-        let mut buff = [0; 1500];
-        for (address, bytes) in self.connections.update_connections(&mut buff, &self.event_sender, self.manager.as_mut()) {
-            match self.send_packet(&address, &bytes) {
-                Ok(bytes_sent) => self.manager.track_sent_bytes(&address, bytes_sent),
-                Err(err) => self.manager.track_connection_error(&address, &err)
-            }
+        self.connections.update_connections(&self.event_sender, self.manager.as_mut(), &self.socket);
+
+        // get connections that socket manager decided to destroy
+        if let Some(list) = self.manager.collect_connections_to_destroy() {
+            for (addr, reason) in list {
+                self.connections.remove_connection(&addr, &self.event_sender, self.manager.as_mut(), reason, "destroyed by socket manager");
+            }            
         }
 
         // Check for idle clients
-        if let Err(e) = self.handle_idle_clients(time) {
-            error!("Encountered an error when sending TimeoutEvent: {:?}", e);
-        }
+        self.handle_idle_clients(time);
 
         // Handle any dead clients
-        self.handle_dead_clients().expect("Internal laminar error");
+        self.handle_dead_clients();
 
         // Finally send heartbeat packets to connections that require them, if enabled
         if let Some(heartbeat_interval) = self.config.heartbeat_interval {
-            if let Err(e) = self.send_heartbeat_packets(heartbeat_interval, time) {
-                match e {
-                    ErrorKind::IOError(ref e) if e.kind() == io::ErrorKind::WouldBlock => {}
-                    _ => error!("There was an error sending a heartbeat packet: {:?}", e),
-                }
-            }
+            self.send_heartbeat_packets(heartbeat_interval, time);
         }
     }
 
@@ -201,25 +189,23 @@ impl Socket {
 
     /// Iterate through the dead connections and disconnect them by removing them from the
     /// connection map while informing the user of this by sending an event.
-    fn handle_dead_clients(&mut self) -> Result<()> {
+    fn handle_dead_clients(&mut self) {
         let dead_addresses = self.connections.dead_connections();
         for address in dead_addresses {
-            self.connections.remove_connection(&address, &self.event_sender, self.manager.as_mut(), DestroyReason::TooManyPacketsInFlight)?;
+            self.connections.remove_connection(&address, &self.event_sender, self.manager.as_mut(), DestroyReason::TooManyPacketsInFlight, "removing dead clients");
         }
-        Ok(())
     }
 
     /// Iterate through all of the idle connections based on `idle_connection_timeout` config and
     /// remove them from the active connections. For each connection removed, we will send a
     /// `SocketEvent::TimeOut` event to the `event_sender` channel.
-    fn handle_idle_clients(&mut self, time: Instant) -> Result<()> {
+    fn handle_idle_clients(&mut self, time: Instant) {
         let idle_addresses = self
             .connections
             .idle_connections(self.config.idle_connection_timeout, time);
         for address in idle_addresses {
-            self.connections.remove_connection(&address, &self.event_sender, self.manager.as_mut(), DestroyReason::Timeout)?;
+            self.connections.remove_connection(&address, &self.event_sender, self.manager.as_mut(), DestroyReason::Timeout, "removing idle clients");
         }
-        Ok(())
     }
 
     /// Iterate over all connections which have not sent a packet for a duration of at least
@@ -228,7 +214,7 @@ impl Socket {
         &mut self,
         heartbeat_interval: Duration,
         time: Instant,
-    ) -> Result<usize> {
+    ) {
         let heartbeat_packets_and_addrs = self
             .connections
             .heartbeat_required_connections(heartbeat_interval, time)
@@ -239,16 +225,15 @@ impl Socket {
                 )
             })
             .collect::<Vec<_>>();
-
-        let mut bytes_sent = 0;
-
         for (heartbeat_packet, address) in heartbeat_packets_and_addrs {
             if self.should_send_packet() {
-                bytes_sent += self.send_packet(&address, &heartbeat_packet.contents())?;
+                match self.send_packet(&address, &heartbeat_packet.contents()) {
+                    Ok(bytes_sent) => self.manager.track_sent_bytes(&address, bytes_sent),
+                    Err(ref err) => self.manager.track_connection_error(&address, err, "sending heartbeat packet")
+                }
             }
         }
-
-        Ok(bytes_sent)
+        
     }
 
     // Serializes and sends a `Packet` on the socket. On success, returns the number of bytes written.
@@ -314,15 +299,15 @@ impl Socket {
                 } else {
                     if let Some(manager) = self.manager.accept_new_connection(&address) {
                         self.event_sender.send(SocketEvent::Created(address))?;
-                        Some(self.connections.get_or_insert_connection(address, &self.config, time, manager))                        
+                        Some(self.connections.get_or_insert_connection(address, &self.config, time, manager))
                     } else {
                         None
-                    }                    
+                    }
                 };
 
                 if let Some(conn) = connection
-                {
-                    conn.process_incoming(received_payload, &self.event_sender, time)?;
+                {   
+                    conn.process_incoming(received_payload, &self.event_sender, self.manager.as_mut(), time)?;
                 }
             }
             Err(e) => {

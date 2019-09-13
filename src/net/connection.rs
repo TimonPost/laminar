@@ -11,7 +11,7 @@ use crossbeam_channel::{self, Sender, SendError};
 
 use std::{
     collections::HashMap,
-    net::SocketAddr,
+    net::{SocketAddr, UdpSocket},
     time::{Duration, Instant},    
 };
 
@@ -73,17 +73,22 @@ impl ActiveConnections {
         address: &SocketAddr,
         sender: &Sender<SocketEvent>,
         manager: &mut dyn SocketManager,
-        reason: DestroyReason
-    ) -> Result<bool, SendError<SocketEvent>> {
+        reason: DestroyReason,
+        error_context: &str
+    ) -> bool {
         if let Some((_, conn)) = self.connections.remove_entry(address) {
             manager.track_connection_destroyed(address);
             if let ConnectionState::Connected(_) = conn.get_current_state() {
-                sender.send(SocketEvent::Disconnected(DisconnectReason::UnrecoverableError(reason.clone())))?;
+                if let Err(err) = sender.send(SocketEvent::Disconnected(DisconnectReason::UnrecoverableError(reason.clone()))) {
+                    manager.track_connection_error(&conn.remote_address, &ErrorKind::SendError(err), error_context);
+                }
             }
-            sender.send(SocketEvent::Destroyed(reason))?;
-            Ok(true)
+            if let Err(err) = sender.send(SocketEvent::Destroyed(reason)) {
+                manager.track_connection_error(&conn.remote_address, &ErrorKind::SendError(err), error_context);
+            }
+            true
         } else {
-            Ok(false)
+            false
         }
     }
 
@@ -109,7 +114,7 @@ impl ActiveConnections {
     pub fn heartbeat_required_connections(
         &mut self,
         heartbeat_interval: Duration,
-        time: Instant,
+        time: Instant
     ) -> impl Iterator<Item = &mut VirtualConnection> {
         self.connections
             .iter_mut()
@@ -119,36 +124,44 @@ impl ActiveConnections {
 
     pub fn update_connections(
         &mut self,
-        mut buffer: &mut [u8],
         sender: &Sender<SocketEvent>,
-        manager:&mut dyn SocketManager
-    ) -> Vec<(SocketAddr, Box<[u8]>)> {
+        manager:&mut dyn SocketManager,
+        socket:&UdpSocket
+    ) {
+        // TODO provide real buffer, from config.max_receive_buffer
+        // update all connections, update connection states and send generated packets
+        let mut buffer = [0; 1500];
+
         let time = Instant::now();
         self.connections
             .iter_mut()
-            .filter_map(|(_, conn)| match conn.state_manager.update(&mut buffer, time) {
+            .for_each(|(_, conn)| match conn.state_manager.update(&mut buffer, time) {
                 Some(result) => match result {
                     Ok(event) => match event {
-                        Either::Left(packet) => Some((conn.remote_address, packet.contents())),
+                        Either::Left(packet) => {
+                            //TODO refactor, so that i could pass here link conditioner as well
+                            match socket.send_to(&packet.contents(), conn.remote_address) {
+                                Ok(bytes_sent) => manager.track_sent_bytes(&conn.remote_address, bytes_sent),
+                                Err(err) => manager.track_connection_error(&conn.remote_address, &ErrorKind::IOError(err), 
+                                    "sending packet from connection manager")
+                            };
+                        },
                         Either::Right(state) => {
                             conn.current_state = state.clone();
                             if let Err(err) = match &conn.current_state {
                                     ConnectionState::Connected(data) => sender.send(SocketEvent::Connected(conn.remote_address, data.clone())),
                                     ConnectionState::Disconnected(closed_by) => sender.send(SocketEvent::Disconnected(DisconnectReason::ClosedBy(closed_by.clone()))),
                                     _ => Ok(()),} {
-                                manager.track_global_error(&ErrorKind::SendError(err));
+                                manager.track_connection_error(&conn.remote_address, &ErrorKind::SendError(err), "sending connection state update");
                             }
-                            None
                         }
                     },
                     Err(err) => {
-                        manager.track_connection_error(&conn.remote_address, &ErrorKind::ConnectionError(err));
-                        None
+                        manager.track_connection_error(&conn.remote_address, &ErrorKind::ConnectionError(err), "recieved connection manager error");
                     }
                 },
-                None => None
-            })
-            .collect()
+                None => {}
+            });
     }
 
     /// Returns true if the given connection exists.

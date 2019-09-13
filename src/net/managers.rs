@@ -32,13 +32,13 @@ pub enum ConnectionState {
 
 impl ConnectionState {
     /// Tries to change current state, returns old state if successfully changed.
-    pub fn try_change(&mut self, new: Self) -> Option<Self> {
+    pub fn try_change(&mut self, new: &Self) -> Option<Self> {
         match (&self, &new) {
             (ConnectionState::Connecting, ConnectionState::Connected(_))
             | (ConnectionState::Connecting, ConnectionState::Disconnected(_))
             | (ConnectionState::Connected(_), ConnectionState::Disconnected(_))
             | (ConnectionState::Disconnected(_), ConnectionState::Connecting) => {
-                Some(std::mem::replace(self, new))
+                Some(std::mem::replace(self, new.clone()))
             }
             _ => None,
         }
@@ -125,16 +125,26 @@ pub trait SocketManager: Debug {
     fn accept_new_connection(&mut self, addr: &SocketAddr) -> Option<Box<dyn ConnectionManager>>;
 
     /// Returns list of connections that socket manager decided to destroy
-    fn destroy_connections(&mut self) -> Option<Vec<(SocketAddr, DestroyReason)>>;
+    fn collect_connections_to_destroy(&mut self) -> Option<Vec<(SocketAddr, DestroyReason)>>;
 
     // all sorts of statistics might be useful here to help deciding whether new connection can be created or not
-    fn track_connection_error(&mut self, addr: &SocketAddr, error: &ErrorKind);
-    fn track_global_error(&mut self, error: &ErrorKind);
+    fn track_connection_error(&mut self, addr: &SocketAddr, error: &ErrorKind, error_context: &str);
+    fn track_global_error(&mut self, error: &ErrorKind, error_context: &str);
     fn track_sent_bytes(&mut self, addr: &SocketAddr, bytes: usize);
     fn track_received_bytes(&mut self, addr: &SocketAddr, bytes: usize);
     fn track_ignored_bytes(&mut self, addr: &SocketAddr, bytes: usize);
     fn track_connection_destroyed(&mut self, addr: &SocketAddr);
 }
+
+
+
+
+//======================================= demo implementations ==========================================
+
+use crate::packet::{DeliveryGuarantee, OrderingGuarantee, OutgoingPacketBuilder, PacketType};
+use log::error;
+use std::io::ErrorKind::WouldBlock;
+
 
 /// Simple connection manager, sends "connect" and "disconnect" messages and changes states when receive either of theses messages
 #[derive(Debug, Default)]
@@ -142,8 +152,6 @@ struct SimpleConnectionManager {
     state: ConnectionState,
     send: Option<Box<[u8]>>,
 }
-
-use crate::packet::{DeliveryGuarantee, OrderingGuarantee, OutgoingPacketBuilder, PacketType};
 
 impl ConnectionManager for SimpleConnectionManager {
     fn update<'a>(
@@ -194,9 +202,13 @@ impl ConnectionManager for SimpleConnectionManager {
     ) -> Result<&ConnectionState, ConnectionManagerError> {
         if data.starts_with("connect".as_bytes()) {
             self.state
-                .try_change(ConnectionState::Connected(Box::from(data.split_at(7).1)));
+                .try_change(&ConnectionState::Connected(Box::from(data.split_at(7).1)));
+            self.send = Some(Box::from("connected".as_bytes()));
+        } else if data.eq("connected".as_bytes()) {
+            self.state
+                .try_change(&ConnectionState::Connected(Box::from(data.split_at(9).1)));
         } else if data.eq("disconnect".as_bytes()) {
-            self.state.try_change(ConnectionState::Disconnected(ConnectionClosedBy::RemoteHost));
+            self.state.try_change(&ConnectionState::Disconnected(ConnectionClosedBy::RemoteHost));
         } else {
             return Err(ConnectionManagerError(format!(
                 "Unknown message type: {:?}",
@@ -211,7 +223,7 @@ impl ConnectionManager for SimpleConnectionManager {
     }
 
     fn disconnect<'a>(&mut self) {
-        self.state.try_change(ConnectionState::Disconnected(ConnectionClosedBy::LocalHost));
+        self.state.try_change(&ConnectionState::Disconnected(ConnectionClosedBy::LocalHost));
         self.send = Some(Box::from("disconnect".as_bytes()));
     }
 }
@@ -225,12 +237,19 @@ impl SocketManager for DumbSocketManager {
         Some(Box::new(SimpleConnectionManager::default()))
     }
 
-    fn destroy_connections(&mut self) -> Option<Vec<(SocketAddr, DestroyReason)>> {
+    fn collect_connections_to_destroy(&mut self) -> Option<Vec<(SocketAddr, DestroyReason)>> {
         None
     }
     
-    fn track_connection_error(&mut self, addr: &SocketAddr, error: &ErrorKind) {}
-    fn track_global_error(&mut self, error: &ErrorKind) {}
+    fn track_connection_error(&mut self, addr: &SocketAddr, error: &ErrorKind, error_context: &str) {
+        match error {
+            ErrorKind::IOError(ref e) if e.kind() == WouldBlock => {},
+            _ => error!("{} ({:?}): {:?}", error_context, addr, error)
+        }
+    }
+    fn track_global_error(&mut self, error: &ErrorKind, error_context: &str) {
+        error!("{} : {:?}", error_context, error);
+    }
     fn track_sent_bytes(&mut self, addr: &SocketAddr, bytes: usize) {}
     fn track_received_bytes(&mut self, addr: &SocketAddr, bytes: usize) {}
     fn track_ignored_bytes(&mut self, addr: &SocketAddr, bytes: usize) {}

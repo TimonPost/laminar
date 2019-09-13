@@ -64,7 +64,7 @@ impl StandardHeader {
     }
 
     // Returns true if packet is only used ConnectionManager
-    pub fn is_connection_manager(&self) -> bool {
+    pub fn is_connection_manager_packet(&self) -> bool {
         self.packet_type == PacketType::ConnectionManager
     }
 
