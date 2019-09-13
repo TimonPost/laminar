@@ -41,9 +41,9 @@ pub struct VirtualConnection {
 
     config: Config,
     fragmentation: Fragmentation,
-    state_manager: Box<dyn ConnectionManager>,
-    current_state: ConnectionState,
-    conn_manager_packets: Vec<Packet>
+    pub state_manager: Box<dyn ConnectionManager>,
+    pub current_state: ConnectionState,
+    pub conn_manager_packets: Vec<Packet>
 }
 
 impl VirtualConnection {
@@ -84,8 +84,8 @@ impl VirtualConnection {
         time.duration_since(self.last_sent)
     }
 
-    pub fn get_current_state(&self) -> ConnectionState {
-        self.current_state
+    pub fn get_current_state(&self) -> &ConnectionState {
+        &self.current_state
     }
 
     /// This will create a heartbeat packet that is expected to be sent over the network
@@ -284,10 +284,10 @@ impl VirtualConnection {
         sender: &Sender<SocketEvent>,
         time: Instant,
     ) -> crate::Result<()> {
-        match self.state_manager.preprocess_incoming(received_data)? {
-            Either::Left(bytes) => self.process_incoming_impl(bytes, sender, time),
-            Either::Right(bytes) => self.process_incoming_impl(bytes.as_slice(), sender, time)
-        }
+        // TODO pass buffer from somewhere else
+        let mut buffer = [0;1500];
+        let bytes = self.state_manager.preprocess_incoming(received_data, &mut buffer)?;
+        self.process_incoming_impl(bytes, sender, time)
     }
     /// This processes the incoming data and returns a packet if the data is complete.
     fn process_incoming_impl(
@@ -459,33 +459,33 @@ impl VirtualConnection {
     ) -> Result<()> {
         let packet = Packet::new(self.remote_address, payload,delivery, ordering);
         //let mut new_packets = vec!{};
-        let new_state = self.state_manager.process_incoming(&packet, &mut |new_packet| {
-            // TODO refactor so, that i could remove self from here
-            self.process_outgoing_impl(new_packet.payload(),new_packet.delivery_guarantee(),
-                             new_packet.order_guarantee(),None,Instant::now());
-            //new_packets.push(new);
-            Ok(())
-        })?;
+        // let new_state = self.state_manager.process_incoming(&packet, &mut |new_packet| {
+        //     // TODO refactor so, that i could remove self from here
+        //     self.process_outgoing_impl(new_packet.payload(),new_packet.delivery_guarantee(),
+        //                      new_packet.order_guarantee(),None,Instant::now());
+        //     //new_packets.push(new);
+        //     Ok(())
+        // })?;
 
-        if self.current_state == new_state {
-            if self.current_state == ConnectionState::Connected && !is_connection_packet {
-                sender.send(SocketEvent::Packet(packet))?;
-            }
-        } else {
-            match (&self.current_state, new_state) {
-                (ConnectionState::Connecting, ConnectionState::Connected) => {
-                    sender.send(SocketEvent::Connected)?;
-                    if !is_connection_packet {
-                        sender.send(SocketEvent::Packet(packet))?;
-                    }
-                },
-                (ConnectionState::Connecting, ConnectionState::Disconnected) => (),// no need to send any event, because socket is not connected and is will be destroyed later
-                (ConnectionState::Connected, ConnectionState::Disconnected) => sender.send(SocketEvent::Disconnected(DisconnectReason::ClosedByClient))?,
-                (ConnectionState::Disconnected, ConnectionState::Connecting) => self.reset_connection(),
-                _ => panic!("Invalid state transition {:?} -> {:?}", self.current_state, new_state)
-            };
-            self.current_state = new_state;
-        }
+        // if self.current_state == new_state {
+        //     if self.current_state == ConnectionState::Connected && !is_connection_packet {
+        //         sender.send(SocketEvent::Packet(packet))?;
+        //     }
+        // } else {
+        //     match (&self.current_state, new_state) {
+        //         (ConnectionState::Connecting, ConnectionState::Connected) => {
+        //             sender.send(SocketEvent::Connected)?;
+        //             if !is_connection_packet {
+        //                 sender.send(SocketEvent::Packet(packet))?;
+        //             }
+        //         },
+        //         (ConnectionState::Connecting, ConnectionState::Disconnected) => (),// no need to send any event, because socket is not connected and is will be destroyed later
+        //         (ConnectionState::Connected, ConnectionState::Disconnected) => sender.send(SocketEvent::Disconnected(DisconnectReason::ClosedByClient))?,
+        //         (ConnectionState::Disconnected, ConnectionState::Connecting) => self.reset_connection(),
+        //         _ => panic!("Invalid state transition {:?} -> {:?}", self.current_state, new_state)
+        //     };
+        //     self.current_state = new_state;
+        // }
         // todo implement ability to return generated packets
         Ok(())
     }

@@ -24,17 +24,22 @@ pub enum DestroyReason {
     TooManyPacketErrors,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub enum ConnectionClosedBy {
+    LocalHost,
+    RemoteHost
+}
+
 #[derive(Debug, PartialEq)]
 pub enum DisconnectReason {
-    ClosedByClient,
-    ClosedByHost,
+    ClosedBy(ConnectionClosedBy),
     UnrecoverableError(DestroyReason)
 }
 
 #[derive(Debug, PartialEq)]
 pub enum SocketEvent {    
     Created(SocketAddr),
-    Connected,
+    Connected(SocketAddr, Box<[u8]>),
     Packet(Packet),
     Disconnected(DisconnectReason),
     Destroyed(DestroyReason),

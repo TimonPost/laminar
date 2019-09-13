@@ -4,7 +4,8 @@ use crate::{
     either::Either::{self, Left, Right},
     net::events::{SocketEvent, DisconnectReason, DestroyReason},
     net::managers::{ConnectionState, SocketManager},
-    packet::Packet,
+    packet::{Packet, OutgoingPacket},
+    ErrorKind,
 };
 use crossbeam_channel::{self, Sender, SendError};
 
@@ -19,12 +20,15 @@ use std::{
 #[derive(Debug)]
 pub struct ActiveConnections {
     connections: HashMap<SocketAddr, VirtualConnection>,
+    buffer: Box<[u8]>
 }
 
 impl ActiveConnections {
     pub fn new() -> Self {
         Self {
             connections: HashMap::new(),
+            // TODO actually take from config
+            buffer: Box::new([0;1500])
         }
     }
 
@@ -73,7 +77,7 @@ impl ActiveConnections {
     ) -> Result<bool, SendError<SocketEvent>> {
         if let Some((_, conn)) = self.connections.remove_entry(address) {
             manager.track_connection_destroyed(address);
-            if conn.get_current_state() == ConnectionState::Connected {
+            if let ConnectionState::Connected(_) = conn.get_current_state() {
                 sender.send(SocketEvent::Disconnected(DisconnectReason::UnrecoverableError(reason.clone())))?;
             }
             sender.send(SocketEvent::Destroyed(reason))?;
@@ -113,15 +117,38 @@ impl ActiveConnections {
             .map(|(_, connection)| connection)
     }
 
-    pub fn connection_manager_generated_packets(
-        &mut self
-    ) -> Vec<Packet> {
-        // TODO implement
-        vec!{}
-        // self.connections
-        //     .iter_mut()
-        //     .map(|(_, connection)| connection.get_connection_manager_packets())
-        //     .flatten()
+    pub fn update_connections(
+        &mut self,
+        mut buffer: &mut [u8],
+        sender: &Sender<SocketEvent>,
+        manager:&mut dyn SocketManager
+    ) -> Vec<(SocketAddr, Box<[u8]>)> {
+        let time = Instant::now();
+        self.connections
+            .iter_mut()
+            .filter_map(|(_, conn)| match conn.state_manager.update(&mut buffer, time) {
+                Some(result) => match result {
+                    Ok(event) => match event {
+                        Either::Left(packet) => Some((conn.remote_address, packet.contents())),
+                        Either::Right(state) => {
+                            conn.current_state = state.clone();
+                            if let Err(err) = match &conn.current_state {
+                                    ConnectionState::Connected(data) => sender.send(SocketEvent::Connected(conn.remote_address, data.clone())),
+                                    ConnectionState::Disconnected(closed_by) => sender.send(SocketEvent::Disconnected(DisconnectReason::ClosedBy(closed_by.clone()))),
+                                    _ => Ok(()),} {
+                                manager.track_global_error(&ErrorKind::SendError(err));
+                            }
+                            None
+                        }
+                    },
+                    Err(err) => {
+                        manager.track_connection_error(&conn.remote_address, &ErrorKind::ConnectionError(err));
+                        None
+                    }
+                },
+                None => None
+            })
+            .collect()
     }
 
     /// Returns true if the given connection exists.

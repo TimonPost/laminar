@@ -159,6 +159,17 @@ impl Socket {
             }
         }
 
+        // TODO provide real buffer, from config.max_receive_buffer
+        // update all connections, update connection states and send generated packets
+        //
+        let mut buff = [0; 1500];
+        for (address, bytes) in self.connections.update_connections(&mut buff, &self.event_sender, self.manager.as_mut()) {
+            match self.send_packet(&address, &bytes) {
+                Ok(bytes_sent) => self.manager.track_sent_bytes(&address, bytes_sent),
+                Err(err) => self.manager.track_connection_error(&address, &err)
+            }
+        }
+
         // Check for idle clients
         if let Err(e) = self.handle_idle_clients(time) {
             error!("Encountered an error when sending TimeoutEvent: {:?}", e);
@@ -301,7 +312,7 @@ impl Socket {
                 let connection = if let Some(conn) = self.connections.try_get(&address) {
                     Some(conn)
                 } else {
-                    if let Some(manager) = self.manager.accept_new_connection(&address, received_payload) {
+                    if let Some(manager) = self.manager.accept_new_connection(&address) {
                         self.event_sender.send(SocketEvent::Created(address))?;
                         Some(self.connections.get_or_insert_connection(address, &self.config, time, manager))                        
                     } else {
