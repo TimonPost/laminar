@@ -36,10 +36,13 @@ pub enum DisconnectReason {
     UnrecoverableError(DestroyReason)
 }
 
+// TODO rename to SocketReceiveEvent and create new with SocketSendEvent
 #[derive(Debug, PartialEq)]
-pub enum SocketEvent {    
+pub enum SocketEvent {        
     Created(SocketAddr),
+    // TODO maybe change to Vec?
     Connected(SocketAddr, Box<[u8]>),
+    // TODO probably good idea, to add SocketAddr to all these method
     Packet(Packet),
     Disconnected(DisconnectReason),
     Destroyed(DestroyReason),

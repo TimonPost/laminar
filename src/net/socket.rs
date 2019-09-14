@@ -2,7 +2,7 @@ use crate::{
     config::Config,
     error::{ErrorKind, Result},
     net::{connection::ActiveConnections, events::SocketEvent, events::DestroyReason, link_conditioner::LinkConditioner},
-    net::managers::{SocketManager},
+    net::managers::{SocketManager, ConnectionManager},
     packet::{DeliveryGuarantee, Outgoing, Packet},
 };
 use crossbeam_channel::{self, unbounded, Receiver, SendError, Sender, TryRecvError};
@@ -14,14 +14,53 @@ use std::{
     time::{Duration, Instant},
 };
 
+// just wrap whese too together, for easier passing around
+#[derive(Debug)]
+pub struct SocketWithConditioner {
+    buffer: Vec<u8>,
+    socket: UdpSocket,
+    link_conditioner: Option<LinkConditioner>,
+}
+
+impl SocketWithConditioner {
+    /// Send a single packet over the UDP socket. 
+    /// Postprocess it using Connectionmanager`s postprocess_outgoing method,
+    /// and use link condition if exists, to simulate network conditions
+    pub fn send_packet(&mut self, addr:&SocketAddr, manager:&mut dyn ConnectionManager, payload:&[u8]) -> Result<usize> {
+        let payload = manager.postprocess_outgoing(payload, self.buffer.as_mut_slice());
+        if let Some(ref mut link) = self.link_conditioner {
+            if !link.should_send() {
+                return Ok(0)
+            }
+        }        
+        Ok(self.socket.send_to(payload, addr)?)
+    }
+
+    pub fn send_packet_and_log(&mut self, addr:&SocketAddr, conn_man:&mut dyn ConnectionManager, payload:&[u8], sock_man:&mut dyn SocketManager, error_context:&str) -> usize {
+        match self.send_packet(addr, conn_man, payload) {
+            Ok(bytes) => {
+                sock_man.track_sent_bytes(addr, bytes);
+                bytes
+            },
+            Err(ref err) => {
+                sock_man.track_connection_error(addr, err, error_context);
+                0
+            }
+        }
+    }
+
+}
+
+
+
 /// A reliable UDP socket implementation with configurable reliability and ordering guarantees.
 #[derive(Debug)]
 pub struct Socket {
-    socket: UdpSocket,
+    socket: SocketWithConditioner,    
     config: Config,
     connections: ActiveConnections,
     recv_buffer: Vec<u8>,
-    link_conditioner: Option<LinkConditioner>,
+    
     event_sender: Sender<SocketEvent>,
     packet_receiver: Receiver<Packet>,
 
@@ -72,10 +111,13 @@ impl Socket {
         let (packet_sender, packet_receiver) = unbounded();
         Ok(Socket {            
             recv_buffer: vec![0; config.receive_buffer_max_size],
-            socket,
+            socket: SocketWithConditioner {
+                buffer: Vec::with_capacity(config.receive_buffer_max_size),
+                socket,
+                link_conditioner: None,
+            },
             config,
             connections: ActiveConnections::new(),
-            link_conditioner: None,
             event_sender,
             packet_receiver,
 
@@ -156,7 +198,7 @@ impl Socket {
             }
         }
 
-        self.connections.update_connections(&self.event_sender, self.manager.as_mut(), &self.socket);
+        self.connections.update_connections(&self.event_sender, self.manager.as_mut(), &mut self.socket);
 
         // get connections that socket manager decided to destroy
         if let Some(list) = self.manager.collect_connections_to_destroy() {
@@ -173,18 +215,20 @@ impl Socket {
 
         // Finally send heartbeat packets to connections that require them, if enabled
         if let Some(heartbeat_interval) = self.config.heartbeat_interval {
-            self.send_heartbeat_packets(heartbeat_interval, time);
+            // Iterate over all connections which have not sent a packet for a duration of at least
+            // `heartbeat_interval` (from config), and send a heartbeat packet to each.
+            self.connections.heartbeat_required_connections(heartbeat_interval, time, self.manager.as_mut(), &mut self.socket);
         }
     }
 
     /// Set the link conditioner for this socket. See [LinkConditioner] for further details.
     pub fn set_link_conditioner(&mut self, link_conditioner: Option<LinkConditioner>) {
-        self.link_conditioner = link_conditioner;
+        self.socket.link_conditioner = link_conditioner;
     }
 
     /// Get the local socket address
     pub fn local_addr(&self) -> Result<SocketAddr> {
-        Ok(self.socket.local_addr()?)
+        Ok(self.socket.socket.local_addr()?)
     }
 
     /// Iterate through the dead connections and disconnect them by removing them from the
@@ -206,34 +250,6 @@ impl Socket {
         for address in idle_addresses {
             self.connections.remove_connection(&address, &self.event_sender, self.manager.as_mut(), DestroyReason::Timeout, "removing idle clients");
         }
-    }
-
-    /// Iterate over all connections which have not sent a packet for a duration of at least
-    /// `heartbeat_interval` (from config), and send a heartbeat packet to each.
-    fn send_heartbeat_packets(
-        &mut self,
-        heartbeat_interval: Duration,
-        time: Instant,
-    ) {
-        let heartbeat_packets_and_addrs = self
-            .connections
-            .heartbeat_required_connections(heartbeat_interval, time)
-            .map(|connection| {
-                (
-                    connection.create_and_process_heartbeat(time),
-                    connection.remote_address,
-                )
-            })
-            .collect::<Vec<_>>();
-        for (heartbeat_packet, address) in heartbeat_packets_and_addrs {
-            if self.should_send_packet() {
-                match self.send_packet(&address, &heartbeat_packet.contents()) {
-                    Ok(bytes_sent) => self.manager.track_sent_bytes(&address, bytes_sent),
-                    Err(ref err) => self.manager.track_connection_error(&address, err, "sending heartbeat packet")
-                }
-            }
-        }
-        
     }
 
     // Serializes and sends a `Packet` on the socket. On success, returns the number of bytes written.
@@ -268,18 +284,16 @@ impl Socket {
             processed_packets.push(processed_packet);
 
             for processed_packet in processed_packets {
-                if self.should_send_packet() {
                     match processed_packet {
                         Outgoing::Packet(outgoing) => {
-                            bytes_sent += self.send_packet(address, &outgoing.contents())?;
+                            bytes_sent += self.socket.send_packet(address, connection.state_manager.as_mut(), &outgoing.contents())?;
                         }
                         Outgoing::Fragments(packets) => {
                             for outgoing in packets {
-                                bytes_sent += self.send_packet(address, &outgoing.contents())?;
+                                bytes_sent += self.socket.send_packet(address, connection.state_manager.as_mut(), &outgoing.contents())?;
                             }
                         }
                     }
-                }
             }
         }
         Ok(bytes_sent)
@@ -287,7 +301,7 @@ impl Socket {
 
     // On success the packet will be sent on the `event_sender`
     fn recv_from(&mut self, time: Instant) -> Result<UdpSocketState> {
-        match self.socket.recv_from(&mut self.recv_buffer) {
+        match self.socket.socket.recv_from(&mut self.recv_buffer) {
             Ok((recv_len, address)) => {
                 if recv_len == 0 {
                     return Err(ErrorKind::ReceivedDataToShort)?;
@@ -327,21 +341,6 @@ impl Socket {
         }
     }
 
-    // Send a single packet over the UDP socket.
-    fn send_packet(&self, addr: &SocketAddr, payload: &[u8]) -> Result<usize> {
-        let bytes_sent = self.socket.send_to(payload, addr)?;
-        Ok(bytes_sent)
-    }
-
-    // In the presence of a link conditioner, we would like it to determine whether or not we should
-    // send a packet.
-    fn should_send_packet(&mut self) -> bool {
-        if let Some(link_conditioner) = &mut self.link_conditioner {
-            link_conditioner.should_send()
-        } else {
-            true
-        }
-    }
 
     #[cfg(test)]
     fn connection_count(&self) -> usize {

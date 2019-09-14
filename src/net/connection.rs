@@ -4,9 +4,11 @@ use crate::{
     either::Either::{self, Left, Right},
     net::events::{SocketEvent, DisconnectReason, DestroyReason},
     net::managers::{ConnectionState, SocketManager},
+    net::socket::SocketWithConditioner,
     packet::{Packet, OutgoingPacket},
     ErrorKind,
 };
+
 use crossbeam_channel::{self, Sender, SendError};
 
 use std::{
@@ -114,19 +116,25 @@ impl ActiveConnections {
     pub fn heartbeat_required_connections(
         &mut self,
         heartbeat_interval: Duration,
-        time: Instant
-    ) -> impl Iterator<Item = &mut VirtualConnection> {
+        time: Instant,
+        manager:&mut dyn SocketManager,
+        socket:&mut SocketWithConditioner
+    ) {
         self.connections
             .iter_mut()
             .filter(move |(_, connection)| connection.last_sent(time) >= heartbeat_interval)
-            .map(|(_, connection)| connection)
+            .for_each(|(_, connection)| {
+                let packet = connection.create_and_process_heartbeat(time);
+                socket.send_packet_and_log(&connection.remote_address, connection.state_manager.as_mut(), &packet.contents(), manager, "sending heartbeat packet");
+            });
     }
+
 
     pub fn update_connections(
         &mut self,
         sender: &Sender<SocketEvent>,
         manager:&mut dyn SocketManager,
-        socket:&UdpSocket
+        socket:&mut SocketWithConditioner
     ) {
         // TODO provide real buffer, from config.max_receive_buffer
         // update all connections, update connection states and send generated packets
@@ -139,12 +147,7 @@ impl ActiveConnections {
                 Some(result) => match result {
                     Ok(event) => match event {
                         Either::Left(packet) => {
-                            //TODO refactor, so that i could pass here link conditioner as well
-                            match socket.send_to(&packet.contents(), conn.remote_address) {
-                                Ok(bytes_sent) => manager.track_sent_bytes(&conn.remote_address, bytes_sent),
-                                Err(err) => manager.track_connection_error(&conn.remote_address, &ErrorKind::IOError(err), 
-                                    "sending packet from connection manager")
-                            };
+                            socket.send_packet_and_log(&conn.remote_address, conn.state_manager.as_mut(), &packet.contents(), manager, "sending packet from connection manager");
                         },
                         Either::Right(state) => {
                             conn.current_state = state.clone();
