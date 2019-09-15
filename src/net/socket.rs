@@ -1,7 +1,8 @@
 use crate::{
     config::Config,
     error::{ErrorKind, Result},
-    net::{connection::ActiveConnections, events::SocketEvent, events::DestroyReason, link_conditioner::LinkConditioner},
+    net::{connection::ActiveConnections, link_conditioner::LinkConditioner},
+    net::events::{ConnectionEvent, SendEvent, ReceiveEvent, DestroyReason},
     net::managers::{SocketManager, ConnectionManager},
     packet::{DeliveryGuarantee, Outgoing, Packet},
 };
@@ -61,11 +62,11 @@ pub struct Socket {
     connections: ActiveConnections,
     recv_buffer: Vec<u8>,
     
-    event_sender: Sender<SocketEvent>,
-    packet_receiver: Receiver<Packet>,
+    event_sender: Sender<ConnectionEvent<ReceiveEvent>>,
+    packet_receiver: Receiver<ConnectionEvent<SendEvent>>,
 
-    receiver: Receiver<SocketEvent>,
-    sender: Sender<Packet>,
+    receiver: Receiver<ConnectionEvent<ReceiveEvent>>,
+    sender: Sender<ConnectionEvent<SendEvent>>,
     manager: Box<dyn SocketManager>,
 }
 
@@ -131,29 +132,27 @@ impl Socket {
     /// Returns a handle to the packet sender which provides a thread-safe way to enqueue packets
     /// to be processed. This should be used when the socket is busy running its polling loop in a
     /// separate thread.
-    pub fn get_packet_sender(&mut self) -> Sender<Packet> {
+    pub fn get_packet_sender(&mut self) -> Sender<ConnectionEvent<SendEvent>> {
         self.sender.clone()
     }
 
     /// Returns a handle to the event receiver which provides a thread-safe way to retrieve events
     /// from the socket. This should be used when the socket is busy running its polling loop in
     /// a separate thread.
-    pub fn get_event_receiver(&mut self) -> Receiver<SocketEvent> {
+    pub fn get_event_receiver(&mut self) -> Receiver<ConnectionEvent<ReceiveEvent>> {
         self.receiver.clone()
     }
 
     /// Send a packet
-    pub fn send(&mut self, packet: Packet) -> Result<()> {
-        match self.sender.send(packet) {
+    pub fn send(&mut self, event: ConnectionEvent<SendEvent>) -> Result<()> {
+        match self.sender.send(event) {
             Ok(_) => Ok(()),
-            Err(error) => Err(ErrorKind::SendError(SendError(SocketEvent::Packet(
-                error.0,
-            )))),
+            Err(error) => Err(ErrorKind::SendError(error)),
         }
     }
 
     /// Receive a packet
-    pub fn recv(&mut self) -> Option<SocketEvent> {
+    pub fn recv(&mut self) -> Option<ConnectionEvent<ReceiveEvent>> {
         match self.receiver.try_recv() {
             Ok(pkt) => Some(pkt),
             Err(TryRecvError::Empty) => None,
@@ -253,10 +252,11 @@ impl Socket {
     }
 
     // Serializes and sends a `Packet` on the socket. On success, returns the number of bytes written.
-    fn send_to(&mut self, packet: Packet, time: Instant) -> Result<usize> {        
+    fn send_to(&mut self, event: ConnectionEvent<SendEvent>, time: Instant) -> Result<usize> {        
         let mut bytes_sent = 0;
-        let address = &packet.addr();
+        let address = &event.addr;
         if let Some(connection) = self.connections.try_get(address) {
+            // TODO maybe these should not depend on send_to method?
             let dropped = connection.gather_dropped_packets();
             let mut processed_packets: Vec<Outgoing> = dropped
                 .iter()
@@ -273,15 +273,21 @@ impl Socket {
                 })
                 .collect();
 
-            let processed_packet = connection.process_outgoing(
-                packet.payload(),
-                packet.delivery_guarantee(),
-                packet.order_guarantee(),
-                None,
-                time,
-            )?;
-
-            processed_packets.push(processed_packet);
+            match event.event {
+                Connect(data) => connection.state_manager.connect(data);
+                Packet(data) => {
+                    let processed_packet = connection.process_outgoing(
+                        packet.payload(),
+                        packet.delivery_guarantee(),
+                        packet.order_guarantee(),
+                        None,
+                        time,
+                    )?;
+                    processed_packets.push(processed_packet);
+                }
+                Disconnect => connection.state_manager.disconnect();
+            }                
+            
 
             for processed_packet in processed_packets {
                     match processed_packet {
@@ -312,7 +318,10 @@ impl Socket {
                     Some(conn)
                 } else {
                     if let Some(manager) = self.manager.accept_new_connection(&address) {
-                        self.event_sender.send(SocketEvent::Created(address))?;
+                        self.event_sender.send(ConnectionEvent { 
+                                addr: address,
+                                event: ReceiveEvent::Created
+                            })?;
                         Some(self.connections.get_or_insert_connection(address, &self.config, time, manager))
                     } else {
                         None

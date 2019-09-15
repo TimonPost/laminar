@@ -16,12 +16,12 @@ use std::net::SocketAddr;
 // }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum DestroyReason {
-    // because wasnt able to connect
-    HandshakeFailed(ConnectionManagerError),
+pub enum DestroyReason {    
+    ConnectionError(ConnectionManagerError),
     Timeout,
     TooManyPacketsInFlight,
     TooManyPacketErrors,
+    GracefullyDisconnected
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -36,35 +36,24 @@ pub enum DisconnectReason {
     UnrecoverableError(DestroyReason)
 }
 
-// TODO rename to SocketReceiveEvent and create new with SocketSendEvent
-#[derive(Debug, PartialEq)]
-pub enum SocketEvent {        
-    Created(SocketAddr),
-    // TODO maybe change to Vec?
-    Connected(SocketAddr, Box<[u8]>),
-    // TODO probably good idea, to add SocketAddr to all these method
+#[derive(Debug)]
+pub struct ConnectionEvent<Event: std::fmt::Debug> {
+    pub addr: SocketAddr,
+    pub event: Event
+}
+
+#[derive(Debug)]
+pub enum SendEvent {
+    Connect(Box<[u8]>),
+    Packet(Packet),
+    Disconnect,
+}
+
+#[derive(Debug)]
+pub enum ReceiveEvent {        
+    Created,
+    Connected(Box<[u8]>),
     Packet(Packet),
     Disconnected(DisconnectReason),
     Destroyed(DestroyReason),
-}
-
-#[derive(Debug)]
-pub enum ConnectionReceiveEvent {
-    /// When the connection is actually added to active connections list.
-    Created,
-    /// When connection manager changes to connected state
-    Connected, 
-    /// Actual received packet, this should only occure after Connected state
-    Packet(Packet),
-    /// When connection manager changes to disconnected state
-    Disconnected(DisconnectReason),
-    /// When connection is actually removed from connections list.
-    Destroyed(DestroyReason)
-}
-
-#[derive(Debug)]
-pub enum ConnectionSendEvent {
-    Connect,
-    Packet(Packet),
-    Disconnect,
 }

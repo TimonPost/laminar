@@ -111,7 +111,7 @@ pub trait ConnectionManager: Debug {
     /// Some protocols might provide a way to pass initial connection data
     /// Data is user payload, that will be received by remote host, on Connected(data) event
     /// This method is not able to send packet immediatelly, instead this functionality should be handled in `update` method.
-    fn connect<'a>(&mut self, data: &'a [u8]);
+    fn connect(&mut self, data: Box<[u8]>);
 
     // This will be invoked when player sends disconnect request,
     /// This method is not able to send packet immediatelly, instead this functionality should be handled in `update` method.
@@ -218,8 +218,8 @@ impl ConnectionManager for SimpleConnectionManager {
         Ok(&self.state)
     }
 
-    fn connect<'a>(&mut self, data: &'a [u8]) {
-        self.send = Some(Box::from(["connect".as_bytes(), data].concat()));
+    fn connect<'a>(&mut self, data: Box<[u8]>) {
+        self.send = Some(Box::from(["connect".as_bytes(), data.as_ref()].concat()));
     }
 
     fn disconnect<'a>(&mut self) {

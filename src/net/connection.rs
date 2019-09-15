@@ -2,7 +2,7 @@ pub use crate::net::{NetworkQuality, RttMeasurer, VirtualConnection, managers::C
 use crate::{
     config::Config,
     either::Either::{self, Left, Right},
-    net::events::{SocketEvent, DisconnectReason, DestroyReason},
+    net::events::{ ConnectionEvent, ReceiveEvent, DisconnectReason, DestroyReason},
     net::managers::{ConnectionState, SocketManager},
     net::socket::SocketWithConditioner,
     packet::{Packet, OutgoingPacket},
@@ -73,7 +73,7 @@ impl ActiveConnections {
     pub fn remove_connection(
         &mut self,
         address: &SocketAddr,
-        sender: &Sender<SocketEvent>,
+        sender: &Sender<ConnectionEvent<ReceiveEvent>>,
         manager: &mut dyn SocketManager,
         reason: DestroyReason,
         error_context: &str
@@ -81,11 +81,17 @@ impl ActiveConnections {
         if let Some((_, conn)) = self.connections.remove_entry(address) {
             manager.track_connection_destroyed(address);
             if let ConnectionState::Connected(_) = conn.get_current_state() {
-                if let Err(err) = sender.send(SocketEvent::Disconnected(DisconnectReason::UnrecoverableError(reason.clone()))) {
+                if let Err(err) = sender.send(ConnectionEvent {
+                    addr: conn.remote_address,
+                    event: ReceiveEvent::Disconnected(DisconnectReason::UnrecoverableError(reason.clone()))
+                }) {
                     manager.track_connection_error(&conn.remote_address, &ErrorKind::SendError(err), error_context);
                 }
             }
-            if let Err(err) = sender.send(SocketEvent::Destroyed(reason)) {
+            if let Err(err) = sender.send(ConnectionEvent {
+                    addr: conn.remote_address,
+                    event: ReceiveEvent::Destroyed(reason)
+                }) {
                 manager.track_connection_error(&conn.remote_address, &ErrorKind::SendError(err), error_context);
             }
             true
@@ -132,7 +138,7 @@ impl ActiveConnections {
 
     pub fn update_connections(
         &mut self,
-        sender: &Sender<SocketEvent>,
+        sender: &Sender<ConnectionEvent<ReceiveEvent>>,
         manager:&mut dyn SocketManager,
         socket:&mut SocketWithConditioner
     ) {

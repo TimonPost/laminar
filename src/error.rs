@@ -1,6 +1,5 @@
 //! This module contains the laminar error handling logic.
 
-use crate::SocketEvent;
 use crossbeam_channel::SendError;
 use std::{
     error::Error,
@@ -8,6 +7,7 @@ use std::{
     io, result,
 };
 use crate::net::managers::ConnectionManagerError;
+use crate::net::event::{ConnectionEvent, ReceiveEvent};
 
 /// Wrapped result type for Laminar errors.
 pub type Result<T> = result::Result<T, ErrorKind>;
@@ -28,7 +28,7 @@ pub enum ErrorKind {
     /// Protocol versions did not match
     ProtocolVersionMismatch,
     /// Could not send on `SendChannel`.
-    SendError(SendError<SocketEvent>),
+    SendError(SendError<ConnectionEvent<ReceiveEvent>>),
     /// Expected header but could not be read from buffer.
     CouldNotReadHeader(String),
     /// Errors that is returned from ConnectionManager either preprocessing data or processing packet
@@ -181,8 +181,8 @@ impl From<FragmentErrorKind> for ErrorKind {
     }
 }
 
-impl From<crossbeam_channel::SendError<SocketEvent>> for ErrorKind {
-    fn from(inner: SendError<SocketEvent>) -> Self {
+impl From<crossbeam_channel::SendError<ConnectionEvent<ReceiveEvent>>> for ErrorKind {
+    fn from(inner: SendError<ConnectionEvent<ReceiveEvent>>) -> Self {
         ErrorKind::SendError(inner)
     }
 }
