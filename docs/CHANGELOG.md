@@ -1,5 +1,15 @@
 # Change Log
 This document contains information about the releases of this crate.
+
+## [0.3.1] - 2019-09-16
+- Documentation improvements (docs, book, readme)
+- Allow a Socket to be in blocking mode
+- Default heartbeat functionality
+- Series of patches and bug-fixes for ordering, sequencing. 
+- Disconnect the connection after sending N un-acked packets
+- Dependency maintenance (removed and increased versions)
+- A lot of new unit tests
+
 ## [0.3.0] - 2019-06-29
 - Moved the packet sender and event receiver into socket struct
 - Exposed internal SocketAddr
