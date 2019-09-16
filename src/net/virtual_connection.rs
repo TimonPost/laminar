@@ -110,6 +110,7 @@ impl VirtualConnection {
     /// This will pre-process the given buffer to be sent over the network.
     pub fn process_outgoing<'a>(
         &mut self,
+        packet_type: PacketType,
         payload: &'a [u8],
         delivery_guarantee: DeliveryGuarantee,
         ordering_guarantee: OrderingGuarantee,
@@ -120,7 +121,7 @@ impl VirtualConnection {
             DeliveryGuarantee::Unreliable => {
                 if payload.len() <= self.config.receive_buffer_max_size {
                     let mut builder = OutgoingPacketBuilder::new(payload).with_default_header(
-                        PacketType::Packet,
+                        packet_type,
                         delivery_guarantee,
                         ordering_guarantee,
                     );
@@ -149,7 +150,7 @@ impl VirtualConnection {
                     // spit the packet if the payload length is greater than the allowed fragment size.
                     if payload_length <= self.config.fragment_size {
                         let mut builder = OutgoingPacketBuilder::new(payload).with_default_header(
-                            PacketType::Packet,
+                            packet_type,
                             delivery_guarantee,
                             ordering_guarantee,
                         );
@@ -435,6 +436,14 @@ impl VirtualConnection {
                 sender.send(ConnectionEvent(self.remote_address, ReceiveEvent::Packet(Packet::new(self.remote_address, payload, delivery, ordering))))?;
             }
         } else {
+            // when we're in disconnected state, and receive empty message, 
+            // this means that remote host got our disconnect message
+            if let ConnectionState::Disconnected(_) = self.current_state {
+                if payload.as_ref().len() == 0 {
+                    self.acknowledge_handler = AcknowledgmentHandler::new();
+                    return Ok(());
+                }
+            }
             self.state_manager.process_protocol_data(payload.as_ref())?;
         }
         Ok(())
@@ -455,8 +464,7 @@ impl VirtualConnection {
     }
 
     /// Fully reset connection to initial state, after ConnectionManager switches from Disconnected to Connecting
-    pub fn reset_connection(&mut self) {
-        let time = Instant::now();
+    pub fn reset_connection(&mut self, time: Instant) {        
         self.last_heard = time;
         self.last_sent= time;
         self.ordering_system = OrderingSystem::new();

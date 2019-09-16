@@ -1,6 +1,6 @@
 use crate::net::managers::*;
 
-use crate::packet::{DeliveryGuarantee, OrderingGuarantee, OutgoingPacketBuilder, PacketType};
+use crate::packet::{DeliveryGuarantee, OrderingGuarantee, PacketType};
 use log::error;
 use std::io::ErrorKind::WouldBlock;
 use std::net::SocketAddr;
@@ -25,20 +25,26 @@ impl SimpleConnectionManager {
         self.changes.push_back(Either::Left(Box::from(payload)));
     }
 
-    fn get_packet<'a> (data: Box<[u8]>, buffer: &'a mut [u8]) -> OutgoingPacket<'a> {
+    fn get_packet<'a> (data: Box<[u8]>, buffer: &'a mut [u8]) -> GenericPacket<'a> {
         // get result slice
-        let res_buffer = &mut buffer[0..data.as_ref().len()];                        
+        let payload = &mut buffer[0..data.as_ref().len()];                        
         // copy from buffer what we want to send
-        res_buffer.copy_from_slice(data.as_ref());
-        println!("===========================update send {}", String::from_utf8_lossy(res_buffer));
+        payload.copy_from_slice(data.as_ref());
+        if payload.len() == 0 {
+            return GenericPacket{
+                packet_type: PacketType::ConnectionManager,
+                payload,
+                delivery: DeliveryGuarantee::Unreliable,
+                ordering: OrderingGuarantee::None
+            }
+        }
         // create packet
-        OutgoingPacketBuilder::new(res_buffer)
-        .with_default_header(
-            PacketType::ConnectionManager,
-            DeliveryGuarantee::Unreliable,
-            OrderingGuarantee::None,
-        )
-        .build()
+        GenericPacket{
+            packet_type: PacketType::ConnectionManager,
+            payload,
+            delivery: DeliveryGuarantee::Reliable,
+            ordering: OrderingGuarantee::None
+        }
     }
 }
 
@@ -47,7 +53,7 @@ impl ConnectionManager for SimpleConnectionManager {
         &mut self,
         buffer: &'a mut [u8],
         _time: Instant,
-    ) -> Option<Result<Either<OutgoingPacket<'a>, ConnectionState>, ConnectionManagerError>> {        
+    ) -> Option<Result<Either<GenericPacket<'a>, ConnectionState>, ConnectionManagerError>> {        
         match self.changes.pop_front().take() {
             Some(change) => {
                 Some(Ok(match change {
@@ -67,10 +73,6 @@ impl ConnectionManager for SimpleConnectionManager {
     where
         'a: 'b,
     {
-        println!(
-            "===========================preprocess_incoming: {}",
-            String::from_utf8_lossy(data)
-        );
         Ok(data)
     }
 
@@ -78,24 +80,17 @@ impl ConnectionManager for SimpleConnectionManager {
     where
         'a: 'b,
     {
-        println!(
-            "===========================postprocess_outgoing: {}",
-            String::from_utf8_lossy(data)
-        );
         data
     }
 
     fn process_protocol_data<'a>(&mut self, data: &'a [u8]) -> Result<(), ConnectionManagerError> {
-        println!(
-            "===========================process_protocol_data: {}",
-            String::from_utf8_lossy(data)
-        );
         if data.starts_with("connect-".as_bytes()) {
             self.change_state(ConnectionState::Connected(Box::from(data.split_at(8).1)));
-            self.send_packet("connected-".as_bytes());
+            self.send_packet("connected-".as_bytes());            
         } else if data.starts_with("connected-".as_bytes()) {
             self.change_state(ConnectionState::Connected(Box::from(data.split_at(10).1)));
         } else if data.starts_with("disconnect".as_bytes()) {
+            self.send_packet("".as_bytes());
             self.change_state(ConnectionState::Disconnected(TargetHost::RemoteHost));
         } else {
             return Err(ConnectionManagerError(format!(
@@ -111,8 +106,8 @@ impl ConnectionManager for SimpleConnectionManager {
     }
 
     fn disconnect<'a>(&mut self) {
-        self.change_state(ConnectionState::Disconnected(TargetHost::LocalHost));
         self.send_packet("disconnect".as_bytes());
+        self.change_state(ConnectionState::Disconnected(TargetHost::LocalHost));        
     }
 
 }

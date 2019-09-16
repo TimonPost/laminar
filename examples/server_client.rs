@@ -16,12 +16,14 @@ fn server() -> Result<(), ErrorKind> {
 
     loop {
         if let Ok(ConnectionEvent(addr, event)) = receiver.recv() {
+
             match event {
                 ReceiveEvent::Created => {
                     println!("Connection created {:?}", addr);
                 },
                 ReceiveEvent::Connected(data) => {
                     println!("Connected {:?} with message: {}",addr, String::from_utf8_lossy(data.as_ref()));
+                    //sender.disconnect(addr);
                 },
                 ReceiveEvent::Packet(packet) => {
                     let msg = packet.payload();
@@ -38,7 +40,7 @@ fn server() -> Result<(), ErrorKind> {
                     sender
                         .send(Packet::reliable_unordered(
                             packet.addr(),
-                            "Copy that!".as_bytes().to_vec(),
+                            ["Echo: ".as_bytes(), msg.as_bytes()].concat(),
                         ))
                         .expect("This should send");
                 },
@@ -87,7 +89,7 @@ fn client() -> Result<(), ErrorKind> {
                 },
                 ReceiveEvent::Connected(data) => {
                     println!("Connected {:?} with message: {}",addr, String::from_utf8_lossy(data.as_ref()));
-                    socket.send(ConnectionEvent(server, SendEvent::Disconnect))?;
+                    socket.send(ConnectionEvent(server, SendEvent::Packet(Packet::reliable_unordered(server, "Copy that!".as_bytes().to_vec()))))?;
                 },
                 ReceiveEvent::Packet(packet) => {
                     let msg = packet.payload();
@@ -100,6 +102,7 @@ fn client() -> Result<(), ErrorKind> {
                     let ip = packet.addr().ip();
 
                     println!("Received {:?} from {:?}", msg, ip);
+                    socket.send(ConnectionEvent(server, SendEvent::Disconnect))?;
 
                     // sender
                     //     .send(Packet::reliable_unordered(

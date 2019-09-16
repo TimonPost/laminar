@@ -80,7 +80,7 @@ pub trait ConnectionManager: Debug + Send {
         &mut self,
         buffer: &'a mut [u8],
         time: Instant,
-    ) -> Option<Result<Either<OutgoingPacket<'a>, ConnectionState>, ConnectionManagerError>>;
+    ) -> Option<Result<Either<GenericPacket<'a>, ConnectionState>, ConnectionManagerError>>;
 
     /// This will be called for all incoming data, including packets that were resent by remote host.
     /// If packet is accepted by laminar's reliability layer `process_protocol_data` will be called immediatelly.
@@ -138,11 +138,11 @@ pub trait SocketManager: Debug + Send {
 
 
 pub struct GenericPacket<'a> {
-    packet_type: PacketType,
+    pub packet_type: PacketType,
     /// the raw payload of the packet
-    payload: &'a [u8],
+    pub payload: &'a [u8],
     /// defines on how the packet will be delivered.
-    delivery: DeliveryGuarantee,
+    pub delivery: DeliveryGuarantee,
     /// defines on how the packet will be ordered.
-    ordering: OrderingGuarantee,
+    pub ordering: OrderingGuarantee,
 }

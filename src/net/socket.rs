@@ -5,7 +5,7 @@ use crate::{
     net::{connection::ActiveConnections, link_conditioner::LinkConditioner},
     net::events::{ConnectionEvent, SendEvent, ReceiveEvent, DestroyReason, TargetHost},
     net::managers::{SocketManager, ConnectionManager},
-    packet::{DeliveryGuarantee, Outgoing, Packet},
+    packet::{DeliveryGuarantee, Outgoing, Packet, PacketType},
 };
 use crossbeam_channel::{self, unbounded, Receiver, SendError, Sender, TryRecvError};
 use log::error;
@@ -305,6 +305,7 @@ impl Socket {
                     .iter()
                     .flat_map(|waiting_packet| {
                         connection.process_outgoing(
+                            PacketType::Packet,
                             &waiting_packet.payload,
                             // Because a delivery guarantee is only sent with reliable packets
                             DeliveryGuarantee::Reliable,
@@ -317,6 +318,7 @@ impl Socket {
                     .collect();
 
                 let processed_packet = connection.process_outgoing(
+                    PacketType::Packet,
                     packet.payload(),
                     packet.delivery_guarantee(),
                     packet.order_guarantee(),

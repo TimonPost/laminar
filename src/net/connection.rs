@@ -6,6 +6,7 @@ use crate::{
     net::managers::{ConnectionState, SocketManager},
     net::socket::SocketWithConditioner,
     ErrorKind,
+    packet::{Outgoing}
 };
 
 use crossbeam_channel::{self, Sender, SendError};
@@ -134,7 +135,14 @@ impl ActiveConnections {
                 Some(result) => match result {
                     Ok(event) => match event {
                         Either::Left(packet) => {
-                            socket.send_packet_and_log(&conn.remote_address, conn.state_manager.as_mut(), &packet.contents(), manager, "sending packet from connection manager");
+                            // TODO properly handle error, instead of assert
+                            let packet = conn.process_outgoing(packet.packet_type, packet.payload, packet.delivery, packet.ordering, None, time)
+                                .expect("connection manager packet should not fail");
+                            if let Outgoing::Packet(outgoing) = packet {
+                                socket.send_packet_and_log(&conn.remote_address, conn.state_manager.as_mut(), &outgoing.contents(), manager, "sending packet from connection manager");
+                            } else {
+                                panic!("connection manager cannot send fragmented packets");
+                            }                            
                         },
                         Either::Right(state) => {
                             if let Some(_) = conn.current_state.try_change(&state) {
@@ -144,7 +152,7 @@ impl ActiveConnections {
                                         ConnectionState::Disconnected(closed_by) => sender.send(ConnectionEvent(conn.remote_address, 
                                             ReceiveEvent::Disconnected(DisconnectReason::ClosedBy(closed_by.clone())))),
                                         ConnectionState::Connecting => {
-                                            conn.reset_connection();
+                                            conn.reset_connection(time);
                                             Ok(())
                                         },
                                     } {
