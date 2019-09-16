@@ -2,17 +2,16 @@
 //! You can think of the socket, connection management, congestion control.
 
 mod connection;
-mod events;
 mod link_conditioner;
 mod quality;
 mod socket;
 mod virtual_connection;
 
+pub mod events;
 pub mod constants;
 pub mod managers;
 
-pub use self::events::*;
 pub use self::link_conditioner::LinkConditioner;
 pub use self::quality::{NetworkQuality, RttMeasurer};
-pub use self::socket::Socket;
+pub use self::socket::{Socket, SocketEventSender};
 pub use self::virtual_connection::VirtualConnection;

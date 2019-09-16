@@ -91,7 +91,7 @@ use laminar::{Socket, Packet};
 
 // create the socket
 let mut socket = Socket::bind("127.0.0.1:12345")?;
-let packet_sender = socket.get_packet_sender();
+let packet_sender = socket.get_event_sender();
 // this will start the socket, which will start a poll mechanism to receive and send messages.
 let _thread = thread::spawn(move || socket.start_polling());
 

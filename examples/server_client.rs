@@ -5,19 +5,25 @@ use std::io::stdin;
 use std::thread;
 use std::time::Instant;
 
-use laminar::{ErrorKind, Packet, Socket, SocketEvent};
+use laminar::{ErrorKind, Packet, Socket, SocketEventSender, managers::SimpleSocketManager, ConnectionEvent, ReceiveEvent, SendEvent};
 
 const SERVER: &str = "127.0.0.1:12351";
 
 fn server() -> Result<(), ErrorKind> {
-    let mut socket = Socket::bind(SERVER)?;
-    let (sender, receiver) = (socket.get_packet_sender(), socket.get_event_receiver());
+    let mut socket = Socket::bind(SERVER, Box::new(SimpleSocketManager))?;
+    let (sender, receiver) = (SocketEventSender(socket.get_event_sender()), socket.get_event_receiver());
     let _thread = thread::spawn(move || socket.start_polling());
 
     loop {
-        if let Ok(event) = receiver.recv() {
+        if let Ok(ConnectionEvent(addr, event)) = receiver.recv() {
             match event {
-                SocketEvent::Packet(packet) => {
+                ReceiveEvent::Created => {
+                    println!("Connection created {:?}", addr);
+                },
+                ReceiveEvent::Connected(data) => {
+                    println!("Connected {:?} with message: {}",addr, String::from_utf8_lossy(data.as_ref()));
+                },
+                ReceiveEvent::Packet(packet) => {
                     let msg = packet.payload();
 
                     if msg == b"Bye!" {
@@ -35,11 +41,13 @@ fn server() -> Result<(), ErrorKind> {
                             "Copy that!".as_bytes().to_vec(),
                         ))
                         .expect("This should send");
+                },
+                ReceiveEvent::Disconnected(reason) => {
+                    println!("Disconnected {:?} reason: {:?}", addr, reason);
+                },
+                ReceiveEvent::Destroyed(reason) => {
+                    println!("Connection destroyed {:?} reason: {:?}", addr, reason);
                 }
-                SocketEvent::Timeout(address) => {
-                    println!("Client timed out: {}", address);
-                }
-                _ => {}
             }
         }
     }
@@ -49,7 +57,7 @@ fn server() -> Result<(), ErrorKind> {
 
 fn client() -> Result<(), ErrorKind> {
     let addr = "127.0.0.1:12352";
-    let mut socket = Socket::bind(addr)?;
+    let mut socket = Socket::bind(addr, Box::new(SimpleSocketManager))?;
     println!("Connected on {}", addr);
 
     let server = SERVER.parse().unwrap();
@@ -59,15 +67,12 @@ fn client() -> Result<(), ErrorKind> {
     let stdin = stdin();
     let mut s_buffer = String::new();
 
-    loop {
-        s_buffer.clear();
-        stdin.read_line(&mut s_buffer)?;
-        let line = s_buffer.replace(|x| x == '\n' || x == '\r', "");
+    s_buffer.clear();
+    stdin.read_line(&mut s_buffer)?;
+    let line = s_buffer.replace(|x| x == '\n' || x == '\r', "");
+    socket.send(ConnectionEvent(server, SendEvent::Connect(Box::from(line.as_bytes()))))?;
 
-        socket.send(Packet::reliable_unordered(
-            server,
-            line.clone().into_bytes(),
-        ))?;
+    loop {
 
         socket.manual_poll(Instant::now());
 
@@ -75,16 +80,41 @@ fn client() -> Result<(), ErrorKind> {
             break;
         }
 
-        match socket.recv() {
-            Some(SocketEvent::Packet(packet)) => {
-                if packet.addr() == server {
-                    println!("Server sent: {}", String::from_utf8_lossy(packet.payload()));
-                } else {
-                    println!("Unknown sender.");
+        if let Some(ConnectionEvent(addr, event)) = socket.recv() {
+            match event {
+                ReceiveEvent::Created => {
+                    println!("Connection created {:?}", addr);
+                },
+                ReceiveEvent::Connected(data) => {
+                    println!("Connected {:?} with message: {}",addr, String::from_utf8_lossy(data.as_ref()));
+                    socket.send(ConnectionEvent(server, SendEvent::Disconnect))?;
+                },
+                ReceiveEvent::Packet(packet) => {
+                    let msg = packet.payload();
+
+                    if msg == b"Bye!" {
+                        break;
+                    }
+
+                    let msg = String::from_utf8_lossy(msg);
+                    let ip = packet.addr().ip();
+
+                    println!("Received {:?} from {:?}", msg, ip);
+
+                    // sender
+                    //     .send(Packet::reliable_unordered(
+                    //         packet.addr(),
+                    //         "Copy that!".as_bytes().to_vec(),
+                    //     ))
+                    //     .expect("This should send");
+                },
+                ReceiveEvent::Disconnected(reason) => {
+                    println!("Disconnected {:?} reason: {:?}", addr, reason);
+                },
+                ReceiveEvent::Destroyed(reason) => {
+                    println!("Connection destroyed {:?} reason: {:?}", addr, reason);
                 }
             }
-            Some(SocketEvent::Timeout(_)) => {}
-            _ => println!("Silence.."),
         }
     }
 

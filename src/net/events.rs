@@ -25,22 +25,23 @@ pub enum DestroyReason {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum ConnectionClosedBy {
+pub enum TargetHost {
     LocalHost,
     RemoteHost
 }
 
+/// Disconnect reason, received by connection
 #[derive(Debug, PartialEq)]
 pub enum DisconnectReason {
-    ClosedBy(ConnectionClosedBy),
-    UnrecoverableError(DestroyReason)
+    /// Disconnect was initiated by local or remote host
+    ClosedBy(TargetHost),
+    /// Socket manager decided to destroy connection for provided reason
+    Destroying(DestroyReason)
 }
 
+/// Wraps send or receive event together with remote address
 #[derive(Debug)]
-pub struct ConnectionEvent<Event: std::fmt::Debug> {
-    pub addr: SocketAddr,
-    pub event: Event
-}
+pub struct ConnectionEvent<Event: std::fmt::Debug> (pub SocketAddr, pub Event);
 
 #[derive(Debug)]
 pub enum SendEvent {
@@ -57,3 +58,6 @@ pub enum ReceiveEvent {
     Disconnected(DisconnectReason),
     Destroyed(DestroyReason),
 }
+
+pub type ConnectionReceiveEvent = ConnectionEvent<ReceiveEvent>;
+pub type ConnectionSendEvent = ConnectionEvent<SendEvent>;

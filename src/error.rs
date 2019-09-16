@@ -7,7 +7,8 @@ use std::{
     io, result,
 };
 use crate::net::managers::ConnectionManagerError;
-use crate::net::event::{ConnectionEvent, ReceiveEvent};
+use crate::net::events::{ConnectionEvent, SendEvent, ReceiveEvent};
+use crate::either::Either;
 
 /// Wrapped result type for Laminar errors.
 pub type Result<T> = result::Result<T, ErrorKind>;
@@ -28,7 +29,7 @@ pub enum ErrorKind {
     /// Protocol versions did not match
     ProtocolVersionMismatch,
     /// Could not send on `SendChannel`.
-    SendError(SendError<ConnectionEvent<ReceiveEvent>>),
+    SendError(SendError<Either<ConnectionEvent<SendEvent>, ConnectionEvent<ReceiveEvent>>>),
     /// Expected header but could not be read from buffer.
     CouldNotReadHeader(String),
     /// Errors that is returned from ConnectionManager either preprocessing data or processing packet
@@ -181,9 +182,15 @@ impl From<FragmentErrorKind> for ErrorKind {
     }
 }
 
-impl From<crossbeam_channel::SendError<ConnectionEvent<ReceiveEvent>>> for ErrorKind {
+impl From<SendError<ConnectionEvent<SendEvent>>> for ErrorKind {
+    fn from(inner: SendError<ConnectionEvent<SendEvent>>) -> Self {
+        ErrorKind::SendError(SendError(Either::Left(inner.0)))
+    }
+}
+
+impl From<SendError<ConnectionEvent<ReceiveEvent>>> for ErrorKind {
     fn from(inner: SendError<ConnectionEvent<ReceiveEvent>>) -> Self {
-        ErrorKind::SendError(inner)
+        ErrorKind::SendError(SendError(Either::Right(inner.0)))
     }
 }
 

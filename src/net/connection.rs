@@ -1,11 +1,10 @@
 pub use crate::net::{NetworkQuality, RttMeasurer, VirtualConnection, managers::ConnectionManager};
 use crate::{
     config::Config,
-    either::Either::{self, Left, Right},
+    either::Either,
     net::events::{ ConnectionEvent, ReceiveEvent, DisconnectReason, DestroyReason},
     net::managers::{ConnectionState, SocketManager},
     net::socket::SocketWithConditioner,
-    packet::{Packet, OutgoingPacket},
     ErrorKind,
 };
 
@@ -13,7 +12,7 @@ use crossbeam_channel::{self, Sender, SendError};
 
 use std::{
     collections::HashMap,
-    net::{SocketAddr, UdpSocket},
+    net::SocketAddr,
     time::{Duration, Instant},    
 };
 
@@ -48,23 +47,6 @@ impl ActiveConnections {
             .or_insert_with(|| VirtualConnection::new(address, config, time, state_manager))
     }
 
-
-    /// Try to get or create a [VirtualConnection] by address. If the connection does not exist, it will be
-    /// created and returned, but not inserted into the table of active connections.
-    pub(crate) fn get_or_create_connection(
-        &mut self,
-        address: SocketAddr,
-        config: &Config,
-        time: Instant,
-        state_manager: Box<dyn ConnectionManager>,
-    ) -> Either<&mut VirtualConnection, VirtualConnection> {
-        if let Some(connection) = self.connections.get_mut(&address) {
-            Left(connection)
-        } else {
-            Right(VirtualConnection::new(address, config, time, state_manager))
-        }
-    }
-
     pub fn try_get(&mut self, address: &SocketAddr) -> Option<&mut VirtualConnection> {
         self.connections.get_mut(address)
     }
@@ -81,18 +63,12 @@ impl ActiveConnections {
         if let Some((_, conn)) = self.connections.remove_entry(address) {
             manager.track_connection_destroyed(address);
             if let ConnectionState::Connected(_) = conn.get_current_state() {
-                if let Err(err) = sender.send(ConnectionEvent {
-                    addr: conn.remote_address,
-                    event: ReceiveEvent::Disconnected(DisconnectReason::UnrecoverableError(reason.clone()))
-                }) {
-                    manager.track_connection_error(&conn.remote_address, &ErrorKind::SendError(err), error_context);
+                if let Err(err) = sender.send(ConnectionEvent(conn.remote_address, ReceiveEvent::Disconnected(DisconnectReason::Destroying(reason.clone())))) {
+                    manager.track_connection_error(&conn.remote_address, &ErrorKind::SendError(SendError(Either::Right(err.0))), error_context);
                 }
             }
-            if let Err(err) = sender.send(ConnectionEvent {
-                    addr: conn.remote_address,
-                    event: ReceiveEvent::Destroyed(reason)
-                }) {
-                manager.track_connection_error(&conn.remote_address, &ErrorKind::SendError(err), error_context);
+            if let Err(err) = sender.send(ConnectionEvent(conn.remote_address, ReceiveEvent::Destroyed(reason))) {
+                manager.track_connection_error(&conn.remote_address, &ErrorKind::SendError(SendError(Either::Right(err.0))), error_context);
             }
             true
         } else {
@@ -110,11 +86,16 @@ impl ActiveConnections {
     }
 
     /// Get a list of addresses of dead connections
-    pub fn dead_connections(&mut self) -> Vec<SocketAddr> {
+    pub fn dead_connections(&mut self) -> Vec<(SocketAddr, DestroyReason)> {
         self.connections
             .iter()
-            .filter(|(_, connection)| connection.should_be_dropped())
-            .map(|(address, _)| *address)
+            .filter_map(|(_, connection)| if connection.should_be_dropped() {
+                Some((connection.remote_address, DestroyReason::TooManyPacketsInFlight))
+            } else if connection.can_gracefully_disconnect() {
+                Some((connection.remote_address, DestroyReason::GracefullyDisconnected))
+            } else {
+                None
+            })
             .collect()
     }
 
@@ -156,12 +137,21 @@ impl ActiveConnections {
                             socket.send_packet_and_log(&conn.remote_address, conn.state_manager.as_mut(), &packet.contents(), manager, "sending packet from connection manager");
                         },
                         Either::Right(state) => {
-                            conn.current_state = state.clone();
-                            if let Err(err) = match &conn.current_state {
-                                    ConnectionState::Connected(data) => sender.send(SocketEvent::Connected(conn.remote_address, data.clone())),
-                                    ConnectionState::Disconnected(closed_by) => sender.send(SocketEvent::Disconnected(DisconnectReason::ClosedBy(closed_by.clone()))),
-                                    _ => Ok(()),} {
-                                manager.track_connection_error(&conn.remote_address, &ErrorKind::SendError(err), "sending connection state update");
+                            if let Some(_) = conn.current_state.try_change(&state) {
+                                if let Err(err) = match &conn.current_state {
+                                        ConnectionState::Connected(data) => sender.send(ConnectionEvent(conn.remote_address, 
+                                            ReceiveEvent::Connected(data.clone()))),
+                                        ConnectionState::Disconnected(closed_by) => sender.send(ConnectionEvent(conn.remote_address, 
+                                            ReceiveEvent::Disconnected(DisconnectReason::ClosedBy(closed_by.clone())))),
+                                        ConnectionState::Connecting => {
+                                            conn.reset_connection();
+                                            Ok(())
+                                        },
+                                    } {
+                                    manager.track_connection_error(&conn.remote_address, &ErrorKind::SendError(SendError(Either::Right(err.0))), "sending connection state update");
+                                }
+                            } else {
+                                panic!("Invalid state transition {:?} -> {:?}", conn.current_state, state);
                             }
                         }
                     },
@@ -171,11 +161,6 @@ impl ActiveConnections {
                 },
                 None => {}
             });
-    }
-
-    /// Returns true if the given connection exists.
-    pub fn exists(&self, address: &SocketAddr) -> bool {
-        self.connections.contains_key(&address)
     }
 
     /// Returns the number of connected clients.

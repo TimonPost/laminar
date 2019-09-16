@@ -3,7 +3,7 @@
 //! 2. setting up client to send data.
 //! 3. serialize data to send and deserialize when received.
 use bincode::{deserialize, serialize};
-use laminar::{Packet, Socket, SocketEvent};
+use laminar::{Packet, Socket, ConnectionEventSender};
 use serde_derive::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::time::Instant;
@@ -27,7 +27,7 @@ pub fn main() {
     let mut server = Socket::bind(server_address()).unwrap();
 
     /*  setup or `Client` and send some test data. */
-    let mut client = Socket::bind(client_address()).unwrap();
+    let mut client = ConnectionEventSender(Socket::bind(client_address()).unwrap());
 
     client.send(Packet::unreliable(
         server_address(),

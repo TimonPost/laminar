@@ -1,7 +1,6 @@
 use crate::{
     config::Config,
     error::{ErrorKind, PacketErrorKind, Result},
-    either::Either,
     infrastructure::{
         arranging::{Arranging, ArrangingSystem, OrderingSystem, SequencingSystem},
         AcknowledgmentHandler, CongestionHandler, Fragmentation, SentPacket,
@@ -15,7 +14,7 @@ use crate::{
         DeliveryGuarantee, OrderingGuarantee, Outgoing, OutgoingPacket, OutgoingPacketBuilder,
         Packet, PacketReader, PacketType, SequenceNumber,
     },
-    SocketEvent, DisconnectReason
+    net::events::{ConnectionEvent, ReceiveEvent, DisconnectReason}
 };
 
 use crossbeam_channel::{self, Sender};
@@ -67,6 +66,14 @@ impl VirtualConnection {
         self.acknowledge_handler.packets_in_flight() > self.config.max_packets_in_flight
     }
 
+    pub fn can_gracefully_disconnect(&self) -> bool {
+        if let ConnectionState::Disconnected(_) = self.current_state {
+            self.acknowledge_handler.packets_in_flight() == 0
+        } else {
+            false
+        }
+    }
+
     /// Returns a [Duration] representing the interval since we last heard from the client
     pub fn last_heard(&self, time: Instant) -> Duration {
         // TODO: Replace with saturating_duration_since once it becomes stable.
@@ -90,33 +97,18 @@ impl VirtualConnection {
         self.last_sent = time;
         self.congestion_handler
             .process_outgoing(self.acknowledge_handler.local_sequence_num(), time);
-        // TODO pass in socket and link conditioner, so that i could send immediatelly
-        let packet = OutgoingPacketBuilder::new(&[])
+
+        OutgoingPacketBuilder::new(&[])
             .with_default_header(
                 PacketType::Heartbeat,
                 DeliveryGuarantee::Unreliable,
                 OrderingGuarantee::None,
             )
-            .build();
-            packet
-        // let mut buffer = [0;1500];
-        // let res = self.state_manager.postprocess_outgoing(&packet.contents(), &mut buffer);
-
+            .build()
     }
 
-    pub fn process_outgoing<'a>(
-        &mut self,
-        payload: &'a [u8],
-        delivery_guarantee: DeliveryGuarantee,
-        ordering_guarantee: OrderingGuarantee,
-        last_item_identifier: Option<SequenceNumber>,
-        time: Instant,
-    ) -> Result<Outgoing<'a>> {
-        self.process_outgoing_impl(payload, delivery_guarantee, ordering_guarantee, last_item_identifier, time)
-    }    
-
     /// This will pre-process the given buffer to be sent over the network.
-    fn process_outgoing_impl<'a>(
+    pub fn process_outgoing<'a>(
         &mut self,
         payload: &'a [u8],
         delivery_guarantee: DeliveryGuarantee,
@@ -261,14 +253,14 @@ impl VirtualConnection {
     pub fn process_incoming(
         &mut self,
         received_data: &[u8],
-        sender: &Sender<SocketEvent>,
+        sender: &Sender<ConnectionEvent<ReceiveEvent>>,
         socket_manager: &mut dyn SocketManager,
         time: Instant,
     ) -> crate::Result<()> {
         // TODO pass buffer from somewhere else
         let mut buffer = [0;1500];
         let received_data = self.state_manager.preprocess_incoming(received_data, &mut buffer)?;
-
+        
         self.last_heard = time;
 
         let mut packet_reader = PacketReader::new(received_data);
@@ -277,7 +269,7 @@ impl VirtualConnection {
 
         if !header.is_current_protocol() {
             return Err(ErrorKind::ProtocolVersionMismatch);
-        }
+        }        
 
         if header.is_heartbeat() {
             // Heartbeat packets are unreliable, unordered and empty packets.
@@ -383,6 +375,8 @@ impl VirtualConnection {
 
                         let payload = packet_reader.read_payload();
 
+                        println!("======================process_incoming ordered: {:?} {}", header, String::from_utf8_lossy(payload.as_ref()));
+
                         let stream = self
                             .ordering_system
                             .get_or_create_stream(arranging_header.stream_id());
@@ -431,26 +425,17 @@ impl VirtualConnection {
     fn process_packet(
         &mut self, 
         is_connection_manager_packet: bool,
-        sender: &Sender<SocketEvent>,
+        sender: &Sender<ConnectionEvent<ReceiveEvent>>,
         payload: Box<[u8]>, 
         delivery: DeliveryGuarantee, 
         ordering: OrderingGuarantee
     ) -> Result<()> {
         if !is_connection_manager_packet {
             if let ConnectionState::Connected(_) = self.current_state {
-                sender.send(SocketEvent::Packet(Packet::new(self.remote_address, payload, delivery, ordering)))?;
+                sender.send(ConnectionEvent(self.remote_address, ReceiveEvent::Packet(Packet::new(self.remote_address, payload, delivery, ordering))))?;
             }
         } else {
-            let new_state = self.state_manager.process_protocol_data(payload.as_ref())?;
-            if let Some(_) = self.current_state.try_change(new_state) {
-                match &self.current_state {
-                    ConnectionState::Connected(data) => sender.send(SocketEvent::Connected(self.remote_address, data.clone()))?,
-                    ConnectionState::Disconnected(reason) => sender.send(SocketEvent::Disconnected(DisconnectReason::ClosedBy(reason.clone())))?,
-                    ConnectionState::Connecting => self.reset_connection(),
-                };
-            } else {
-                panic!("Invalid state transition {:?} -> {:?}", self.current_state, new_state)
-            }
+            self.state_manager.process_protocol_data(payload.as_ref())?;
         }
         Ok(())
     }
@@ -458,19 +443,19 @@ impl VirtualConnection {
     fn process_packet_and_log_errors(
         &mut self, 
         is_connection_manager_packet: bool,
-        sender: &Sender<SocketEvent>,
+        sender: &Sender<ConnectionEvent<ReceiveEvent>>,
         socket_manager: &mut dyn SocketManager,
         payload: Box<[u8]>, 
         delivery: DeliveryGuarantee, 
         ordering: OrderingGuarantee
-    ) {
+    ) {        
         if let Err(ref error) = self.process_packet(is_connection_manager_packet, sender, payload, delivery, ordering) {
             socket_manager.track_connection_error(&self.remote_address, error, "processing incomming packet");
         }
     }
 
-    /// this function fully reset connection to initial state, after ConnectionManager switches from Disconnected to Connecting
-    fn reset_connection(&mut self) {
+    /// Fully reset connection to initial state, after ConnectionManager switches from Disconnected to Connecting
+    pub fn reset_connection(&mut self) {
         let time = Instant::now();
         self.last_heard = time;
         self.last_sent= time;

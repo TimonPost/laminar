@@ -1,8 +1,9 @@
 use crate::{
     config::Config,
+    either::Either,
     error::{ErrorKind, Result},
     net::{connection::ActiveConnections, link_conditioner::LinkConditioner},
-    net::events::{ConnectionEvent, SendEvent, ReceiveEvent, DestroyReason},
+    net::events::{ConnectionEvent, SendEvent, ReceiveEvent, DestroyReason, TargetHost},
     net::managers::{SocketManager, ConnectionManager},
     packet::{DeliveryGuarantee, Outgoing, Packet},
 };
@@ -52,6 +53,34 @@ impl SocketWithConditioner {
 
 }
 
+/// Wraps crossbeam_channel sender with convenient functions: `connect`, `send`, `disconnect`
+pub struct SocketEventSender(pub Sender<ConnectionEvent<SendEvent>>);
+
+impl SocketEventSender {
+    /// Constructs ConnectionEvent<SendEvent> Packet event from provided packet
+    pub fn send(&self, packet: Packet) -> std::result::Result<(), SendError<Packet>> {
+        self.0.send(ConnectionEvent(packet.addr(), SendEvent::Packet(packet)))
+            .map_err(|err| SendError(match (err.0).1 {
+                SendEvent::Packet(data) => data,
+                _ => unreachable!()
+            }))
+    }
+
+    /// Constructs ConnectionEvent<SendEvent> Connect event from provided payload
+    pub fn connect(&self, addr: SocketAddr, payload: Box<[u8]>) -> std::result::Result<(), SendError<Box<[u8]>>> {
+        self.0.send(ConnectionEvent(addr, SendEvent::Connect(payload)))
+            .map_err(|err| SendError(match (err.0).1 {
+                SendEvent::Connect(data) => data,
+                _ => unreachable!()
+            }))
+    }
+
+    /// Constructs ConnectionEvent<SendEvent> Disconnect event
+    pub fn disconnect(&self, addr: SocketAddr) -> std::result::Result<(), SendError<()>> {
+        self.0.send(ConnectionEvent(addr, SendEvent::Disconnect))
+            .map_err(|_| SendError(()))
+    }
+}
 
 
 /// A reliable UDP socket implementation with configurable reliability and ordering guarantees.
@@ -132,7 +161,7 @@ impl Socket {
     /// Returns a handle to the packet sender which provides a thread-safe way to enqueue packets
     /// to be processed. This should be used when the socket is busy running its polling loop in a
     /// separate thread.
-    pub fn get_packet_sender(&mut self) -> Sender<ConnectionEvent<SendEvent>> {
+    pub fn get_event_sender(&mut self) -> Sender<ConnectionEvent<SendEvent>> {
         self.sender.clone()
     }
 
@@ -147,7 +176,7 @@ impl Socket {
     pub fn send(&mut self, event: ConnectionEvent<SendEvent>) -> Result<()> {
         match self.sender.send(event) {
             Ok(_) => Ok(()),
-            Err(error) => Err(ErrorKind::SendError(error)),
+            Err(error) => Err(ErrorKind::SendError(SendError(Either::Left(error.0)))),
         }
     }
 
@@ -234,8 +263,8 @@ impl Socket {
     /// connection map while informing the user of this by sending an event.
     fn handle_dead_clients(&mut self) {
         let dead_addresses = self.connections.dead_connections();
-        for address in dead_addresses {
-            self.connections.remove_connection(&address, &self.event_sender, self.manager.as_mut(), DestroyReason::TooManyPacketsInFlight, "removing dead clients");
+        for (address, reason) in dead_addresses {
+            self.connections.remove_connection(&address, &self.event_sender, self.manager.as_mut(), reason, "removing dead clients");
         }
     }
 
@@ -254,54 +283,64 @@ impl Socket {
     // Serializes and sends a `Packet` on the socket. On success, returns the number of bytes written.
     fn send_to(&mut self, event: ConnectionEvent<SendEvent>, time: Instant) -> Result<usize> {        
         let mut bytes_sent = 0;
-        let address = &event.addr;
-        if let Some(connection) = self.connections.try_get(address) {
-            // TODO maybe these should not depend on send_to method?
-            let dropped = connection.gather_dropped_packets();
-            let mut processed_packets: Vec<Outgoing> = dropped
-                .iter()
-                .flat_map(|waiting_packet| {
-                    connection.process_outgoing(
-                        &waiting_packet.payload,
-                        // Because a delivery guarantee is only sent with reliable packets
-                        DeliveryGuarantee::Reliable,
-                        // This is stored with the dropped packet because they could be mixed
-                        waiting_packet.ordering_guarantee,
-                        waiting_packet.item_identifier,
-                        time,
-                    )
-                })
-                .collect();
 
-            match event.event {
-                Connect(data) => connection.state_manager.connect(data);
-                Packet(data) => {
-                    let processed_packet = connection.process_outgoing(
-                        packet.payload(),
-                        packet.delivery_guarantee(),
-                        packet.order_guarantee(),
-                        None,
-                        time,
-                    )?;
-                    processed_packets.push(processed_packet);
+        match (self.connections.try_get(&event.0), event.1) {
+            (conn, SendEvent::Connect(data)) => {
+                let connection = if let Some(connection) = conn {
+                    Some(connection)
+                } else if let Some(conn_manager) = self.manager.accept_new_connection(&event.0, TargetHost::LocalHost) {
+                    self.event_sender.send(ConnectionEvent(event.0, ReceiveEvent::Created))?;                    
+                    Some(self.connections.get_or_insert_connection(event.0, &self.config, time, conn_manager))
+                } else {
+                    None
+                };
+                if let Some(conn) = connection {
+                    conn.state_manager.connect(data);
                 }
-                Disconnect => connection.state_manager.disconnect();
-            }                
-            
+            },
+            (Some(connection), SendEvent::Packet(packet)) => {
+                // TODO maybe these should not depend on send_to method?
+                let dropped = connection.gather_dropped_packets();
+                let mut processed_packets: Vec<Outgoing> = dropped
+                    .iter()
+                    .flat_map(|waiting_packet| {
+                        connection.process_outgoing(
+                            &waiting_packet.payload,
+                            // Because a delivery guarantee is only sent with reliable packets
+                            DeliveryGuarantee::Reliable,
+                            // This is stored with the dropped packet because they could be mixed
+                            waiting_packet.ordering_guarantee,
+                            waiting_packet.item_identifier,
+                            time,
+                        )
+                    })
+                    .collect();
 
-            for processed_packet in processed_packets {
-                    match processed_packet {
-                        Outgoing::Packet(outgoing) => {
-                            bytes_sent += self.socket.send_packet(address, connection.state_manager.as_mut(), &outgoing.contents())?;
-                        }
-                        Outgoing::Fragments(packets) => {
-                            for outgoing in packets {
-                                bytes_sent += self.socket.send_packet(address, connection.state_manager.as_mut(), &outgoing.contents())?;
+                let processed_packet = connection.process_outgoing(
+                    packet.payload(),
+                    packet.delivery_guarantee(),
+                    packet.order_guarantee(),
+                    None,
+                    time,
+                )?;
+                processed_packets.push(processed_packet);
+
+                for processed_packet in processed_packets {
+                        match processed_packet {
+                            Outgoing::Packet(outgoing) => {
+                                bytes_sent += self.socket.send_packet(&event.0, connection.state_manager.as_mut(), &outgoing.contents())?;
+                            }
+                            Outgoing::Fragments(packets) => {
+                                for outgoing in packets {
+                                    bytes_sent += self.socket.send_packet(&event.0, connection.state_manager.as_mut(), &outgoing.contents())?;
+                                }
                             }
                         }
-                    }
-            }
-        }
+                }
+            },
+            (Some(connection), SendEvent::Disconnect) => connection.state_manager.disconnect(),
+            _ => {} // ignore packet and disconnect event for non existent connection
+        };
         Ok(bytes_sent)
     }
 
@@ -317,11 +356,8 @@ impl Socket {
                 let connection = if let Some(conn) = self.connections.try_get(&address) {
                     Some(conn)
                 } else {
-                    if let Some(manager) = self.manager.accept_new_connection(&address) {
-                        self.event_sender.send(ConnectionEvent { 
-                                addr: address,
-                                event: ReceiveEvent::Created
-                            })?;
+                    if let Some(manager) = self.manager.accept_new_connection(&address, TargetHost::RemoteHost) {
+                        self.event_sender.send(ConnectionEvent(address, ReceiveEvent::Created))?;
                         Some(self.connections.get_or_insert_connection(address, &self.config, time, manager))
                     } else {
                         None
@@ -439,7 +475,7 @@ mod tests {
 
         let time = Instant::now();
 
-        let sender = client.get_packet_sender();
+        let sender = client.get_event_sender();
         let receiver = server.get_event_receiver();
 
         sender

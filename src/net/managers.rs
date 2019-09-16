@@ -1,7 +1,7 @@
 pub use crate::either::Either;
-pub use crate::net::events::{ConnectionClosedBy, DestroyReason};
-use crate::packet::OutgoingPacket;
-use crate::ErrorKind;
+pub use crate::net::events::{TargetHost, DestroyReason};
+pub use crate::packet::{OutgoingPacket, PacketType, DeliveryGuarantee, OrderingGuarantee};
+pub use crate::ErrorKind;
 use std::fmt::Debug;
 use std::net::SocketAddr;
 use std::time::Instant;
@@ -27,7 +27,7 @@ use std::time::Instant;
 pub enum ConnectionState {
     Connecting,
     Connected(Box<[u8]>),
-    Disconnected(ConnectionClosedBy),
+    Disconnected(TargetHost),
 }
 
 impl ConnectionState {
@@ -39,7 +39,7 @@ impl ConnectionState {
             | (ConnectionState::Connected(_), ConnectionState::Disconnected(_))
             | (ConnectionState::Disconnected(_), ConnectionState::Connecting) => {
                 Some(std::mem::replace(self, new.clone()))
-            }
+            },
             _ => None,
         }
     }
@@ -53,7 +53,7 @@ impl Default for ConnectionState {
 
 /// Generic error type, that is used by ConnectionManager implementation
 #[derive(Debug, PartialEq, Clone)]
-pub struct ConnectionManagerError(String);
+pub struct ConnectionManagerError(pub String);
 
 /// It abstracts pure UDP packets, and allows to implement Connected/Disconnected states.
 /// This table summary shows where exactly ConnectionManager sits in between different layers.
@@ -69,7 +69,7 @@ pub struct ConnectionManagerError(String);
 /// Only when packet is recevied, or action is initiated by user it is allowed to change connection state.
 /// From the point of view of connection manager, laminar's header + payload is interpreted as user data.
 /// Distinction between user packet and protocol specific packet is encoded in laminar's packet header.
-pub trait ConnectionManager: Debug {
+pub trait ConnectionManager: Debug + Send {
     /// This function should be called frequently, even if there is no packets to send or receive.
     /// It will always be called last, after all other methods is called, so it could send packets or comunicate errors if required.
     /// It cannot change connection state explicitly, instead it can emit errors, and SocketManager will decide when to destroy connection.
@@ -80,7 +80,7 @@ pub trait ConnectionManager: Debug {
         &mut self,
         buffer: &'a mut [u8],
         time: Instant,
-    ) -> Option<Result<Either<OutgoingPacket<'a>, &ConnectionState>, ConnectionManagerError>>;
+    ) -> Option<Result<Either<OutgoingPacket<'a>, ConnectionState>, ConnectionManagerError>>;
 
     /// This will be called for all incoming data, including packets that were resent by remote host.
     /// If packet is accepted by laminar's reliability layer `process_protocol_data` will be called immediatelly.
@@ -105,7 +105,7 @@ pub trait ConnectionManager: Debug {
     fn process_protocol_data<'a>(
         &mut self,
         data: &'a [u8],
-    ) -> Result<&ConnectionState, ConnectionManagerError>;
+    ) -> Result<(), ConnectionManagerError>;
 
     /// This will be invoked when player sends connect request,
     /// Some protocols might provide a way to pass initial connection data
@@ -120,9 +120,9 @@ pub trait ConnectionManager: Debug {
 
 /// Tracks all sorts of global statistics, and decided whether to create `ConnectionManager` for new connections or not.
 /// Also decides when connections should be destroyed even if they are in connected state.
-pub trait SocketManager: Debug {
+pub trait SocketManager: Debug + Send {
     /// Decide if it is possible to accept/create new connection connection
-    fn accept_new_connection(&mut self, addr: &SocketAddr) -> Option<Box<dyn ConnectionManager>>;
+    fn accept_new_connection(&mut self, addr: &SocketAddr, requested_by: TargetHost) -> Option<Box<dyn ConnectionManager>>;
 
     /// Returns list of connections that socket manager decided to destroy
     fn collect_connections_to_destroy(&mut self) -> Option<Vec<(SocketAddr, DestroyReason)>>;
@@ -137,121 +137,12 @@ pub trait SocketManager: Debug {
 }
 
 
-
-
-//======================================= demo implementations ==========================================
-
-use crate::packet::{DeliveryGuarantee, OrderingGuarantee, OutgoingPacketBuilder, PacketType};
-use log::error;
-use std::io::ErrorKind::WouldBlock;
-
-
-/// Simple connection manager, sends "connect" and "disconnect" messages and changes states when receive either of theses messages
-#[derive(Debug, Default)]
-struct SimpleConnectionManager {
-    state: ConnectionState,
-    send: Option<Box<[u8]>>,
-}
-
-impl ConnectionManager for SimpleConnectionManager {
-    fn update<'a>(
-        &mut self,
-        buffer: &'a mut [u8],
-        time: Instant,
-    ) -> Option<Result<Either<OutgoingPacket<'a>, &ConnectionState>, ConnectionManagerError>> {
-        match self.send.take() {
-            Some(data) => {
-                // copy from buffer what we want to send
-                buffer.copy_from_slice(data.as_ref());
-                // create packet and set packet type ConnectionManager, so that it can be processed by `process_protocol_data` in remote host
-                Some(Ok(Either::Left(
-                    OutgoingPacketBuilder::new(buffer)
-                        .with_default_header(
-                            PacketType::ConnectionManager,
-                            DeliveryGuarantee::Reliable,
-                            OrderingGuarantee::Ordered(None),
-                        )
-                        .build(),
-                )))
-            }
-            None => None,
-        }
-    }
-
-    fn preprocess_incoming<'a, 'b>(
-        &mut self,
-        data: &'a [u8],
-        _buffer: &'b mut [u8],
-    ) -> Result<&'b [u8], ConnectionManagerError>
-    where
-        'a: 'b,
-    {
-        Ok(data)
-    }
-
-    fn postprocess_outgoing<'a, 'b>(&mut self, data: &'a [u8], _buffer: &'b mut [u8]) -> &'b [u8]
-    where
-        'a: 'b,
-    {
-        data
-    }
-
-    fn process_protocol_data<'a>(
-        &mut self,
-        data: &'a [u8],
-    ) -> Result<&ConnectionState, ConnectionManagerError> {
-        if data.starts_with("connect".as_bytes()) {
-            self.state
-                .try_change(&ConnectionState::Connected(Box::from(data.split_at(7).1)));
-            self.send = Some(Box::from("connected".as_bytes()));
-        } else if data.eq("connected".as_bytes()) {
-            self.state
-                .try_change(&ConnectionState::Connected(Box::from(data.split_at(9).1)));
-        } else if data.eq("disconnect".as_bytes()) {
-            self.state.try_change(&ConnectionState::Disconnected(ConnectionClosedBy::RemoteHost));
-        } else {
-            return Err(ConnectionManagerError(format!(
-                "Unknown message type: {:?}",
-                std::str::from_utf8(data)
-            )));
-        }
-        Ok(&self.state)
-    }
-
-    fn connect<'a>(&mut self, data: Box<[u8]>) {
-        self.send = Some(Box::from(["connect".as_bytes(), data.as_ref()].concat()));
-    }
-
-    fn disconnect<'a>(&mut self) {
-        self.state.try_change(&ConnectionState::Disconnected(ConnectionClosedBy::LocalHost));
-        self.send = Some(Box::from("disconnect".as_bytes()));
-    }
-}
-
-/// Simplest implementation of socket manager, always accept connection and never destroy, no matter how many error connection can report
-#[derive(Debug)]
-struct DumbSocketManager;
-
-impl SocketManager for DumbSocketManager {
-    fn accept_new_connection(&mut self, addr: &SocketAddr) -> Option<Box<dyn ConnectionManager>> {
-        Some(Box::new(SimpleConnectionManager::default()))
-    }
-
-    fn collect_connections_to_destroy(&mut self) -> Option<Vec<(SocketAddr, DestroyReason)>> {
-        None
-    }
-    
-    fn track_connection_error(&mut self, addr: &SocketAddr, error: &ErrorKind, error_context: &str) {
-        match error {
-            ErrorKind::IOError(ref e) if e.kind() == WouldBlock => {},
-            _ => error!("{} ({:?}): {:?}", error_context, addr, error)
-        }
-    }
-    fn track_global_error(&mut self, error: &ErrorKind, error_context: &str) {
-        error!("{} : {:?}", error_context, error);
-    }
-    fn track_sent_bytes(&mut self, addr: &SocketAddr, bytes: usize) {}
-    fn track_received_bytes(&mut self, addr: &SocketAddr, bytes: usize) {}
-    fn track_ignored_bytes(&mut self, addr: &SocketAddr, bytes: usize) {}
-    fn track_connection_destroyed(&mut self, addr: &SocketAddr) {}
+pub struct GenericPacket<'a> {
+    packet_type: PacketType,
+    /// the raw payload of the packet
+    payload: &'a [u8],
+    /// defines on how the packet will be delivered.
+    delivery: DeliveryGuarantee,
+    /// defines on how the packet will be ordered.
+    ordering: OrderingGuarantee,
 }
