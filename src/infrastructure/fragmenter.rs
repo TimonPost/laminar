@@ -71,7 +71,7 @@ impl Fragmentation {
             Fragmentation::fragments_needed(payload_length, config.fragment_size) as u8;
 
         if num_fragments > config.max_fragments {
-            Err(FragmentErrorKind::ExceededMaxFragments)?;
+            return Err(FragmentErrorKind::ExceededMaxFragments.into());
         }
 
         for fragment_id in 0..num_fragments {
@@ -112,16 +112,16 @@ impl Fragmentation {
             // get entry of previous received fragments
             let reassembly_data = match self.fragments.get_mut(fragment_header.sequence()) {
                 Some(val) => val,
-                None => Err(FragmentErrorKind::CouldNotFindFragmentById)?,
+                None => return Err(FragmentErrorKind::CouldNotFindFragmentById.into()),
             };
 
             // Got the data
             if reassembly_data.num_fragments_total != fragment_header.fragment_count() {
-                Err(FragmentErrorKind::FragmentWithUnevenNumberOfFragemts)?
+                return Err(FragmentErrorKind::FragmentWithUnevenNumberOfFragemts.into());
             }
 
             if reassembly_data.fragments_received[usize::from(fragment_header.id())] {
-                Err(FragmentErrorKind::AlreadyProcessedFragment)?
+                return Err(FragmentErrorKind::AlreadyProcessedFragment.into());
             }
 
             // increase number of received fragments and set the specific fragment to received.

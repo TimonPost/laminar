@@ -1,4 +1,4 @@
-use crate::packet::{DeliveryGuarantee, OrderingGuarantee};
+use crate::packet::{DeliveryGuarantee, OrderingGuarantee, PacketType};
 use std::net::SocketAddr;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -173,6 +173,58 @@ impl Packet {
     /// Returns the [`OrderingGuarantee`](./enum.OrderingGuarantee.html) of this packet.
     pub fn order_guarantee(&self) -> OrderingGuarantee {
         self.ordering
+    }
+}
+
+/// This packet type have similar properties to `Packet` except that it doesn't own anything, and additionally has `PacketType`.
+#[derive(Debug)]
+pub struct GenericPacket<'a> {
+    /// defines packet type, currently Fragment type should not set,
+    pub(crate) packet_type: PacketType,
+    /// the raw payload of the packet
+    pub(crate) payload: &'a [u8],
+    /// defines on how the packet will be delivered.
+    pub(crate) delivery: DeliveryGuarantee,
+    /// defines on how the packet will be ordered.
+    pub(crate) ordering: OrderingGuarantee,
+}
+
+impl<'a> GenericPacket<'a> {
+    pub fn manager_packet(
+        payload: &'a [u8],
+        delivery: DeliveryGuarantee,
+        ordering: OrderingGuarantee,
+    ) -> Self {
+        Self {
+            packet_type: PacketType::ConnectionManager,
+            payload,
+            delivery,
+            ordering,
+        }
+    }
+    pub fn user_packet(
+        payload: &'a [u8],
+        delivery: DeliveryGuarantee,
+        ordering: OrderingGuarantee,
+    ) -> Self {
+        Self {
+            packet_type: PacketType::ConnectionManager,
+            payload,
+            delivery,
+            ordering,
+        }
+    }
+    pub fn heartbeat_packet(
+        payload: &'a [u8],
+        delivery: DeliveryGuarantee,
+        ordering: OrderingGuarantee,
+    ) -> Self {
+        Self {
+            packet_type: PacketType::ConnectionManager,
+            payload,
+            delivery,
+            ordering,
+        }
     }
 }
 

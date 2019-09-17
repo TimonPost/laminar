@@ -10,7 +10,7 @@ mod packet_structure;
 pub use self::enums::{DeliveryGuarantee, OrderingGuarantee, PacketType};
 pub use self::outgoing::{Outgoing, OutgoingPacket, OutgoingPacketBuilder};
 pub use self::packet_reader::PacketReader;
-pub use self::packet_structure::Packet;
+pub use self::packet_structure::{GenericPacket, Packet};
 
 pub type SequenceNumber = u16;
 

@@ -1,14 +1,14 @@
 //! This module contains the laminar error handling logic.
 
+use crate::either::Either;
+use crate::net::events::{ConnectionEvent, ReceiveEvent, SendEvent};
+use crate::net::managers::ConnectionManagerError;
 use crossbeam_channel::SendError;
 use std::{
     error::Error,
     fmt::{self, Display, Formatter},
     io, result,
 };
-use crate::net::managers::ConnectionManagerError;
-use crate::net::events::{ConnectionEvent, SendEvent, ReceiveEvent};
-use crate::either::Either;
 
 /// Wrapped result type for Laminar errors.
 pub type Result<T> = result::Result<T, ErrorKind>;
@@ -75,7 +75,7 @@ impl Display for ErrorKind {
                 fmt,
                 "Something when wrong in ConnectionManager. Reason: {:?}.",
                 err
-            )
+            ),
         }
     }
 }

@@ -7,8 +7,8 @@ mod quality;
 mod socket;
 mod virtual_connection;
 
-pub mod events;
 pub mod constants;
+pub mod events;
 pub mod managers;
 
 pub use self::link_conditioner::LinkConditioner;

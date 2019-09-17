@@ -1,33 +1,59 @@
-use crate::packet::Packet;
 use crate::net::managers::ConnectionManagerError;
+use crate::packet::Packet;
 use std::net::SocketAddr;
 
-/// Events that can occur in `laminar` and that will be pushed through the `event_receiver` returned by `Socket::bind`.
-// #[derive(Debug, PartialEq)]
-// pub enum SocketEvent {
-//     /// A packet was received from a client.
-//     Packet(Packet),
-//     /// A new client connected.
-//     /// Clients are uniquely identified by the ip:port combination at this layer.
-//     Connect(SocketAddr),
-//     /// The client has been idling for a configurable amount of time.
-//     /// You can control the timeout in the config.
-//     Timeout(SocketAddr),
-// }
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum DestroyReason {    
-    ConnectionError(ConnectionManagerError),
-    Timeout,
-    TooManyPacketsInFlight,
-    TooManyPacketErrors,
-    GracefullyDisconnected
+/// Events that can occur in `laminar` for a active connection.
+#[derive(Debug)]
+pub enum ReceiveEvent {
+    /// When connection is actually created, and added to active connections list.
+    /// Next possible event for connection is: `Connected` or `Destroyed`.
+    Created,
+    /// When `ConnectionManager` successfully establishes connection.
+    /// Next possible event is: `Packet` or `Disconnected`.
+    Connected(Box<[u8]>),
+    /// When connection is in Connected state, it can actually start receiving packets.
+    /// Next possible event is: `Packet` or `Disconnected`.
+    Packet(Packet),
+    /// When connection, that was previously in connected state, is disconnected
+    /// It can either be disconnected by `ConnectionManager` in this case it is "clean" disconnect, where initiator of disconnect is also specified
+    /// Or it can be closed by `SocketManager` if it decides to do so
+    Disconnected(DisconnectReason),
+    /// When it is removed from active connections list.
+    /// Cnnection can be destroyed when disconnect is initiated by `ConnectionManager` or `SocketManager` decided to destroy it.
+    Destroyed(DestroyReason),
 }
 
+/// Events that are received from user.
+#[derive(Debug)]
+pub enum SendEvent {
+    /// Initiate connect request, this will call `ConnectionManager.connect` method.
+    Connect(Box<[u8]>),
+    /// Send packet to remote host.
+    Packet(Packet),
+    /// Initiate disconnect, this will call `ConnectionManager.disconnect` method.
+    Disconnect,
+}
+
+/// Provides a reason why connection was destroyed.
+#[derive(Debug, PartialEq, Clone)]
+pub enum DestroyReason {
+    /// When `SocketManager` decided to destroy a connection for error that arrived from `ConnectionManager`.
+    ConnectionError(ConnectionManagerError),
+    /// After `Config.idle_connection_timeout` connection had no activity.
+    Timeout,
+    /// If there are too many non-acked packets in flight `Config.max_packets_in_flight`.
+    TooManyPacketsInFlight,
+    /// When `ConnectionManager` changed to `Disconnected` state.
+    GracefullyDisconnected,
+}
+
+/// Provides convenient enum, to specify either Local or Remote host
 #[derive(Debug, PartialEq, Clone)]
 pub enum TargetHost {
+    /// Local host
     LocalHost,
-    RemoteHost
+    /// Remote host
+    RemoteHost,
 }
 
 /// Disconnect reason, received by connection
@@ -36,28 +62,9 @@ pub enum DisconnectReason {
     /// Disconnect was initiated by local or remote host
     ClosedBy(TargetHost),
     /// Socket manager decided to destroy connection for provided reason
-    Destroying(DestroyReason)
+    Destroying(DestroyReason),
 }
 
-/// Wraps send or receive event together with remote address
+/// Relate send or receive events together with address.
 #[derive(Debug)]
-pub struct ConnectionEvent<Event: std::fmt::Debug> (pub SocketAddr, pub Event);
-
-#[derive(Debug)]
-pub enum SendEvent {
-    Connect(Box<[u8]>),
-    Packet(Packet),
-    Disconnect,
-}
-
-#[derive(Debug)]
-pub enum ReceiveEvent {        
-    Created,
-    Connected(Box<[u8]>),
-    Packet(Packet),
-    Disconnected(DisconnectReason),
-    Destroyed(DestroyReason),
-}
-
-pub type ConnectionReceiveEvent = ConnectionEvent<ReceiveEvent>;
-pub type ConnectionSendEvent = ConnectionEvent<SendEvent>;
+pub struct ConnectionEvent<Event: std::fmt::Debug>(pub SocketAddr, pub Event);

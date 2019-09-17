@@ -1,13 +1,61 @@
 use crate::net::managers::*;
 
-use crate::packet::{DeliveryGuarantee, OrderingGuarantee, PacketType};
+use crate::packet::{DeliveryGuarantee, OrderingGuarantee};
 use log::error;
+use std::collections::VecDeque;
 use std::io::ErrorKind::WouldBlock;
 use std::net::SocketAddr;
 use std::time::Instant;
-use std::collections::VecDeque;
 
-/// Simple connection manager, sends "connect" and "disconnect" messages and changes states when receive either of these messages
+/// The simplest connection manager, that immediately goes into connected state, after creating it
+#[derive(Debug, Default)]
+struct AlwaysConnectedConManager {
+    connected: bool,
+}
+
+impl ConnectionManager for AlwaysConnectedConManager {
+    fn update<'a>(
+        &mut self,
+        _buffer: &'a mut [u8],
+        _time: Instant,
+    ) -> Option<Result<Either<GenericPacket<'a>, ConnectionState>, ConnectionManagerError>> {
+        if !self.connected {
+            self.connected = true;
+            return Some(Ok(Either::Right(
+                ConnectionState::Connected(Box::default()),
+            )));
+        }
+        None
+    }
+
+    fn preprocess_incoming<'a, 'b>(
+        &mut self,
+        data: &'a [u8],
+        _buffer: &'b mut [u8],
+    ) -> Result<&'b [u8], ConnectionManagerError>
+    where
+        'a: 'b,
+    {
+        Ok(data)
+    }
+
+    fn postprocess_outgoing<'a, 'b>(&mut self, data: &'a [u8], _buffer: &'b mut [u8]) -> &'b [u8]
+    where
+        'a: 'b,
+    {
+        data
+    }
+
+    fn process_protocol_data(&mut self, _data: &[u8]) -> Result<(), ConnectionManagerError> {
+        Ok(())
+    }
+
+    fn connect(&mut self, _data: Box<[u8]>) {}
+
+    fn disconnect(&mut self) {}
+}
+
+/// Simple connection manager, that actually tries to connect by exchanging "connect", "connected", and "disconnect" messages with remote host,
 #[derive(Debug, Default)]
 struct SimpleConnectionManager {
     state: ConnectionState,
@@ -16,35 +64,26 @@ struct SimpleConnectionManager {
 
 impl SimpleConnectionManager {
     fn change_state(&mut self, new: ConnectionState) {
-        if let Some(_) = self.state.try_change(&new) {
+        if self.state.try_change(&new).is_some() {
             self.changes.push_back(Either::Right(self.state.clone()));
         }
     }
 
-    fn send_packet(&mut self, payload:&[u8]) {
+    fn send_packet(&mut self, payload: &[u8]) {
         self.changes.push_back(Either::Left(Box::from(payload)));
     }
 
-    fn get_packet<'a> (data: Box<[u8]>, buffer: &'a mut [u8]) -> GenericPacket<'a> {
+    fn get_packet<'a>(data: Box<[u8]>, buffer: &'a mut [u8]) -> GenericPacket<'a> {
         // get result slice
-        let payload = &mut buffer[0..data.as_ref().len()];                        
+        let payload = &mut buffer[0..data.as_ref().len()];
         // copy from buffer what we want to send
         payload.copy_from_slice(data.as_ref());
-        if payload.len() == 0 {
-            return GenericPacket{
-                packet_type: PacketType::ConnectionManager,
-                payload,
-                delivery: DeliveryGuarantee::Unreliable,
-                ordering: OrderingGuarantee::None
-            }
-        }
         // create packet
-        GenericPacket{
-            packet_type: PacketType::ConnectionManager,
+        GenericPacket::manager_packet(
             payload,
-            delivery: DeliveryGuarantee::Reliable,
-            ordering: OrderingGuarantee::None
-        }
+            DeliveryGuarantee::Reliable,
+            OrderingGuarantee::None,
+        )
     }
 }
 
@@ -53,14 +92,14 @@ impl ConnectionManager for SimpleConnectionManager {
         &mut self,
         buffer: &'a mut [u8],
         _time: Instant,
-    ) -> Option<Result<Either<GenericPacket<'a>, ConnectionState>, ConnectionManagerError>> {        
+    ) -> Option<Result<Either<GenericPacket<'a>, ConnectionState>, ConnectionManagerError>> {
         match self.changes.pop_front().take() {
-            Some(change) => {
-                Some(Ok(match change {
-                    Either::Left(data) => Either::Left(SimpleConnectionManager::get_packet(data, buffer)),
-                    Either::Right(state) => Either::Right(state)
-                }))
-            }
+            Some(change) => Some(Ok(match change {
+                Either::Left(data) => {
+                    Either::Left(SimpleConnectionManager::get_packet(data, buffer))
+                }
+                Either::Right(state) => Either::Right(state),
+            })),
             None => None,
         }
     }
@@ -83,46 +122,63 @@ impl ConnectionManager for SimpleConnectionManager {
         data
     }
 
-    fn process_protocol_data<'a>(&mut self, data: &'a [u8]) -> Result<(), ConnectionManagerError> {
-        if data.starts_with("connect-".as_bytes()) {
-            self.change_state(ConnectionState::Connected(Box::from(data.split_at(8).1)));
-            self.send_packet("connected-".as_bytes());            
-        } else if data.starts_with("connected-".as_bytes()) {
-            self.change_state(ConnectionState::Connected(Box::from(data.split_at(10).1)));
-        } else if data.starts_with("disconnect".as_bytes()) {
-            self.send_packet("".as_bytes());
-            self.change_state(ConnectionState::Disconnected(TargetHost::RemoteHost));
-        } else {
-            return Err(ConnectionManagerError(format!(
-                "Unknown message type: {:?}",
-                String::from_utf8_lossy(data)
-            )));
+    fn process_protocol_data(&mut self, data: &[u8]) -> Result<(), ConnectionManagerError> {
+        match self.state {
+            ConnectionState::Connecting => {
+                if data.starts_with(b"connect-") {
+                    self.send_packet(b"connected-");
+                    self.change_state(ConnectionState::Connected(Box::from(data.split_at(8).1)));
+                } else if data.starts_with(b"connected-") {
+                    self.change_state(ConnectionState::Connected(Box::from(data.split_at(10).1)));
+                }
+            }
+            ConnectionState::Connected(_) => {
+                if data.eq(b"disconnect") {
+                    self.change_state(ConnectionState::Disconnected(TargetHost::RemoteHost));
+                }
+            }
+            _ => panic!("In disconnected nothing can happen"),
         }
         Ok(())
     }
 
-    fn connect<'a>(&mut self, data: Box<[u8]>) {
-        self.send_packet(["connect-".as_bytes(), data.as_ref()].concat().as_ref());
+    fn connect(&mut self, data: Box<[u8]>) {
+        self.send_packet([b"connect-", data.as_ref()].concat().as_ref());
     }
 
-    fn disconnect<'a>(&mut self) {
-        self.send_packet("disconnect".as_bytes());
-        self.change_state(ConnectionState::Disconnected(TargetHost::LocalHost));        
+    fn disconnect(&mut self) {
+        if let ConnectionState::Connected(_) = self.state {
+            self.send_packet(b"disconnect");
+        }
+        self.change_state(ConnectionState::Disconnected(TargetHost::LocalHost));
     }
-
 }
 
 /// Simplest implementation of socket manager, always accept connection and never destroy, no matter how many errors connection reports
+/// It can create two types of connection managers:
+/// * true - creates `AlwaysConnectedConManager`
+/// * false - creates `SimpleConnectionManager`
 #[derive(Debug)]
-pub struct SimpleSocketManager;
+pub struct SimpleSocketManager(pub bool);
 
 impl SocketManager for SimpleSocketManager {
-    fn accept_new_connection(
+    fn accept_remote_connection(
+        &mut self,
+        addr: &SocketAddr,
+        _raw_bytes: &[u8],
+    ) -> Option<Box<dyn ConnectionManager>> {
+        self.accept_local_connection(addr)
+    }
+
+    fn accept_local_connection(
         &mut self,
         _addr: &SocketAddr,
-        _requested_by: TargetHost,
     ) -> Option<Box<dyn ConnectionManager>> {
-        Some(Box::new(SimpleConnectionManager::default()))
+        if self.0 {
+            Some(Box::new(AlwaysConnectedConManager::default()))
+        } else {
+            Some(Box::new(SimpleConnectionManager::default()))
+        }
     }
 
     fn collect_connections_to_destroy(&mut self) -> Option<Vec<(SocketAddr, DestroyReason)>> {

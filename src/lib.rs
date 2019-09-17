@@ -26,11 +26,11 @@ mod config;
 mod either;
 mod error;
 mod infrastructure;
+pub mod managers;
 mod net;
 mod packet;
 mod protocol_version;
 mod sequence_buffer;
-pub mod managers;
 
 #[cfg(feature = "tester")]
 mod throughput;
@@ -40,8 +40,8 @@ pub use self::throughput::ThroughputMonitoring;
 
 pub use self::config::Config;
 pub use self::error::{ErrorKind, Result};
+pub use self::net::managers::{ConnectionManager, ConnectionManagerError};
 pub use self::net::{LinkConditioner, Socket, SocketEventSender};
 pub use self::packet::{DeliveryGuarantee, OrderingGuarantee, Packet};
-pub use self::net::managers::{ConnectionManager, ConnectionManagerError};
 // pub use self::managers::{SimpleSocketManager};
 pub use self::net::events::*;

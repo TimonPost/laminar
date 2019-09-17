@@ -91,7 +91,7 @@ pub enum PacketType {
     /// Heartbeat packet
     Heartbeat = 2,
     /// ConnectionManager specific header
-    ConnectionManager = 3
+    ConnectionManager = 3,
 }
 
 impl EnumConverter for PacketType {
