@@ -32,7 +32,7 @@ pub enum ErrorKind {
     SendError(SendError<Either<ConnectionEvent<SendEvent>, ConnectionEvent<ReceiveEvent>>>),
     /// Expected header but could not be read from buffer.
     CouldNotReadHeader(String),
-    /// Errors that is returned from ConnectionManager either preprocessing data or processing packet
+    /// Errors that is returned from `ConnectionManager` either preprocessing data or processing packet
     ConnectionError(ConnectionManagerError),
 }
 
@@ -73,7 +73,7 @@ impl Display for ErrorKind {
             ),
             ErrorKind::ConnectionError(err) => write!(
                 fmt,
-                "Something when wrong in ConnectionManager. Reason: {:?}.",
+                "Something went wrong in ConnectionManager. Reason: {:?}.",
                 err
             ),
         }

@@ -44,7 +44,7 @@ pub struct VirtualConnection {
 }
 
 impl VirtualConnection {
-    /// Creates and returns a new Connection that wraps the provided socket address
+    /// Creates and returns a new `VirtualConnection` that wraps the provided socket address
     pub fn new(
         addr: SocketAddr,
         config: &Config,

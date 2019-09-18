@@ -7,7 +7,7 @@ use std::io::ErrorKind::WouldBlock;
 use std::net::SocketAddr;
 use std::time::Instant;
 
-/// The simplest connection manager, that immediately goes into connected state, after creating it
+/// The simplest connection manager, that immediately goes into the connected state, after creating it
 #[derive(Debug, Default)]
 struct AlwaysConnectedConManager {
     connected: bool,
@@ -55,7 +55,7 @@ impl ConnectionManager for AlwaysConnectedConManager {
     fn disconnect(&mut self) {}
 }
 
-/// Simple connection manager, that actually tries to connect by exchanging "connect", "connected", and "disconnect" messages with remote host,
+/// Simple connection manager, that actually tries to connect by exchanging 'connect', 'connected', and 'disconnect' messages with the remote host,
 #[derive(Debug, Default)]
 struct SimpleConnectionManager {
     state: ConnectionState,
@@ -154,7 +154,7 @@ impl ConnectionManager for SimpleConnectionManager {
     }
 }
 
-/// Simplest implementation of socket manager, always accept connection and never destroy, no matter how many errors connection reports
+/// Simplest implementation of socket manager, always accept a connection and never destroy, no matter how many errors connection reports
 /// It can create two types of connection managers:
 /// * true - creates `AlwaysConnectedConManager`
 /// * false - creates `SimpleConnectionManager`

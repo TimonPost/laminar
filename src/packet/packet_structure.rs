@@ -179,7 +179,7 @@ impl Packet {
 /// This packet type have similar properties to `Packet` except that it doesn't own anything, and additionally has `PacketType`.
 #[derive(Debug)]
 pub struct GenericPacket<'a> {
-    /// defines packet type, currently Fragment type should not set,
+    /// defines packet type, currently `Fragment` type is not supported
     pub(crate) packet_type: PacketType,
     /// the raw payload of the packet
     pub(crate) payload: &'a [u8],

@@ -5,7 +5,7 @@ use std::net::SocketAddr;
 /// Events that can occur in `laminar` for a active connection.
 #[derive(Debug)]
 pub enum ReceiveEvent {
-    /// When connection is actually created, and added to active connections list.
+    /// When the connection is actually created and added to the active connections list.
     /// Next possible event for connection is: `Connected` or `Destroyed`.
     Created,
     /// When `ConnectionManager` successfully establishes connection.
@@ -14,27 +14,27 @@ pub enum ReceiveEvent {
     /// When connection is in Connected state, it can actually start receiving packets.
     /// Next possible event is: `Packet` or `Disconnected`.
     Packet(Packet),
-    /// When connection, that was previously in connected state, is disconnected
-    /// It can either be disconnected by `ConnectionManager` in this case it is "clean" disconnect, where initiator of disconnect is also specified
-    /// Or it can be closed by `SocketManager` if it decides to do so
+    /// When connection, that was previously in a connected state, is disconnected
+    /// it can either be disconnected by `ConnectionManager` in this case it is a 'clean' disconnect, where the initiator of disconnect is also specified
+    /// or it can be closed by `SocketManager` if it decides to do so
     Disconnected(DisconnectReason),
     /// When it is removed from the active connections list.
-    /// Cnnection can be destroyed when disconnect is initiated by `ConnectionManager` or `SocketManager` decided to destroy it.
+    /// Connection can be destroyed when the disconnect is initiated by `ConnectionManager`, or `SocketManager` decided to destroy it.
     Destroyed(DestroyReason),
 }
 
-/// Events that are received from user.
+/// Events that are received from the user.
 #[derive(Debug)]
 pub enum SendEvent {
     /// Initiate connect request, this will call `ConnectionManager.connect` method.
     Connect(Box<[u8]>),
-    /// Send packet to remote host.
+    /// Send packet to the remote host.
     Packet(Packet),
     /// Initiate disconnect, this will call `ConnectionManager.disconnect` method.
     Disconnect,
 }
 
-/// Provides a reason why connection was destroyed.
+// Provides a reason why the connection was destroyed.
 #[derive(Debug, PartialEq, Clone)]
 pub enum DestroyReason {
     /// When `SocketManager` decided to destroy a connection for error that arrived from `ConnectionManager`.
@@ -50,16 +50,16 @@ pub enum DestroyReason {
 /// Provides convenient enum, to specify either Local or Remote host
 #[derive(Debug, PartialEq, Clone)]
 pub enum TargetHost {
-    /// Local host
+    /// Represents the localhost
     LocalHost,
-    /// Remote host
+    /// Represents the remote host
     RemoteHost,
 }
 
 /// Disconnect reason, received by connection
 #[derive(Debug, PartialEq)]
 pub enum DisconnectReason {
-    /// Disconnect was initiated by local or remote host
+    /// Disconnect was initiated by the local or remote host
     ClosedBy(TargetHost),
     /// Socket manager decided to destroy connection for provided reason
     Destroying(DestroyReason),

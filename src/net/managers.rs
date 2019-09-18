@@ -30,7 +30,7 @@ pub enum ConnectionState {
 }
 
 impl ConnectionState {
-    /// Tries to change current state, returns old state if successfully changed.
+    /// Tries to change current state and returns old state if successfully changed.
     pub fn try_change(&mut self, new: &Self) -> Option<Self> {
         match (&self, &new) {
             (ConnectionState::Connecting, ConnectionState::Connected(_))
@@ -62,14 +62,14 @@ pub struct ConnectionManagerError(pub String);
 /// | Laminar           | Adds/Removes headers to packets, so that it could provides reliability, ordering, fragmentation, etc.. capabilities.                                                 |
 /// | ConnectionManager | May change raw incoming and outgoing bytes to apply encryption, compression, etc.                                                                                    |
 ///
-/// It tries to maintain valid connection state, and it can't decide when to destroy itself, only when it changes to disconnected, it will be destroyed later.
+/// It tries to maintain a valid connection state, and it can't decide when to destroy itself, only when it changes to disconnected, it will be destroyed later.
 /// From the point of view of connection manager, laminar's header + payload is interpreted as user data.
-/// Distinction between user packet and protocol specific packet is encoded in laminar's packet header.
+/// Distinction between user packet and the protocol-specific packet is encoded in laminar's packet header.
 /// Preprocess/Postprocess and Update methods always accept temporary buffer of size `Config.receive_buffer_max_size` that can be used as output.
 pub trait ConnectionManager: Debug + Send {
-    /// When instance of connection manager is created, `update` method will be called, before any other method.
-    /// This function should be called frequently, even if there is no packets to send or receive.
-    /// It will always be called last, after all other methods is called, in the main laminar`s loop.
+    /// When the instance of the connection manager is created, the `update` method will be called, before any other method.
+    /// This function should be called frequently, even if there are no packets to send or receive.
+    /// It will always be called last, after all, other methods are called, in the main laminar`s loop.
     /// It can generate all kinds of packets: heartbeat, user or connection protocol packets.
     /// (maybe heartbeat functionality should be moved here?)
     /// It will be called in the loop as long, as it returns any results. E.g. `connect` method may generate multiple results: change state and send packet.
@@ -80,7 +80,7 @@ pub trait ConnectionManager: Debug + Send {
     ) -> Option<Result<Either<GenericPacket<'a>, ConnectionState>, ConnectionManagerError>>;
 
     /// This will be called for all incoming data, including packets that were resent by remote host.
-    /// If packet is accepted by laminar's reliability layer `process_protocol_data` will be called immediatelly.
+    /// If the packet is accepted by laminar's reliability layer `process_protocol_data` will be called immediately.
     /// It should return a slice where header + payload exists
     fn preprocess_incoming<'a, 'b>(
         &mut self,
@@ -90,42 +90,42 @@ pub trait ConnectionManager: Debug + Send {
     where
         'a: 'b;
 
-    /// This will be called for all outgoing data, including packets that are resend.
+    /// This will be called for all outgoing data, including packets that are resent.
     /// Dropped packets will also go through here.
     /// Accepts full packet: header + payload
     fn postprocess_outgoing<'a, 'b>(&mut self, data: &'a [u8], buffer: &'b mut [u8]) -> &'b [u8]
     where
         'a: 'b;
 
-    /// This will be called only for incoming protocol specific packets, after laminar's reliability layer accepted it.
-    /// This is convenient place to process actual logic, because it is filtered by laminar's reliability layer and it accepts only `PacketType::ConnectionManager` messages.
+    /// This will be called only for incoming protocol-specific packets after laminar's reliability layer accepted it.
+    /// This is a convenient place to process actual logic because it is filtered by laminar's reliability layer and it accepts only `PacketType::ConnectionManager` messages.
     fn process_protocol_data(&mut self, data: &[u8]) -> Result<(), ConnectionManagerError>;
 
     /// This will be invoked when player sends connect request,
     /// Some protocols might provide a way to pass initial connection data, hence the `data` field.
-    /// This method can only be called when connection is in `Connecting` state
+    /// This method can only be called when the connection is in `Connecting` state
     fn connect(&mut self, data: Box<[u8]>);
 
     /// This will be invoked when player sends SendEvent::Disconnect request.
     fn disconnect(&mut self);
 }
 
-/// Tracks all sorts of global statistics, and decided whether to create `ConnectionManager` for new connections or not.
-/// Also decides when connections should be destroyed even if they are in connected state.
+/// Tracks all sorts of global statistics and can decided whether to create a `ConnectionManager` for new connections or not.
+/// Also decides when connections should be destroyed even if they are in a connected state.
 pub trait SocketManager: Debug + Send {
-    /// Decide if it is possible to accept/create new remote connection, this is invoked when message from unknown address arives.
+    /// Decide if it is possible to accept/create new remote connection, this is invoked when a message from unknown address arrives.
     fn accept_remote_connection(
         &mut self,
         addr: &SocketAddr,
         raw_bytes: &[u8],
     ) -> Option<Box<dyn ConnectionManager>>;
-    /// Decide if it is possible to accept/create new local connection, this is invoked when any user event is recieved for unknown address.
+    /// Decide if it is possible to accept/create new local connection, this is invoked when any user event is received for unknown address.
     fn accept_local_connection(&mut self, addr: &SocketAddr) -> Option<Box<dyn ConnectionManager>>;
 
-    /// Returns list of connections that socket manager decided to destroy, along with destroy reason
+    /// Returns a list of connections that the socket manager decided to destroy, along with a destroying reason
     fn collect_connections_to_destroy(&mut self) -> Option<Vec<(SocketAddr, DestroyReason)>>;
 
-    /// All sorts of statistics might be useful here to help deciding whether new connection can be created or not
+    /// All sorts of statistics might be useful here to help to decide whether a new connection can be created or not
     fn track_connection_error(&mut self, addr: &SocketAddr, error: &ErrorKind, error_context: &str);
     fn track_global_error(&mut self, error: &ErrorKind, error_context: &str);
     fn track_sent_bytes(&mut self, addr: &SocketAddr, bytes: usize);
