@@ -20,6 +20,8 @@ and provides a lightweight, message-based interface which provides certain guara
 
 Laminar was designed to be used within the [Amethyst][amethyst] game engine but is usable without it.
 
+If you are new to laminar or networking in general, We strongly recommend taking a look at the [laminar book][book]
+
 [amethyst]: https://github.com/amethyst/amethyst
 
 # Concepts
@@ -35,7 +37,6 @@ For more information, read the projects [README.md][readme], [book][book], [docs
 [book]: https://amethyst.github.io/laminar/docs/index.html
 [docs]: https://docs.rs/laminar/
 [examples]: https://github.com/amethyst/laminar/tree/master/examples
-
 [amethyst]: https://github.com/amethyst/amethyst
 
 ## Table of contents:
@@ -51,23 +52,36 @@ For more information, read the projects [README.md][readme], [book][book], [docs
 ## Features
 These are the features this crate provides:
 
-- UDP-based Protocol
-- Connection Tracking
-- Automatic Fragmentation
-- Reliability Options: Unreliable and Reliable
-- Arranging Options: Sequenced, Unordered, and Ordered.
-- Arranging Streams
-- Protocol Versioning
-- RTT Estimation
-- Link conditioner to simulate packet loss and latency
-- Well-tested by integration and unit tests
+* [x] Fragmentation
+* [x] Unreliable packets
+* [x] Unreliable sequenced packets
+* [x] Reliable unordered packets
+* [x] Reliable ordered packets
+* [x] Reliable sequenced packets
+* [x] Fragmentation
+* [x] Rtt estimations
+* [x] Protocol version monitoring
+* [x] Basic connection management
+* [x] Heartbeat
+* [x] Basic DoS mitigation
+* [x] High Timing control
+* [x] Protocol Versioning
+* [x] Well-tested by integration and unit tests
+* [x] Can be used by multiple threads (Sender, Receiver)
+
+### Planned
+
+* [ ] Handshake Protocol
+* [ ] Advanced Connection Management
+* [ ] Cryptography
+* [ ] Congestion Control
 
 ## Getting Stated
 Add the laminar package to your `Cargo.toml` file.
 
 ```toml
 [dependencies]
-laminar = "0.3.0"
+laminar = "0.3"
 ```
 
 ### Useful Links
