@@ -18,7 +18,7 @@ pub enum ReceiveEvent {
     /// It can either be disconnected by `ConnectionManager` in this case it is "clean" disconnect, where initiator of disconnect is also specified
     /// Or it can be closed by `SocketManager` if it decides to do so
     Disconnected(DisconnectReason),
-    /// When it is removed from active connections list.
+    /// When it is removed from the active connections list.
     /// Cnnection can be destroyed when disconnect is initiated by `ConnectionManager` or `SocketManager` decided to destroy it.
     Destroyed(DestroyReason),
 }
