@@ -374,12 +374,13 @@ impl Socket {
             match (event.1, &connection.current_state) {
                 (SendEvent::Packet(packet), ConnectionState::Connected(_)) => {
                     // TODO maybe these should not depend on send_to method?
+                    // Maybe it should be extracted to separate method and added to `manual_poll` function.
                     let dropped = connection.gather_dropped_packets();
                     let mut processed_packets: Vec<Outgoing> = dropped
                         .iter()
                         .flat_map(|waiting_packet| {
                             connection.process_outgoing(
-                                PacketType::Packet,
+                                waiting_packet.packet_type,
                                 &waiting_packet.payload,
                                 // Because a delivery guarantee is only sent with reliable packets
                                 DeliveryGuarantee::Reliable,
@@ -470,6 +471,9 @@ impl Socket {
                 };
 
                 if let Some(conn) = connection {
+                    let received_payload = conn
+                        .state_manager
+                        .preprocess_incoming(received_payload, &mut self.tmp_buffer)?;
                     conn.process_incoming(
                         received_payload,
                         &self.event_sender,

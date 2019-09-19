@@ -84,14 +84,14 @@ impl TryFrom<u8> for OrderingGuarantee {
 #[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
 /// Id to identify a certain packet type.
 pub enum PacketType {
-    /// Full packet that is not fragmented
+    /// User full packet that is not fragmented,
     Packet = 0,
-    /// Fragment of a full packet
+    /// User fragment of a full packet
     Fragment = 1,
     /// Heartbeat packet
     Heartbeat = 2,
-    /// ConnectionManager specific header
-    ConnectionManager = 3,
+    /// Connection manager specific packet
+    Connection = 3,
 }
 
 impl EnumConverter for PacketType {
@@ -109,7 +109,7 @@ impl TryFrom<u8> for PacketType {
             0 => Ok(PacketType::Packet),
             1 => Ok(PacketType::Fragment),
             2 => Ok(PacketType::Heartbeat),
-            3 => Ok(PacketType::ConnectionManager),
+            3 => Ok(PacketType::Connection),
             _ => Err(ErrorKind::DecodingError(DecodingErrorKind::PacketType)),
         }
     }

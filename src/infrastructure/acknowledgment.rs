@@ -1,5 +1,4 @@
-use crate::packet::OrderingGuarantee;
-use crate::packet::SequenceNumber;
+use crate::packet::{OrderingGuarantee, PacketType, SequenceNumber};
 use crate::sequence_buffer::{sequence_greater_than, sequence_less_than, SequenceBuffer};
 use std::collections::HashMap;
 
@@ -101,6 +100,7 @@ impl AcknowledgmentHandler {
     /// Enqueue the outgoing packet for acknowledgment.
     pub fn process_outgoing(
         &mut self,
+        packet_type: PacketType,
         payload: &[u8],
         ordering_guarantee: OrderingGuarantee,
         item_identifier: Option<SequenceNumber>,
@@ -108,6 +108,7 @@ impl AcknowledgmentHandler {
         self.sent_packets.insert(
             self.sequence_number,
             SentPacket {
+                packet_type,
                 payload: Box::from(payload),
                 ordering_guarantee,
                 item_identifier,
@@ -138,8 +139,9 @@ impl AcknowledgmentHandler {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SentPacket {
+    pub packet_type: PacketType,
     pub payload: Box<[u8]>,
     pub ordering_guarantee: OrderingGuarantee,
     pub item_identifier: Option<SequenceNumber>,

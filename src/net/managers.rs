@@ -49,9 +49,15 @@ impl Default for ConnectionState {
     }
 }
 
-/// Generic error type, that is used by ConnectionManager implementation
+/// Generic error type, that is used by ConnectionManager implementation.
 #[derive(Debug, PartialEq, Clone)]
-pub struct ConnectionManagerError(pub String);
+pub enum ConnectionManagerError {
+    /// Something really bad has happened, this is not a recoverable error, and the connection should be destroyed.
+    Fatal(String),
+    /// Something unexpected has happened, but the connection is still in a valid state.
+    /// `SocketManager` can decide when to destroy the connection if two many warnings are propagated from the same connection in a short amount of time.
+    Warning(String), // TODO: is it enought? or maybe we need more fields?
+}
 
 /// It abstracts pure UDP packets, and allows to implement Connected/Disconnected states.
 /// This table summary shows where exactly ConnectionManager sits in between different layers.
@@ -98,15 +104,15 @@ pub trait ConnectionManager: Debug + Send {
         'a: 'b;
 
     /// This will be called only for incoming protocol-specific packets after laminar's reliability layer accepted it.
-    /// This is a convenient place to process actual logic because it is filtered by laminar's reliability layer and it accepts only `PacketType::ConnectionManager` messages.
+    /// This is a convenient place to process actual logic because it is filtered by laminar's reliability layer and it accepts only `PacketType::Connection` messages.
     fn process_protocol_data(&mut self, data: &[u8]) -> Result<(), ConnectionManagerError>;
 
-    /// This will be invoked when player sends connect request,
+    /// This will be invoked when a user sends connect request,
     /// Some protocols might provide a way to pass initial connection data, hence the `data` field.
     /// This method can only be called when the connection is in `Connecting` state
     fn connect(&mut self, data: Box<[u8]>);
 
-    /// This will be invoked when player sends SendEvent::Disconnect request.
+    /// This will be invoked when a user sends SendEvent::Disconnect request.
     fn disconnect(&mut self);
 }
 

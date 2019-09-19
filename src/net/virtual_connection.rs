@@ -93,6 +93,7 @@ impl VirtualConnection {
         time.duration_since(self.last_sent)
     }
 
+    // Returns current connection state: `Connecting`, `Connected` or `Disconnected`
     pub fn get_current_state(&self) -> &ConnectionState {
         &self.current_state
     }
@@ -115,8 +116,7 @@ impl VirtualConnection {
     /// This will pre-process the given buffer to be sent over the network.
     pub fn process_outgoing<'a>(
         &mut self,
-        // PacketType is used by connection manager, because it can send all sorts of packets, except fragmented.
-        // TODO would be nice to change this, so that it is impossible to provide bad value
+        // TODO (fix somehow?) if this packet is user (Packet), and is large enough that it needs to be fragmented, then this will be changed to Fragment, when building actual packet.
         packet_type: PacketType,
         payload: &'a [u8],
         delivery_guarantee: DeliveryGuarantee,
@@ -204,6 +204,11 @@ impl VirtualConnection {
 
                         Outgoing::Packet(builder.build())
                     } else {
+                        if packet_type != PacketType::Packet {
+                            return Err(ErrorKind::PacketError(
+                                PacketErrorKind::PacketTypeCannotBeFragmented,
+                            ));
+                        }
                         Outgoing::Fragments(
                             Fragmentation::spit_into_fragments(payload, &self.config)?
                                 .into_iter()
@@ -247,6 +252,7 @@ impl VirtualConnection {
                 self.congestion_handler
                     .process_outgoing(self.acknowledge_handler.local_sequence_num(), time);
                 self.acknowledge_handler.process_outgoing(
+                    packet_type,
                     payload,
                     ordering_guarantee,
                     item_identifier_value,
@@ -257,6 +263,8 @@ impl VirtualConnection {
         }
     }
 
+    // TODO would be super nice to return iterator of new packets, instead of passing `sender`, and `socket_manager` inside.
+    // maybe callback: Fn(packet) would also be enough?
     pub fn process_incoming(
         &mut self,
         received_data: &[u8],
@@ -264,12 +272,6 @@ impl VirtualConnection {
         socket_manager: &mut dyn SocketManager,
         time: Instant,
     ) -> crate::Result<()> {
-        // TODO pass buffer from somewhere else
-        let mut buffer = [0; 1500];
-        let received_data = self
-            .state_manager
-            .preprocess_incoming(received_data, &mut buffer)?;
-
         self.last_heard = time;
 
         let mut packet_reader = PacketReader::new(received_data);

@@ -8,24 +8,31 @@ use std::net::SocketAddr;
 use std::time::Instant;
 
 /// The simplest connection manager, that immediately goes into the connected state, after creating it
-#[derive(Debug, Default)]
-struct AlwaysConnectedConManager {
-    connected: bool,
+#[derive(Debug)]
+struct AlwaysConnectedConnectionManager {
+    // this is used to set initial state as connected when creating an instance.
+    // we'll take this value on first `update` call
+    initial_state: Option<ConnectionState>,
 }
 
-impl ConnectionManager for AlwaysConnectedConManager {
+impl Default for AlwaysConnectedConnectionManager {
+    fn default() -> Self {
+        Self {
+            // initialize to connected state on creation.
+            initial_state: Some(ConnectionState::Connected(Box::default())),
+        }
+    }
+}
+
+impl ConnectionManager for AlwaysConnectedConnectionManager {
     fn update<'a>(
         &mut self,
         _buffer: &'a mut [u8],
         _time: Instant,
     ) -> Option<Result<Either<GenericPacket<'a>, ConnectionState>, ConnectionManagerError>> {
-        if !self.connected {
-            self.connected = true;
-            return Some(Ok(Either::Right(
-                ConnectionState::Connected(Box::default()),
-            )));
-        }
-        None
+        self.initial_state
+            .take() // on first call state will be moved out.
+            .map(|state| Ok(Either::Right(state)))
     }
 
     fn preprocess_incoming<'a, 'b>(
@@ -133,7 +140,7 @@ impl ConnectionManager for SimpleConnectionManager {
                 }
             }
             ConnectionState::Connected(_) => {
-                if data.eq(b"disconnect") {
+                if data.eq(b"disconnect-") {
                     self.change_state(ConnectionState::Disconnected(TargetHost::RemoteHost));
                 }
             }
@@ -148,7 +155,7 @@ impl ConnectionManager for SimpleConnectionManager {
 
     fn disconnect(&mut self) {
         if let ConnectionState::Connected(_) = self.state {
-            self.send_packet(b"disconnect");
+            self.send_packet(b"disconnect-");
         }
         self.change_state(ConnectionState::Disconnected(TargetHost::LocalHost));
     }
@@ -175,7 +182,7 @@ impl SocketManager for SimpleSocketManager {
         _addr: &SocketAddr,
     ) -> Option<Box<dyn ConnectionManager>> {
         if self.0 {
-            Some(Box::new(AlwaysConnectedConManager::default()))
+            Some(Box::new(AlwaysConnectedConnectionManager::default()))
         } else {
             Some(Box::new(SimpleConnectionManager::default()))
         }

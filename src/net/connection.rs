@@ -3,7 +3,7 @@ use crate::{
     config::Config,
     either::Either,
     net::events::{ConnectionEvent, DestroyReason, DisconnectReason, ReceiveEvent},
-    net::managers::{ConnectionState, SocketManager},
+    net::managers::{ConnectionManagerError, ConnectionState, SocketManager},
     net::socket::SocketWithConditioner,
     packet::Outgoing,
     ErrorKind,
@@ -22,15 +22,12 @@ use std::{
 #[derive(Debug)]
 pub struct ActiveConnections {
     connections: HashMap<SocketAddr, VirtualConnection>,
-    buffer: Box<[u8]>,
 }
 
 impl ActiveConnections {
     pub fn new() -> Self {
         Self {
             connections: HashMap::new(),
-            // TODO actually take from config
-            buffer: Box::new([0; 1500]),
         }
     }
 
@@ -48,6 +45,7 @@ impl ActiveConnections {
             .or_insert_with(|| VirtualConnection::new(address, config, time, state_manager))
     }
 
+    /// Returns `VirtualConnection` or None if it doesn't exists for a given address.
     pub fn try_get(&mut self, address: &SocketAddr) -> Option<&mut VirtualConnection> {
         self.connections.get_mut(address)
     }
@@ -145,6 +143,8 @@ impl ActiveConnections {
             });
     }
 
+    /// Calls `update` method for `ConnectionManager`, in the loop, until it returns None
+    /// These updates returns either new packets to be sent, or connection state changes.
     pub fn update_connection_manager(
         conn: &mut VirtualConnection,
         sender: &Sender<ConnectionEvent<ReceiveEvent>>,
@@ -157,27 +157,40 @@ impl ActiveConnections {
             match changes {
                 Ok(event) => match event {
                     Either::Left(packet) => {
-                        // TODO properly handle error, instead of assert
-                        let packet = conn
-                            .process_outgoing(
-                                packet.packet_type,
-                                packet.payload,
-                                packet.delivery,
-                                packet.ordering,
-                                None,
-                                time,
-                            )
-                            .expect("connection manager packet should not fail");
-                        if let Outgoing::Packet(outgoing) = packet {
-                            socket.send_packet_and_log(
+                        match conn.process_outgoing(
+                            packet.packet_type,
+                            packet.payload,
+                            packet.delivery,
+                            packet.ordering,
+                            None,
+                            time,
+                        ) {
+                            Ok(packet) => {
+                                if let Outgoing::Packet(outgoing) = packet {
+                                    socket.send_packet_and_log(
+                                        &conn.remote_address,
+                                        conn.state_manager.as_mut(),
+                                        &outgoing.contents(),
+                                        manager,
+                                        "sending packet from connection manager",
+                                    );
+                                } else {
+                                    manager.track_connection_error(
+                                        &conn.remote_address,
+                                        &ErrorKind::ConnectionError(ConnectionManagerError::Fatal(
+                                            String::from(
+                                                "connection manager cannot send fragmented packets",
+                                            ),
+                                        )),
+                                        "sending packet from connection manager",
+                                    );
+                                }
+                            }
+                            Err(err) => manager.track_connection_error(
                                 &conn.remote_address,
-                                conn.state_manager.as_mut(),
-                                &outgoing.contents(),
-                                manager,
+                                &err,
                                 "sending packet from connection manager",
-                            );
-                        } else {
-                            panic!("connection manager cannot send fragmented packets");
+                            ),
                         }
                     }
                     Either::Right(state) => {
@@ -195,10 +208,19 @@ impl ActiveConnections {
                                         )),
                                     ))
                                 }
-                                _ => panic!(
-                                    "Invalid state transition: {:?} -> {:?}",
-                                    old, conn.current_state
-                                ),
+                                _ => {
+                                    manager.track_connection_error(
+                                        &conn.remote_address,
+                                        &ErrorKind::ConnectionError(ConnectionManagerError::Fatal(
+                                            format!(
+                                                "Invalid state transition: {:?} -> {:?}",
+                                                old, conn.current_state
+                                            ),
+                                        )),
+                                        "changing connection manager state",
+                                    );
+                                    Ok(())
+                                }
                             } {
                                 manager.track_connection_error(
                                     &conn.remote_address,
@@ -207,9 +229,15 @@ impl ActiveConnections {
                                 );
                             }
                         } else {
-                            panic!(
-                                "Invalid state transition {:?} -> {:?}",
-                                conn.current_state, state
+                            manager.track_connection_error(
+                                &conn.remote_address,
+                                &ErrorKind::ConnectionError(ConnectionManagerError::Fatal(
+                                    format!(
+                                        "Invalid state transition: {:?} -> {:?}",
+                                        conn.current_state, state
+                                    ),
+                                )),
+                                "changing connection manager state",
                             );
                         }
                     }
@@ -225,6 +253,7 @@ impl ActiveConnections {
         }
     }
 
+    /// Iterates through all active connections, and `update`s each connection manager.
     pub fn update_connections(
         &mut self,
         sender: &Sender<ConnectionEvent<ReceiveEvent>>,

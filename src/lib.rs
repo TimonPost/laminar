@@ -40,8 +40,7 @@ pub use self::throughput::ThroughputMonitoring;
 
 pub use self::config::Config;
 pub use self::error::{ErrorKind, Result};
+pub use self::net::events::*;
 pub use self::net::managers::{ConnectionManager, ConnectionManagerError};
 pub use self::net::{LinkConditioner, Socket, SocketEventSender};
 pub use self::packet::{DeliveryGuarantee, OrderingGuarantee, Packet};
-// pub use self::managers::{SimpleSocketManager};
-pub use self::net::events::*;

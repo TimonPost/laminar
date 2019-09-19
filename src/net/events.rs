@@ -34,7 +34,7 @@ pub enum SendEvent {
     Disconnect,
 }
 
-// Provides a reason why the connection was destroyed.
+/// Provides a reason why the connection was destroyed.
 #[derive(Debug, PartialEq, Clone)]
 pub enum DestroyReason {
     /// When `SocketManager` decided to destroy a connection for error that arrived from `ConnectionManager`.
