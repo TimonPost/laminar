@@ -359,6 +359,7 @@ impl Socket {
     #[cfg(test)]
     fn forget_all_incoming_packets(&mut self) {
         std::thread::sleep(std::time::Duration::from_millis(100));
+        self.socket.set_nonblocking(true);
         loop {
             match self.socket.recv_from(&mut self.recv_buffer) {
                 Ok((recv_len, _address)) => {
@@ -371,11 +372,13 @@ impl Socket {
                     if e.kind() != io::ErrorKind::WouldBlock {
                         panic!("Encountered an error receiving data: {:?}", e);
                     } else {
+                        self.socket.set_nonblocking(!self.config.blocking_mode);
                         return;
                     }
                 }
             }
         }
+        self.socket.set_nonblocking(!self.config.blocking_mode);
     }
 }
 
