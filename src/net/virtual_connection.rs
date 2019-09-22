@@ -303,7 +303,7 @@ impl VirtualConnection {
                                     payload.into_boxed_slice(),
                                     self.remote_address,
                                     header.delivery_guarantee(),
-                                    OrderingGuarantee::None,
+                                    header.ordering_guarantee(),
                                 )?;
                             }
                             Ok(None) => return Ok(()),
