@@ -125,7 +125,7 @@ pub enum FragmentErrorKind {
     /// This fragment was already processed
     AlreadyProcessedFragment,
     /// Attempted to fragment with an incorrect number of fragments
-    FragmentWithUnevenNumberOfFragemts,
+    FragmentWithUnevenNumberOfFragments,
     /// Fragment we expected to be able to find we couldn't
     CouldNotFindFragmentById,
 }
@@ -143,7 +143,7 @@ impl Display for FragmentErrorKind {
             FragmentErrorKind::AlreadyProcessedFragment => {
                 write!(fmt, "The fragment received was already processed.")
             }
-            FragmentErrorKind::FragmentWithUnevenNumberOfFragemts => write!(
+            FragmentErrorKind::FragmentWithUnevenNumberOfFragments => write!(
                 fmt,
                 "The fragment header does not contain the right fragment count."
             ),
