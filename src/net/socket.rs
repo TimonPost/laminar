@@ -1204,4 +1204,81 @@ mod tests {
 
         assert_eq!["99999", last_payload];
     }
+
+    #[test]
+    fn fragmented_ordered_gets_acked() {
+        let mut cfg = Config::default();
+        cfg.fragment_size = 10;
+
+        let mut client = Socket::bind_any_with_config(cfg.clone()).unwrap();
+        let client_addr = client.local_addr().unwrap();
+
+        cfg.blocking_mode = true;
+        let mut server = Socket::bind_any_with_config(cfg).unwrap();
+        let server_addr = server.local_addr().unwrap();
+
+        let time = Instant::now();
+        let dummy = vec![0];
+
+        // ---
+
+        client
+            .send(Packet::unreliable(server_addr, dummy.clone()))
+            .unwrap();
+        client.manual_poll(time);
+        server
+            .send(Packet::unreliable(client_addr, dummy.clone()))
+            .unwrap();
+        server.manual_poll(time);
+
+        // ---
+
+        let exceeds = b"Fragmented string".to_vec();
+        client
+            .send(Packet::reliable_ordered(server_addr, exceeds, None))
+            .unwrap();
+        client.manual_poll(time);
+
+        server.manual_poll(time);
+        server.manual_poll(time);
+        server
+            .send(Packet::reliable_ordered(client_addr, dummy.clone(), None))
+            .unwrap();
+
+        client
+            .send(Packet::unreliable(server_addr, dummy.clone()))
+            .unwrap();
+        client.manual_poll(time);
+        server.manual_poll(time);
+
+        for _ in 0..4 {
+            assert![server.recv().is_some()];
+        }
+        assert![server.recv().is_none()];
+
+        for _ in 0..34 {
+            client
+                .send(Packet::reliable_ordered(server_addr, dummy.clone(), None))
+                .unwrap();
+            client.manual_poll(time);
+            server
+                .send(Packet::reliable_ordered(client_addr, dummy.clone(), None))
+                .unwrap();
+            server.manual_poll(time);
+            assert![client.recv().is_some()];
+            // If the last iteration returns None here, it indicates we just received a re-sent
+            // fragment, because `manual_poll` only processes a single incoming UDP packet per
+            // `manual_poll` if and only if the socket is in blocking mode.
+            //
+            // If that functionality is changed, we will receive something unexpected here
+            match server.recv() {
+                Some(SocketEvent::Packet(pkt)) => {
+                    assert_eq![dummy, pkt.payload()];
+                }
+                _ => {
+                    panic!["Did not receive expected dummy packet"];
+                }
+            }
+        }
+    }
 }

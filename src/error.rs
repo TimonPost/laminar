@@ -128,6 +128,10 @@ pub enum FragmentErrorKind {
     FragmentWithUnevenNumberOfFragemts,
     /// Fragment we expected to be able to find we couldn't
     CouldNotFindFragmentById,
+    /// Multiple ack headers sent with these fragments
+    MultipleAckHeaders,
+    /// Ack header is missing from a finished set of fragments
+    MissingAckHeader,
 }
 
 impl Display for FragmentErrorKind {
@@ -150,6 +154,14 @@ impl Display for FragmentErrorKind {
             FragmentErrorKind::CouldNotFindFragmentById => write!(
                 fmt,
                 "The fragment supposed to be in a the cache but it was not found."
+            ),
+            FragmentErrorKind::MultipleAckHeaders => write!(
+                fmt,
+                "The fragment contains an ack header but a previous ack header has already been registered."
+            ),
+            FragmentErrorKind::MissingAckHeader => write!(
+                fmt,
+                "No ack headers were registered with any of the fragments."
             ),
         }
     }

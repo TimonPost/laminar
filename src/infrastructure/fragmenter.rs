@@ -2,7 +2,7 @@ use crate::{
     config::Config,
     error::{FragmentErrorKind, Result},
     net::constants::FRAGMENT_HEADER_SIZE,
-    packet::header::FragmentHeader,
+    packet::header::{AckedPacketHeader, FragmentHeader},
     sequence_buffer::{ReassemblyData, SequenceBuffer},
 };
 
@@ -98,7 +98,8 @@ impl Fragmentation {
         &mut self,
         fragment_header: FragmentHeader,
         fragment_payload: &[u8],
-    ) -> Result<Option<Vec<u8>>> {
+        acked_header: Option<AckedPacketHeader>,
+    ) -> Result<Option<(Vec<u8>, AckedPacketHeader)>> {
         // read fragment packet
 
         self.create_fragment_if_not_exists(fragment_header);
@@ -131,18 +132,33 @@ impl Fragmentation {
             // add the payload from the fragment to the buffer whe have in cache
             reassembly_data.buffer.write_all(&*fragment_payload)?;
 
+            if let Some(acked_header) = acked_header {
+                if reassembly_data.acked_header.is_none() {
+                    reassembly_data.acked_header = Some(acked_header);
+                } else {
+                    Err(FragmentErrorKind::MultipleAckHeaders)?;
+                }
+            }
+
             num_fragments_received = reassembly_data.num_fragments_received;
             num_fragments_total = reassembly_data.num_fragments_total;
             sequence = reassembly_data.sequence as u16;
             total_buffer = reassembly_data.buffer.clone();
         }
 
-        // if whe received all fragments then remove entry and return the total received bytes.
+        // if we received all fragments then remove entry and return the total received bytes.
         if num_fragments_received == num_fragments_total {
             let sequence = sequence as u16;
-            self.fragments.remove(sequence);
+            if let Some(mut reassembly_data) = self.fragments.remove(sequence) {
+                if reassembly_data.acked_header.is_none() {
+                    Err(FragmentErrorKind::MissingAckHeader)?;
+                }
 
-            return Ok(Some(total_buffer));
+                let acked_header = reassembly_data.acked_header.take().unwrap();
+                return Ok(Some((total_buffer, acked_header)));
+            } else {
+                Err(FragmentErrorKind::CouldNotFindFragmentById)?;
+            }
         }
 
         Ok(None)
