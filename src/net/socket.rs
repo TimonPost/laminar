@@ -1,14 +1,15 @@
 use crate::{
     config::Config,
-    either::Either,
     error::{ErrorKind, Result},
-    net::events::{ConnectionEvent, DestroyReason, ReceiveEvent, SendEvent},
-    net::managers::{ConnectionManager, ConnectionState, SocketManager},
-    net::{connection::ActiveConnections, link_conditioner::LinkConditioner},
-    packet::{DeliveryGuarantee, Outgoing, Packet, PacketType},
+    net::events::{ConnectionEvent, ReceiveEvent, SendEvent},
+    net::managers::{ConnectionManager, ConnectionManagerFactory, ConnectionState},
+    net::MetricsCollector,
+    net::{
+        connection::ActiveConnections, link_conditioner::LinkConditioner, ReliabilitySystem,
+        VirtualConnection,
+    },
 };
-use crossbeam_channel::{self, unbounded, Receiver, SendError, Sender, TryRecvError};
-use log::error;
+use crossbeam_channel::{self, unbounded, Receiver, Sender, TryRecvError};
 use std::{
     self, io,
     net::{Ipv4Addr, SocketAddr, SocketAddrV4, ToSocketAddrs, UdpSocket},
@@ -19,7 +20,7 @@ use std::{
 // just wrap whese too together, for easier passing around
 #[derive(Debug)]
 pub struct SocketWithConditioner {
-    buffer: Vec<u8>, // this buffer is used for postprocess_outgoing
+    postprocess_buffer: Vec<u8>, // this buffer is used for postprocess_outgoing
     socket: UdpSocket,
     link_conditioner: Option<LinkConditioner>,
 }
@@ -28,79 +29,33 @@ impl SocketWithConditioner {
     /// Send a single packet over the UDP socket.
     /// Postprocess it using Connectionmanager`s postprocess_outgoing method,
     /// and use link condition if exists, to simulate network conditions
-    pub fn send_packet(
+    pub fn send_packet_and_log(
+        &mut self,
+        addr: &SocketAddr,
+        conn_man: &mut dyn ConnectionManager,
+        payload: &[u8],
+        metrics: &mut MetricsCollector,
+        error_context: &str,
+    ) {
+        match self.send_packet(addr, conn_man, payload) {
+            Ok(bytes) => metrics.track_sent_bytes(addr, bytes),
+            Err(ref err) => metrics.track_connection_error(addr, err, error_context),
+        }
+    }
+
+    fn send_packet(
         &mut self,
         addr: &SocketAddr,
         manager: &mut dyn ConnectionManager,
         payload: &[u8],
     ) -> Result<usize> {
-        let payload = manager.postprocess_outgoing(payload, self.buffer.as_mut_slice());
+        let payload = manager.postprocess_outgoing(payload, self.postprocess_buffer.as_mut_slice());
         if let Some(ref mut link) = self.link_conditioner {
             if !link.should_send() {
                 return Ok(0);
             }
         }
         Ok(self.socket.send_to(payload, addr)?)
-    }
-
-    pub fn send_packet_and_log(
-        &mut self,
-        addr: &SocketAddr,
-        conn_man: &mut dyn ConnectionManager,
-        payload: &[u8],
-        sock_man: &mut dyn SocketManager,
-        error_context: &str,
-    ) -> usize {
-        match self.send_packet(addr, conn_man, payload) {
-            Ok(bytes) => {
-                sock_man.track_sent_bytes(addr, bytes);
-                bytes
-            }
-            Err(ref err) => {
-                sock_man.track_connection_error(addr, err, error_context);
-                0
-            }
-        }
-    }
-}
-
-/// Wraps crossbeam_channel sender with convenient functions: `connect`, `send`, `disconnect`
-pub struct SocketEventSender(pub Sender<ConnectionEvent<SendEvent>>);
-
-impl SocketEventSender {
-    /// Constructs ConnectionEvent<SendEvent> Packet event from provided packet
-    pub fn send(&self, packet: Packet) -> std::result::Result<(), SendError<Packet>> {
-        self.0
-            .send(ConnectionEvent(packet.addr(), SendEvent::Packet(packet)))
-            .map_err(|err| {
-                SendError(match (err.0).1 {
-                    SendEvent::Packet(data) => data,
-                    _ => unreachable!(),
-                })
-            })
-    }
-
-    /// Constructs ConnectionEvent<SendEvent> Connect event from provided payload
-    pub fn connect(
-        &self,
-        addr: SocketAddr,
-        payload: Box<[u8]>,
-    ) -> std::result::Result<(), SendError<Box<[u8]>>> {
-        self.0
-            .send(ConnectionEvent(addr, SendEvent::Connect(payload)))
-            .map_err(|err| {
-                SendError(match (err.0).1 {
-                    SendEvent::Connect(data) => data,
-                    _ => unreachable!(),
-                })
-            })
-    }
-
-    /// Constructs ConnectionEvent<SendEvent> Disconnect event
-    pub fn disconnect(&self, addr: SocketAddr) -> std::result::Result<(), SendError<()>> {
-        self.0
-            .send(ConnectionEvent(addr, SendEvent::Disconnect))
-            .map_err(|_| SendError(()))
     }
 }
 
@@ -111,14 +66,15 @@ pub struct Socket {
     config: Config,
     connections: ActiveConnections,
     recv_buffer: Vec<u8>,
-    tmp_buffer: Vec<u8>, // this is temporary buffer, mostly used by connection manager, in cases where it needs to modify incomming/outgoing raw bytes, or create new packets for sending
+    preprocess_buffer: Vec<u8>, // this is temporary buffer, used by connection manager, in cases where it needs to modify incomming raw bytes, or create new packets for sending
 
     event_sender: Sender<ConnectionEvent<ReceiveEvent>>,
     packet_receiver: Receiver<ConnectionEvent<SendEvent>>,
 
     receiver: Receiver<ConnectionEvent<ReceiveEvent>>,
     sender: Sender<ConnectionEvent<SendEvent>>,
-    manager: Box<dyn SocketManager>,
+    metrics: MetricsCollector,
+    conn_manager_factory: Box<dyn ConnectionManagerFactory>,
 }
 
 enum UdpSocketState {
@@ -130,21 +86,27 @@ impl Socket {
     /// Binds to the socket and then sets up `ActiveConnections` to manage the "connections".
     /// Because UDP connections are not persistent, we can only infer the status of the remote
     /// endpoint by looking to see if they are still sending packets or not
-    pub fn bind<A: ToSocketAddrs>(addresses: A, manager: Box<dyn SocketManager>) -> Result<Self> {
-        Socket::bind_with_config(addresses, Config::default(), manager)
+    pub fn bind<A: ToSocketAddrs>(
+        addresses: A,
+        factory: Box<dyn ConnectionManagerFactory>,
+    ) -> Result<Self> {
+        Socket::bind_with_config(addresses, Config::default(), factory)
     }
 
     /// Bind to any local port on the system, if available
-    pub fn bind_any(manager: Box<dyn SocketManager>) -> Result<Self> {
-        Self::bind_any_with_config(Config::default(), manager)
+    pub fn bind_any(factory: Box<dyn ConnectionManagerFactory>) -> Result<Self> {
+        Self::bind_any_with_config(Config::default(), factory)
     }
 
     /// Bind to any local port on the system, if available, with a given config
-    pub fn bind_any_with_config(config: Config, manager: Box<dyn SocketManager>) -> Result<Self> {
+    pub fn bind_any_with_config(
+        config: Config,
+        factory: Box<dyn ConnectionManagerFactory>,
+    ) -> Result<Self> {
         let loopback = Ipv4Addr::new(127, 0, 0, 1);
         let address = SocketAddrV4::new(loopback, 0);
         let socket = UdpSocket::bind(address)?;
-        Self::bind_internal(socket, config, manager)
+        Self::bind_internal(socket, config, factory)
     }
 
     /// Binds to the socket and then sets up `ActiveConnections` to manage the "connections".
@@ -155,25 +117,25 @@ impl Socket {
     pub fn bind_with_config<A: ToSocketAddrs>(
         addresses: A,
         config: Config,
-        manager: Box<dyn SocketManager>,
+        factory: Box<dyn ConnectionManagerFactory>,
     ) -> Result<Self> {
         let socket = UdpSocket::bind(addresses)?;
-        Self::bind_internal(socket, config, manager)
+        Self::bind_internal(socket, config, factory)
     }
 
     fn bind_internal(
         socket: UdpSocket,
         config: Config,
-        manager: Box<dyn SocketManager>,
+        factory: Box<dyn ConnectionManagerFactory>,
     ) -> Result<Self> {
         socket.set_nonblocking(!config.blocking_mode)?;
         let (event_sender, event_receiver) = unbounded();
         let (packet_sender, packet_receiver) = unbounded();
         Ok(Socket {
             recv_buffer: vec![0; config.receive_buffer_max_size],
-            tmp_buffer: vec![0; config.receive_buffer_max_size],
+            preprocess_buffer: vec![0; config.receive_buffer_max_size],
             socket: SocketWithConditioner {
-                buffer: Vec::with_capacity(config.receive_buffer_max_size),
+                postprocess_buffer: Vec::with_capacity(config.receive_buffer_max_size),
                 socket,
                 link_conditioner: None,
             },
@@ -184,8 +146,8 @@ impl Socket {
 
             sender: packet_sender,
             receiver: event_receiver,
-
-            manager,
+            metrics: MetricsCollector {},
+            conn_manager_factory: factory,
         })
     }
 
@@ -207,7 +169,7 @@ impl Socket {
     pub fn send(&mut self, event: ConnectionEvent<SendEvent>) -> Result<()> {
         match self.sender.send(event) {
             Ok(_) => Ok(()),
-            Err(error) => Err(ErrorKind::SendError(SendError(Either::Left(error.0)))),
+            Err(error) => Err(ErrorKind::from(error)),
         }
     }
 
@@ -247,56 +209,40 @@ impl Socket {
                 Ok(UdpSocketState::MaybeMore) => continue,
                 Ok(UdpSocketState::MaybeEmpty) => break,
                 Err(ref e) => self
-                    .manager
+                    .metrics
                     .track_global_error(e, "receiving data from socket"),
             }
         }
 
         // Now grab all the packets waiting to be sent and send them
         while let Ok(p) = self.packet_receiver.try_recv() {
-            if let Err(ref e) = self.send_to(p, time) {
-                self.manager
-                    .track_global_error(e, "sending data from socket")
-            }
+            self.send_to(p, time);
         }
 
         self.connections.update_connections(
             &self.event_sender,
-            self.manager.as_mut(),
+            &mut self.metrics,
             &mut self.socket,
             time,
-            self.tmp_buffer.as_mut(),
+            &mut self.preprocess_buffer,
         );
 
-        // get connections that socket manager decided to destroy
-        if let Some(list) = self.manager.collect_connections_to_destroy() {
-            for (addr, reason) in list {
-                self.connections.remove_connection(
-                    &addr,
-                    &self.event_sender,
-                    self.manager.as_mut(),
-                    reason,
-                    "destroyed by socket manager",
-                );
-            }
-        }
-
-        // Check for idle clients
-        self.handle_idle_clients(time);
-
-        // Handle any dead clients
-        self.handle_dead_clients();
+        // Check for all dead connections
+        self.connections.handle_dead_clients(
+            time,
+            self.config.idle_connection_timeout,
+            &self.event_sender,
+            &mut self.metrics,
+        );
 
         // Finally send heartbeat packets to connections that require them, if enabled
         if let Some(heartbeat_interval) = self.config.heartbeat_interval {
-            // Iterate over all connections which have not sent a packet for a duration of at least
-            // `heartbeat_interval` (from config), and send a heartbeat packet to each.
-            self.connections.heartbeat_required_connections(
-                heartbeat_interval,
+            self.connections.handle_heartbeat(
                 time,
-                self.manager.as_mut(),
+                heartbeat_interval,
                 &mut self.socket,
-            );
+                &mut self.metrics,
+            )
         }
     }
 
@@ -310,128 +256,40 @@ impl Socket {
         Ok(self.socket.socket.local_addr()?)
     }
 
-    /// Iterate through the dead connections and disconnect them by removing them from the
-    /// connection map while informing the user of this by sending an event.
-    fn handle_dead_clients(&mut self) {
-        let dead_addresses = self.connections.dead_connections();
-        for (address, reason) in dead_addresses {
-            self.connections.remove_connection(
-                &address,
-                &self.event_sender,
-                self.manager.as_mut(),
-                reason,
-                "removing dead clients",
-            );
-        }
-    }
-
-    /// Iterate through all of the idle connections based on `idle_connection_timeout` config and
-    /// remove them from the active connections. For each connection removed, we will send a
-    /// `SocketEvent::TimeOut` event to the `event_sender` channel.
-    fn handle_idle_clients(&mut self, time: Instant) {
-        let idle_addresses = self
-            .connections
-            .idle_connections(self.config.idle_connection_timeout, time);
-        for address in idle_addresses {
-            self.connections.remove_connection(
-                &address,
-                &self.event_sender,
-                self.manager.as_mut(),
-                DestroyReason::Timeout,
-                "removing idle clients",
-            );
-        }
-    }
-
     // Serializes and sends a `Packet` on the socket. On success, returns the number of bytes written.
-    fn send_to(&mut self, event: ConnectionEvent<SendEvent>, time: Instant) -> Result<usize> {
-        let mut bytes_sent = 0;
-
+    fn send_to(&mut self, event: ConnectionEvent<SendEvent>, time: Instant) {
         let connection = if let Some(connection) = self.connections.try_get(&event.0) {
             Some(connection)
-        } else if let Some(conn_manager) = self.manager.accept_local_connection(&event.0) {
-            self.event_sender
-                .send(ConnectionEvent(event.0, ReceiveEvent::Created))?;
-            let conn = self.connections.get_or_insert_connection(
-                event.0,
-                &self.config,
-                time,
-                conn_manager,
-            );
-            ActiveConnections::update_connection_manager(
-                conn,
-                &self.event_sender,
-                self.manager.as_mut(),
+        } else {
+            let conn = self.connections.insert_and_init_connection(
+                VirtualConnection::new(
+                    event.0,
+                    ReliabilitySystem::new(&self.config, time),
+                    self.conn_manager_factory
+                        .create_local_connection_manager(&event.0),
+                ),
                 &mut self.socket,
+                &self.event_sender,
+                &mut self.metrics,
                 time,
-                self.tmp_buffer.as_mut(),
+                &mut self.preprocess_buffer,
             );
             Some(conn)
-        } else {
-            None
         };
+
         if let Some(connection) = connection {
-            match (event.1, &connection.current_state) {
+            match (event.1, connection.get_current_state()) {
                 (SendEvent::Packet(packet), ConnectionState::Connected(_)) => {
                     // TODO maybe these should not depend on send_to method?
                     // Maybe it should be extracted to separate method and added to `manual_poll` function.
-                    let dropped = connection.gather_dropped_packets();
-                    let mut processed_packets: Vec<Outgoing> = dropped
-                        .iter()
-                        .flat_map(|waiting_packet| {
-                            connection.process_outgoing(
-                                waiting_packet.packet_type,
-                                &waiting_packet.payload,
-                                // Because a delivery guarantee is only sent with reliable packets
-                                DeliveryGuarantee::Reliable,
-                                // This is stored with the dropped packet because they could be mixed
-                                waiting_packet.ordering_guarantee,
-                                waiting_packet.item_identifier,
-                                time,
-                            )
-                        })
-                        .collect();
-
-                    let processed_packet = connection.process_outgoing(
-                        PacketType::Packet,
-                        packet.payload(),
-                        packet.delivery_guarantee(),
-                        packet.order_guarantee(),
-                        None,
-                        time,
-                    )?;
-                    processed_packets.push(processed_packet);
-
-                    for processed_packet in processed_packets {
-                        match processed_packet {
-                            Outgoing::Packet(outgoing) => {
-                                bytes_sent += self.socket.send_packet(
-                                    &event.0,
-                                    connection.state_manager.as_mut(),
-                                    &outgoing.contents(),
-                                )?;
-                            }
-                            Outgoing::Fragments(packets) => {
-                                for outgoing in packets {
-                                    bytes_sent += self.socket.send_packet(
-                                        &event.0,
-                                        connection.state_manager.as_mut(),
-                                        &outgoing.contents(),
-                                    )?;
-                                }
-                            }
-                        }
-                    }
+                    connection.resend_dropped_packets(time, &mut self.socket, &mut self.metrics);
+                    connection.process_outgoing(&packet, time, &mut self.socket, &mut self.metrics);
                 }
-                (SendEvent::Connect(data), ConnectionState::Connecting) => {
-                    connection.state_manager.connect(data)
-                }
-                (SendEvent::Disconnect, _) => connection.state_manager.disconnect(),
+                (SendEvent::Connect(data), ConnectionState::Connecting) => connection.connect(data),
+                (SendEvent::Disconnect, _) => connection.disconnect(),
                 _ => {} // ignore all other combinations
             };
         }
-
-        Ok(bytes_sent)
     }
 
     // On success the packet will be sent on the `event_sender`
@@ -445,46 +303,38 @@ impl Socket {
 
                 let connection = if let Some(conn) = self.connections.try_get(&address) {
                     Some(conn)
-                } else if let Some(manager) = self
-                    .manager
-                    .accept_remote_connection(&address, received_payload)
-                {
-                    self.event_sender
-                        .send(ConnectionEvent(address, ReceiveEvent::Created))?;
-                    let conn = self.connections.get_or_insert_connection(
-                        address,
-                        &self.config,
-                        time,
-                        manager,
-                    );
-                    ActiveConnections::update_connection_manager(
-                        conn,
-                        &self.event_sender,
-                        self.manager.as_mut(),
+                } else {
+                    let conn = self.connections.insert_and_init_connection(
+                        VirtualConnection::new(
+                            address,
+                            ReliabilitySystem::new(&self.config, time),
+                            self.conn_manager_factory
+                                .create_remote_connection_manager(&address, received_payload),
+                        ),
                         &mut self.socket,
+                        &self.event_sender,
+                        &mut self.metrics,
                         time,
-                        self.tmp_buffer.as_mut(),
+                        &mut self.preprocess_buffer,
                     );
                     Some(conn)
-                } else {
-                    None
                 };
 
                 if let Some(conn) = connection {
-                    let received_payload = conn
-                        .state_manager
-                        .preprocess_incoming(received_payload, &mut self.tmp_buffer)?;
+                    self.metrics.track_received_bytes(&address, recv_len);
                     conn.process_incoming(
                         received_payload,
-                        &self.event_sender,
-                        self.manager.as_mut(),
+                        &mut self.preprocess_buffer,
                         time,
+                        &self.event_sender,
+                        &mut self.metrics,
                     )?;
+                } else {
+                    self.metrics.track_ignored_bytes(&address, recv_len);
                 }
             }
             Err(e) => {
                 if e.kind() != io::ErrorKind::WouldBlock {
-                    error!("Encountered an error receiving data: {:?}", e);
                     return Err(e.into());
                 } else {
                     return Ok(UdpSocketState::MaybeEmpty);

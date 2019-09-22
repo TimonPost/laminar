@@ -1,9 +1,7 @@
 use crate::net::managers::*;
 
 use crate::packet::{DeliveryGuarantee, OrderingGuarantee};
-use log::error;
 use std::collections::VecDeque;
-use std::io::ErrorKind::WouldBlock;
 use std::net::SocketAddr;
 use std::time::Instant;
 
@@ -29,10 +27,10 @@ impl ConnectionManager for AlwaysConnectedConnectionManager {
         &mut self,
         _buffer: &'a mut [u8],
         _time: Instant,
-    ) -> Option<Result<Either<GenericPacket<'a>, ConnectionState>, ConnectionManagerError>> {
+    ) -> Option<ConnectionManagerEvent<'a>> {
         self.initial_state
             .take() // on first call state will be moved out.
-            .map(|state| Ok(Either::Right(state)))
+            .map(ConnectionManagerEvent::NewState)
     }
 
     fn preprocess_incoming<'a, 'b>(
@@ -86,7 +84,7 @@ impl SimpleConnectionManager {
         // copy from buffer what we want to send
         payload.copy_from_slice(data.as_ref());
         // create packet
-        GenericPacket::manager_packet(
+        GenericPacket::connection_packet(
             payload,
             DeliveryGuarantee::Reliable,
             OrderingGuarantee::None,
@@ -99,16 +97,16 @@ impl ConnectionManager for SimpleConnectionManager {
         &mut self,
         buffer: &'a mut [u8],
         _time: Instant,
-    ) -> Option<Result<Either<GenericPacket<'a>, ConnectionState>, ConnectionManagerError>> {
-        match self.changes.pop_front().take() {
-            Some(change) => Some(Ok(match change {
-                Either::Left(data) => {
-                    Either::Left(SimpleConnectionManager::get_packet(data, buffer))
-                }
-                Either::Right(state) => Either::Right(state),
-            })),
-            None => None,
-        }
+    ) -> Option<ConnectionManagerEvent<'a>> {
+        self.changes
+            .pop_front()
+            .take()
+            .map(move |event| match event {
+                Either::Left(data) => ConnectionManagerEvent::NewPacket(
+                    SimpleConnectionManager::get_packet(data, buffer),
+                ),
+                Either::Right(state) => ConnectionManagerEvent::NewState(state),
+            })
     }
 
     fn preprocess_incoming<'a, 'b>(
@@ -163,51 +161,28 @@ impl ConnectionManager for SimpleConnectionManager {
 
 /// Simplest implementation of socket manager, always accept a connection and never destroy, no matter how many errors connection reports
 /// It can create two types of connection managers:
-/// * true - creates `AlwaysConnectedConManager`
+/// * true - creates `AlwaysConnectedConnectionManager`
 /// * false - creates `SimpleConnectionManager`
 #[derive(Debug)]
-pub struct SimpleSocketManager(pub bool);
+pub struct SimpleConnectionManagerFactory(pub bool);
 
-impl SocketManager for SimpleSocketManager {
-    fn accept_remote_connection(
+impl ConnectionManagerFactory for SimpleConnectionManagerFactory {
+    fn create_remote_connection_manager(
         &mut self,
         addr: &SocketAddr,
         _raw_bytes: &[u8],
-    ) -> Option<Box<dyn ConnectionManager>> {
-        self.accept_local_connection(addr)
+    ) -> Box<dyn ConnectionManager> {
+        self.create_local_connection_manager(addr)
     }
 
-    fn accept_local_connection(
+    fn create_local_connection_manager(
         &mut self,
         _addr: &SocketAddr,
-    ) -> Option<Box<dyn ConnectionManager>> {
+    ) -> Box<dyn ConnectionManager> {
         if self.0 {
-            Some(Box::new(AlwaysConnectedConnectionManager::default()))
+            Box::new(AlwaysConnectedConnectionManager::default())
         } else {
-            Some(Box::new(SimpleConnectionManager::default()))
+            Box::new(SimpleConnectionManager::default())
         }
     }
-
-    fn collect_connections_to_destroy(&mut self) -> Option<Vec<(SocketAddr, DestroyReason)>> {
-        None
-    }
-
-    fn track_connection_error(
-        &mut self,
-        addr: &SocketAddr,
-        error: &ErrorKind,
-        error_context: &str,
-    ) {
-        match error {
-            ErrorKind::IOError(ref e) if e.kind() == WouldBlock => {}
-            _ => error!("Error, {} ({:?}): {:?}", error_context, addr, error),
-        }
-    }
-    fn track_global_error(&mut self, error: &ErrorKind, error_context: &str) {
-        error!("Error, {}: {:?}", error_context, error);
-    }
-    fn track_sent_bytes(&mut self, _addr: &SocketAddr, _bytes: usize) {}
-    fn track_received_bytes(&mut self, _addr: &SocketAddr, _bytes: usize) {}
-    fn track_ignored_bytes(&mut self, _addr: &SocketAddr, _bytes: usize) {}
-    fn track_connection_destroyed(&mut self, _addr: &SocketAddr) {}
 }

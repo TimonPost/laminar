@@ -191,7 +191,7 @@ pub struct GenericPacket<'a> {
 
 impl<'a> GenericPacket<'a> {
     /// Creates a connection manager specific packet
-    pub fn manager_packet(
+    pub fn connection_packet(
         payload: &'a [u8],
         delivery: DeliveryGuarantee,
         ordering: OrderingGuarantee,
@@ -217,16 +217,12 @@ impl<'a> GenericPacket<'a> {
         }
     }
     /// Creates a heart beat packet.
-    pub fn heartbeat_packet(
-        payload: &'a [u8],
-        delivery: DeliveryGuarantee,
-        ordering: OrderingGuarantee,
-    ) -> Self {
+    pub fn heartbeat_packet(payload: &'a [u8]) -> Self {
         Self {
             packet_type: PacketType::Heartbeat,
             payload,
-            delivery,
-            ordering,
+            delivery: DeliveryGuarantee::Unreliable,
+            ordering: OrderingGuarantee::None,
         }
     }
 }

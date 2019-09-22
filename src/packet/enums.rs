@@ -84,7 +84,7 @@ impl TryFrom<u8> for OrderingGuarantee {
 #[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
 /// Id to identify a certain packet type.
 pub enum PacketType {
-    /// User full packet that is not fragmented,
+    /// User full packet that is not fragmented
     Packet = 0,
     /// User fragment of a full packet
     Fragment = 1,

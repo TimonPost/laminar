@@ -48,24 +48,8 @@ impl StandardHeader {
     }
 
     /// Returns the PacketType
-    #[cfg(test)]
     pub fn packet_type(&self) -> PacketType {
         self.packet_type
-    }
-
-    /// Returns true if the packet is a heartbeat packet, false otherwise
-    pub fn is_heartbeat(&self) -> bool {
-        self.packet_type == PacketType::Heartbeat
-    }
-
-    /// Returns true if the packet is a fragment, false if not
-    pub fn is_fragment(&self) -> bool {
-        self.packet_type == PacketType::Fragment
-    }
-
-    /// Returns true if packet is only used by `ConnectionManager`
-    pub fn is_connection_manager_packet(&self) -> bool {
-        self.packet_type == PacketType::Connection
     }
 
     /// Checks if the protocol version in the packet is a valid version

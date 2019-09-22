@@ -6,19 +6,16 @@ use std::thread;
 use std::time::Instant;
 
 use laminar::{
-    managers::SimpleSocketManager, ConnectionEvent, ErrorKind, Packet, ReceiveEvent, Socket,
-    SocketEventSender,
+    managers::SimpleConnectionManagerFactory, ConnectionEvent, ErrorKind, Packet, ReceiveEvent,
+    SendEvent, Socket,
 };
 
 const SERVER: &str = "127.0.0.1:12351";
 
 fn server() -> Result<(), ErrorKind> {
     // create socket manager, that will use SimpleConnectionManager, that actually initiates connection by exchanging methods
-    let mut socket = Socket::bind(SERVER, Box::new(SimpleSocketManager(false)))?;
-    let (sender, receiver) = (
-        SocketEventSender(socket.get_event_sender()),
-        socket.get_event_receiver(),
-    );
+    let mut socket = Socket::bind(SERVER, Box::new(SimpleConnectionManagerFactory(false)))?;
+    let (sender, receiver) = (socket.get_event_sender(), socket.get_event_receiver());
     let _thread = thread::spawn(move || socket.start_polling());
 
     loop {
@@ -40,9 +37,12 @@ fn server() -> Result<(), ErrorKind> {
                     println!("{:?} -> Packet msg:{}", addr, msg);
 
                     sender
-                        .send(Packet::reliable_unordered(
+                        .send(ConnectionEvent(
                             packet.addr(),
-                            ["Echo: ".as_bytes(), msg.as_bytes()].concat(),
+                            SendEvent::Packet(Packet::reliable_unordered(
+                                packet.addr(),
+                                [b"Echo: ", msg.as_bytes()].concat(),
+                            )),
                         ))
                         .expect("This should send");
                 }
@@ -56,10 +56,10 @@ fn server() -> Result<(), ErrorKind> {
 
 fn client() -> Result<(), ErrorKind> {
     let addr = "127.0.0.1:12352";
-    let mut socket = Socket::bind(addr, Box::new(SimpleSocketManager(false)))?;
+    let mut socket = Socket::bind(addr, Box::new(SimpleConnectionManagerFactory(false)))?;
     println!("Connected on {}", addr);
 
-    let sender = SocketEventSender(socket.get_event_sender());
+    let sender = socket.get_event_sender();
     let _thread = thread::spawn(move || loop {
         socket.manual_poll(Instant::now());
 
@@ -98,13 +98,21 @@ fn client() -> Result<(), ErrorKind> {
             break;
         } else if line.starts_with(":c") {
             sender
-                .connect(server, Box::from(line.split_at(2).1.as_bytes()))
+                .send(ConnectionEvent(
+                    server,
+                    SendEvent::Connect(Box::from(line.split_at(2).1.as_bytes())),
+                ))
                 .expect("sending should not fail");
         } else if line == ":d" {
-            sender.disconnect(server).expect("sending should not fail");
+            sender
+                .send(ConnectionEvent(server, SendEvent::Disconnect))
+                .expect("sending should not fail");
         } else {
             sender
-                .send(Packet::reliable_unordered(server, line.into_bytes()))
+                .send(ConnectionEvent(
+                    server,
+                    SendEvent::Packet(Packet::reliable_unordered(server, line.into_bytes())),
+                ))
                 .expect("sending should not fail");
         }
         s_buffer.clear();
@@ -121,7 +129,7 @@ fn main() -> Result<(), ErrorKind> {
     let mut s = String::new();
     stdin.read_line(&mut s)?;
 
-    if s.starts_with("s") {
+    if s.starts_with('s') {
         println!("Starting server..");
         server()
     } else {

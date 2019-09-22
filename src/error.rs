@@ -1,6 +1,5 @@
 //! This module contains the laminar error handling logic.
 
-use crate::either::Either;
 use crate::net::events::{ConnectionEvent, ReceiveEvent, SendEvent};
 use crate::net::managers::ConnectionManagerError;
 use crossbeam_channel::SendError;
@@ -28,8 +27,10 @@ pub enum ErrorKind {
     ReceivedDataToShort,
     /// Protocol versions did not match
     ProtocolVersionMismatch,
-    /// Could not send on `SendChannel`.
-    SendError(SendError<Either<ConnectionEvent<SendEvent>, ConnectionEvent<ReceiveEvent>>>),
+    /// Could not send a SendEvent from the user.
+    ChannelSendingError(SendError<ConnectionEvent<SendEvent>>),
+    /// Could not send an ReceiveEvent to the user.
+    ChannelReceivingError(SendError<ConnectionEvent<ReceiveEvent>>),
     /// Expected header but could not be read from buffer.
     CouldNotReadHeader(String),
     /// Errors that is returned from `ConnectionManager` either preprocessing data or processing packet
@@ -61,9 +62,14 @@ impl Display for ErrorKind {
             ErrorKind::ProtocolVersionMismatch => {
                 write!(fmt, "The protocol versions do not match.")
             }
-            ErrorKind::SendError(e) => write!(
+            ErrorKind::ChannelSendingError(e) => write!(
                 fmt,
-                "Could not sent on channel because it was closed. Reason: {:?}",
+                "Could not sent a SendEvent on channel because it was closed. Reason: {:?}",
+                e
+            ),
+            ErrorKind::ChannelReceivingError(e) => write!(
+                fmt,
+                "Could not sent a ReceiveEvent on channel because it was closed. Reason: {:?}",
                 e
             ),
             ErrorKind::CouldNotReadHeader(header) => write!(
@@ -190,13 +196,13 @@ impl From<FragmentErrorKind> for ErrorKind {
 
 impl From<SendError<ConnectionEvent<SendEvent>>> for ErrorKind {
     fn from(inner: SendError<ConnectionEvent<SendEvent>>) -> Self {
-        ErrorKind::SendError(SendError(Either::Left(inner.0)))
+        ErrorKind::ChannelSendingError(inner)
     }
 }
 
 impl From<SendError<ConnectionEvent<ReceiveEvent>>> for ErrorKind {
     fn from(inner: SendError<ConnectionEvent<ReceiveEvent>>) -> Self {
-        ErrorKind::SendError(SendError(Either::Right(inner.0)))
+        ErrorKind::ChannelReceivingError(inner)
     }
 }
 

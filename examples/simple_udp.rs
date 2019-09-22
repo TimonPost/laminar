@@ -3,15 +3,18 @@
 //! 2. setting up client to send data.
 //! 3. serialize data to send and deserialize when received.
 use bincode::{deserialize, serialize};
-use laminar::{ConnectionEventSender, Packet, Socket};
+use laminar::{
+    managers::SimpleConnectionManagerFactory, ConnectionEvent, Packet, ReceiveEvent, SendEvent,
+    Socket,
+};
 use serde_derive::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::time::Instant;
 
 /// The socket address of where the server is located.
-const SERVER_ADDR: &'static str = "127.0.0.1:12345";
+const SERVER_ADDR: &str = "127.0.0.1:12345";
 // The client address from where the data is sent.
-const CLIENT_ADDR: &'static str = "127.0.0.1:12346";
+const CLIENT_ADDR: &str = "127.0.0.1:12346";
 
 fn client_address() -> SocketAddr {
     CLIENT_ADDR.parse().unwrap()
@@ -21,40 +24,55 @@ fn server_address() -> SocketAddr {
     SERVER_ADDR.parse().unwrap()
 }
 
+// helper function to reduce boiler plate
+fn create_packet<T>(addr: SocketAddr, data: &T) -> ConnectionEvent<SendEvent>
+where
+    T: serde::Serialize,
+{
+    ConnectionEvent(
+        addr,
+        SendEvent::Packet(Packet::unreliable(addr, serialize(data).unwrap())),
+    )
+}
+
 /// This will run an simple example with client and server communicating.
 #[allow(unused_must_use)]
 pub fn main() {
-    let mut server = Socket::bind(server_address()).unwrap();
+    let mut server = Socket::bind(
+        server_address(),
+        Box::new(SimpleConnectionManagerFactory(true)),
+    )
+    .unwrap();
 
     /*  setup or `Client` and send some test data. */
-    let mut client = ConnectionEventSender(Socket::bind(client_address()).unwrap());
-
-    client.send(Packet::unreliable(
+    let mut client = Socket::bind(
+        client_address(),
+        Box::new(SimpleConnectionManagerFactory(true)),
+    )
+    .unwrap();
+    client.send(create_packet(
         server_address(),
-        serialize(&DataType::Coords {
+        &DataType::Coords {
             latitude: 10.55454,
             longitude: 10.555,
             altitude: 1.3,
-        })
-        .unwrap(),
+        },
     ));
 
-    client.send(Packet::unreliable(
+    client.send(create_packet(
         server_address(),
-        serialize(&DataType::Coords {
+        &DataType::Coords {
             latitude: 3.344,
             longitude: 5.4545,
             altitude: 1.33,
-        })
-        .unwrap(),
+        },
     ));
 
-    client.send(Packet::unreliable(
+    client.send(create_packet(
         server_address(),
-        serialize(&DataType::Text {
+        &DataType::Text {
             string: String::from("Some information"),
-        })
-        .unwrap(),
+        },
     ));
 
     // Send the queued send operations
@@ -68,11 +86,8 @@ pub fn main() {
     // Coords { longitude: 5.4545, latitude: 3.344, altitude: 1.33 }
     // Text { string: "Some information" }
     while let Some(pkt) = server.recv() {
-        match pkt {
-            SocketEvent::Packet(pkt) => {
-                println!["{:?}", deserialize::<DataType>(pkt.payload()).unwrap()]
-            }
-            _ => {}
+        if let ConnectionEvent(_addr, ReceiveEvent::Packet(pkt)) = pkt {
+            println!["{:?}", deserialize::<DataType>(pkt.payload()).unwrap()]
         }
     }
 }

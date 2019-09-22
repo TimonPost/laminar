@@ -1,15 +1,15 @@
-pub use crate::net::{managers::ConnectionManager, NetworkQuality, RttMeasurer, VirtualConnection};
+pub use crate::net::{
+    managers::ConnectionManager, NetworkQuality, ReliabilitySystem, RttMeasurer, VirtualConnection,
+};
 use crate::{
-    config::Config,
-    either::Either,
     net::events::{ConnectionEvent, DestroyReason, DisconnectReason, ReceiveEvent},
-    net::managers::{ConnectionManagerError, ConnectionState, SocketManager},
+    net::managers::ConnectionState,
     net::socket::SocketWithConditioner,
-    packet::Outgoing,
+    net::MetricsCollector,
     ErrorKind,
 };
 
-use crossbeam_channel::{self, SendError, Sender};
+use crossbeam_channel::{self, Sender};
 
 use std::{
     collections::HashMap,
@@ -17,32 +17,48 @@ use std::{
     time::{Duration, Instant},
 };
 
-/// Maintains a registry of active "connections". Essentially, when we receive a packet on the
-/// socket from a particular `SocketAddr`, we will track information about it here.
+/// Maintains a registry of active "connections".
 #[derive(Debug)]
 pub struct ActiveConnections {
     connections: HashMap<SocketAddr, VirtualConnection>,
 }
 
 impl ActiveConnections {
+    /// Initialized active connection list.
     pub fn new() -> Self {
         Self {
             connections: HashMap::new(),
         }
     }
 
-    /// Try to get a `VirtualConnection` by address. If the connection does not exist, it will be
-    /// inserted and returned.
-    pub fn get_or_insert_connection(
+    /// Inserts new connection, and calls `update` method on `ConnectionManager` to initialized it.
+    pub fn insert_and_init_connection(
         &mut self,
-        address: SocketAddr,
-        config: &Config,
+        connection: VirtualConnection,
+        socket: &mut SocketWithConditioner,
+        event_sender: &Sender<ConnectionEvent<ReceiveEvent>>,
+        metrics: &mut MetricsCollector,
         time: Instant,
-        state_manager: Box<dyn ConnectionManager>,
+        tmp_buffer: &mut [u8],
     ) -> &mut VirtualConnection {
-        self.connections
-            .entry(address)
-            .or_insert_with(|| VirtualConnection::new(address, config, time, state_manager))
+        let conn = self
+            .connections
+            .entry(connection.remote_address())
+            .or_insert(connection);
+
+        conn.update_connection_manager(event_sender, metrics, socket, time, tmp_buffer);
+        metrics.track_connection_created(&conn.remote_address());
+        if let Err(err) = event_sender.send(ConnectionEvent(
+            conn.remote_address(),
+            ReceiveEvent::Created,
+        )) {
+            metrics.track_connection_error(
+                &conn.remote_address(),
+                &ErrorKind::from(err),
+                "sending connection create event",
+            );
+        }
+        conn
     }
 
     /// Returns `VirtualConnection` or None if it doesn't exists for a given address.
@@ -50,223 +66,96 @@ impl ActiveConnections {
         self.connections.get_mut(address)
     }
 
-    /// Removes the connection from `ActiveConnections` by socket address.
-    pub fn remove_connection(
+    /// Iterates through all active connections, and `update`s each connection manager.
+    pub fn update_connections(
+        &mut self,
+        sender: &Sender<ConnectionEvent<ReceiveEvent>>,
+        metrics: &mut MetricsCollector,
+        socket: &mut SocketWithConditioner,
+        time: Instant,
+        buffer: &mut [u8],
+    ) {
+        self.connections.iter_mut().for_each(|(_, conn)| {
+            conn.update_connection_manager(sender, metrics, socket, time, buffer)
+        });
+    }
+
+    /// Iterate through all of the connections and check if any of them should be dropped.
+    /// Remove dropped connections from the active connections. For each connection removed, we will send an event to the `event_sender` channel.
+    pub fn handle_dead_clients(
+        &mut self,
+        time: Instant,
+        idle_connection_timeout: Duration,
+        sender: &Sender<ConnectionEvent<ReceiveEvent>>,
+        metrics: &mut MetricsCollector,
+    ) {
+        let drop_list: Vec<_> = self
+            .connections
+            .iter_mut()
+            .filter_map(|(_, connection)| {
+                connection
+                    .should_be_dropped(idle_connection_timeout, time)
+                    .map(|reason| (connection.remote_address(), reason))
+            })
+            .collect();
+
+        for (address, reason) in drop_list {
+            self.remove_connection(&address, sender, metrics, reason, "removing dead clients");
+        }
+    }
+
+    pub fn handle_heartbeat(
+        &mut self,
+        time: Instant,
+        heartbeat_interval: Duration,
+        socket: &mut SocketWithConditioner,
+        metrics: &mut MetricsCollector,
+    ) {
+        // Iterate over all connections which have not sent a packet for a duration of at least
+        // `heartbeat_interval` (from config), and send a heartbeat packet to each.
+        let connections = self.connections.iter_mut();
+        connections.for_each(|(_, connection)| {
+            connection.handle_heartbeat(time, heartbeat_interval, socket, metrics);
+        });
+    }
+
+    /// Removes the connection from `ActiveConnections` by socket address, and sends appropriate events.
+    fn remove_connection(
         &mut self,
         address: &SocketAddr,
         sender: &Sender<ConnectionEvent<ReceiveEvent>>,
-        manager: &mut dyn SocketManager,
+        metrics: &mut MetricsCollector,
         reason: DestroyReason,
         error_context: &str,
     ) -> bool {
         if let Some((_, conn)) = self.connections.remove_entry(address) {
             if let ConnectionState::Connected(_) = conn.get_current_state() {
                 if let Err(err) = sender.send(ConnectionEvent(
-                    conn.remote_address,
+                    conn.remote_address(),
                     ReceiveEvent::Disconnected(DisconnectReason::Destroying(reason.clone())),
                 )) {
-                    manager.track_connection_error(
-                        &conn.remote_address,
-                        &ErrorKind::SendError(SendError(Either::Right(err.0))),
+                    metrics.track_connection_error(
+                        &conn.remote_address(),
+                        &ErrorKind::from(err),
                         error_context,
                     );
                 }
             }
             if let Err(err) = sender.send(ConnectionEvent(
-                conn.remote_address,
+                conn.remote_address(),
                 ReceiveEvent::Destroyed(reason),
             )) {
-                manager.track_connection_error(
-                    &conn.remote_address,
-                    &ErrorKind::SendError(SendError(Either::Right(err.0))),
+                metrics.track_connection_error(
+                    &conn.remote_address(),
+                    &ErrorKind::from(err),
                     error_context,
                 );
             }
-            manager.track_connection_destroyed(address);
+            metrics.track_connection_destroyed(address);
             true
         } else {
             false
         }
-    }
-
-    /// Check for and return `VirtualConnection`s which have been idling longer than `max_idle_time`.
-    pub fn idle_connections(&mut self, max_idle_time: Duration, time: Instant) -> Vec<SocketAddr> {
-        self.connections
-            .iter()
-            .filter(|(_, connection)| connection.last_heard(time) >= max_idle_time)
-            .map(|(address, _)| *address)
-            .collect()
-    }
-
-    /// Get a list of addresses of dead connections
-    pub fn dead_connections(&mut self) -> Vec<(SocketAddr, DestroyReason)> {
-        self.connections
-            .iter()
-            .filter_map(|(_, connection)| {
-                if connection.should_be_dropped() {
-                    Some((
-                        connection.remote_address,
-                        DestroyReason::TooManyPacketsInFlight,
-                    ))
-                } else if connection.is_disconnected() {
-                    Some((
-                        connection.remote_address,
-                        DestroyReason::GracefullyDisconnected,
-                    ))
-                } else {
-                    None
-                }
-            })
-            .collect()
-    }
-
-    /// Check for and return `VirtualConnection`s which have not sent anything for a duration of at least `heartbeat_interval`.
-    pub fn heartbeat_required_connections(
-        &mut self,
-        heartbeat_interval: Duration,
-        time: Instant,
-        manager: &mut dyn SocketManager,
-        socket: &mut SocketWithConditioner,
-    ) {
-        self.connections
-            .iter_mut()
-            .filter(move |(_, connection)| connection.last_sent(time) >= heartbeat_interval)
-            .for_each(|(_, connection)| {
-                let packet = connection.create_and_process_heartbeat(time);
-                socket.send_packet_and_log(
-                    &connection.remote_address,
-                    connection.state_manager.as_mut(),
-                    &packet.contents(),
-                    manager,
-                    "sending heartbeat packet",
-                );
-            });
-    }
-
-    /// Calls `update` method for `ConnectionManager`, in the loop, until it returns None
-    /// These updates returns either new packets to be sent, or connection state changes.
-    pub fn update_connection_manager(
-        conn: &mut VirtualConnection,
-        sender: &Sender<ConnectionEvent<ReceiveEvent>>,
-        manager: &mut dyn SocketManager,
-        socket: &mut SocketWithConditioner,
-        time: Instant,
-        buffer: &mut [u8],
-    ) {
-        while let Some(changes) = conn.state_manager.update(buffer, time) {
-            match changes {
-                Ok(event) => match event {
-                    Either::Left(packet) => {
-                        match conn.process_outgoing(
-                            packet.packet_type,
-                            packet.payload,
-                            packet.delivery,
-                            packet.ordering,
-                            None,
-                            time,
-                        ) {
-                            Ok(packet) => {
-                                if let Outgoing::Packet(outgoing) = packet {
-                                    socket.send_packet_and_log(
-                                        &conn.remote_address,
-                                        conn.state_manager.as_mut(),
-                                        &outgoing.contents(),
-                                        manager,
-                                        "sending packet from connection manager",
-                                    );
-                                } else {
-                                    manager.track_connection_error(
-                                        &conn.remote_address,
-                                        &ErrorKind::ConnectionError(ConnectionManagerError::Fatal(
-                                            String::from(
-                                                "connection manager cannot send fragmented packets",
-                                            ),
-                                        )),
-                                        "sending packet from connection manager",
-                                    );
-                                }
-                            }
-                            Err(err) => manager.track_connection_error(
-                                &conn.remote_address,
-                                &err,
-                                "sending packet from connection manager",
-                            ),
-                        }
-                    }
-                    Either::Right(state) => {
-                        if let Some(old) = conn.current_state.try_change(&state) {
-                            if let Err(err) = match &conn.current_state {
-                                ConnectionState::Connected(data) => sender.send(ConnectionEvent(
-                                    conn.remote_address,
-                                    ReceiveEvent::Connected(data.clone()),
-                                )),
-                                ConnectionState::Disconnected(closed_by) => {
-                                    sender.send(ConnectionEvent(
-                                        conn.remote_address,
-                                        ReceiveEvent::Disconnected(DisconnectReason::ClosedBy(
-                                            closed_by.clone(),
-                                        )),
-                                    ))
-                                }
-                                _ => {
-                                    manager.track_connection_error(
-                                        &conn.remote_address,
-                                        &ErrorKind::ConnectionError(ConnectionManagerError::Fatal(
-                                            format!(
-                                                "Invalid state transition: {:?} -> {:?}",
-                                                old, conn.current_state
-                                            ),
-                                        )),
-                                        "changing connection manager state",
-                                    );
-                                    Ok(())
-                                }
-                            } {
-                                manager.track_connection_error(
-                                    &conn.remote_address,
-                                    &ErrorKind::SendError(SendError(Either::Right(err.0))),
-                                    "sending connection state update",
-                                );
-                            }
-                        } else {
-                            manager.track_connection_error(
-                                &conn.remote_address,
-                                &ErrorKind::ConnectionError(ConnectionManagerError::Fatal(
-                                    format!(
-                                        "Invalid state transition: {:?} -> {:?}",
-                                        conn.current_state, state
-                                    ),
-                                )),
-                                "changing connection manager state",
-                            );
-                        }
-                    }
-                },
-                Err(err) => {
-                    manager.track_connection_error(
-                        &conn.remote_address,
-                        &ErrorKind::ConnectionError(err),
-                        "recieved connection manager error",
-                    );
-                }
-            }
-        }
-    }
-
-    /// Iterates through all active connections, and `update`s each connection manager.
-    pub fn update_connections(
-        &mut self,
-        sender: &Sender<ConnectionEvent<ReceiveEvent>>,
-        manager: &mut dyn SocketManager,
-        socket: &mut SocketWithConditioner,
-        time: Instant,
-        buffer: &mut [u8],
-    ) {
-        self.connections.iter_mut().for_each(|(_, conn)| {
-            ActiveConnections::update_connection_manager(
-                conn, sender, manager, socket, time, buffer,
-            )
-        });
     }
 
     /// Returns the number of connected clients.
@@ -284,8 +173,6 @@ mod tests {
         sync::Arc,
         time::{Duration, Instant},
     };
-
-    use super::managers::ConnectionManager;
 
     #[derive(Debug)]
     struct DummyConnManager {}

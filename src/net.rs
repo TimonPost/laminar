@@ -3,7 +3,9 @@
 
 mod connection;
 mod link_conditioner;
+mod metrics_collector;
 mod quality;
+mod reliability_system;
 mod socket;
 mod virtual_connection;
 
@@ -12,6 +14,8 @@ pub mod events;
 pub mod managers;
 
 pub use self::link_conditioner::LinkConditioner;
+pub use self::metrics_collector::MetricsCollector;
 pub use self::quality::{NetworkQuality, RttMeasurer};
-pub use self::socket::{Socket, SocketEventSender};
+pub use self::reliability_system::{IncomingPackets, OutgoingPackets, ReliabilitySystem};
+pub use self::socket::{Socket, SocketWithConditioner};
 pub use self::virtual_connection::VirtualConnection;
