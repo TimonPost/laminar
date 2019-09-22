@@ -117,7 +117,7 @@ impl Fragmentation {
 
             // Got the data
             if reassembly_data.num_fragments_total != fragment_header.fragment_count() {
-                Err(FragmentErrorKind::FragmentWithUnevenNumberOfFragemts)?
+                Err(FragmentErrorKind::FragmentWithUnevenNumberOfFragments)?
             }
 
             if reassembly_data.fragments_received[usize::from(fragment_header.id())] {
