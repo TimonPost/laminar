@@ -69,12 +69,14 @@ impl<T: Clone + Default> SequenceBuffer<T> {
     }
 
     /// Removes an entry from the sequence buffer
-    pub fn remove(&mut self, sequence_num: SequenceNumber) {
+    pub fn remove(&mut self, sequence_num: SequenceNumber) -> Option<T> {
         if self.exists(sequence_num) {
             let index = self.index(sequence_num);
-            self.entries[index] = T::default();
+            let value = std::mem::replace(&mut self.entries[index], T::default());
             self.entry_sequences[index] = None;
+            return Some(value);
         }
+        None
     }
 
     // Advances the sequence number while removing older entries.

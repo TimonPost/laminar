@@ -1,4 +1,5 @@
 use crate::net::constants::MAX_FRAGMENTS_DEFAULT;
+use crate::packet::header::AckedPacketHeader;
 use crate::packet::SequenceNumber;
 
 #[derive(Clone)]
@@ -9,6 +10,7 @@ pub struct ReassemblyData {
     pub num_fragments_total: u8,
     pub buffer: Vec<u8>,
     pub fragments_received: [bool; MAX_FRAGMENTS_DEFAULT as usize],
+    pub acked_header: Option<AckedPacketHeader>,
 }
 
 impl ReassemblyData {
@@ -19,6 +21,7 @@ impl ReassemblyData {
             num_fragments_total,
             buffer: Vec::with_capacity(prealloc),
             fragments_received: [false; MAX_FRAGMENTS_DEFAULT as usize],
+            acked_header: None,
         }
     }
 }
@@ -31,6 +34,7 @@ impl Default for ReassemblyData {
             num_fragments_total: 0,
             buffer: Vec::with_capacity(1024),
             fragments_received: [false; MAX_FRAGMENTS_DEFAULT as usize],
+            acked_header: None,
         }
     }
 }
