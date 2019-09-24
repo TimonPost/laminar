@@ -782,6 +782,40 @@ mod tests {
         );
     }
 
+    #[test]
+    fn ensure_input_header_data_does_not_access_out_of_bounds() {
+        let mut protocol_version = Vec::new();
+        protocol_version
+            .write_u16::<BigEndian>(ProtocolVersion::get_crc16())
+            .unwrap();
+
+        let standard_header = [protocol_version, vec![1, 1, 2]].concat();
+
+        let acked_header = vec![0, 0, 255, 4, 0, 0, 255, 255, 0, 0, 0, 0];
+
+        let (tx, rx) = unbounded::<SocketEvent>();
+
+        use crate::error::{ErrorKind, FragmentErrorKind};
+
+        let mut connection = create_virtual_connection();
+        let result = connection.process_incoming(
+            [standard_header.as_slice(), acked_header.as_slice()]
+                .concat()
+                .as_slice(),
+            &tx,
+            Instant::now(),
+        );
+
+        match result {
+            Err(ErrorKind::FragmentError(FragmentErrorKind::ExceededMaxFragments)) => {
+                // Ok
+            }
+            _ => {
+                panic!["Supposed to get a fragment error"];
+            }
+        }
+    }
+
     /// ======= helper functions =========
     fn create_virtual_connection() -> VirtualConnection {
         VirtualConnection::new(get_fake_addr(), &Config::default(), Instant::now())
