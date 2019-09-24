@@ -121,6 +121,10 @@ impl Fragmentation {
                 Err(FragmentErrorKind::FragmentWithUnevenNumberOfFragments)?
             }
 
+            if usize::from(fragment_header.id()) >= reassembly_data.fragments_received.len() {
+                Err(FragmentErrorKind::ExceededMaxFragments)?;
+            }
+
             if reassembly_data.fragments_received[usize::from(fragment_header.id())] {
                 Err(FragmentErrorKind::AlreadyProcessedFragment)?
             }
