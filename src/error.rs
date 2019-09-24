@@ -125,9 +125,13 @@ pub enum FragmentErrorKind {
     /// This fragment was already processed
     AlreadyProcessedFragment,
     /// Attempted to fragment with an incorrect number of fragments
-    FragmentWithUnevenNumberOfFragemts,
+    FragmentWithUnevenNumberOfFragments,
     /// Fragment we expected to be able to find we couldn't
     CouldNotFindFragmentById,
+    /// Multiple ack headers sent with these fragments
+    MultipleAckHeaders,
+    /// Ack header is missing from a finished set of fragments
+    MissingAckHeader,
 }
 
 impl Display for FragmentErrorKind {
@@ -143,13 +147,21 @@ impl Display for FragmentErrorKind {
             FragmentErrorKind::AlreadyProcessedFragment => {
                 write!(fmt, "The fragment received was already processed.")
             }
-            FragmentErrorKind::FragmentWithUnevenNumberOfFragemts => write!(
+            FragmentErrorKind::FragmentWithUnevenNumberOfFragments => write!(
                 fmt,
                 "The fragment header does not contain the right fragment count."
             ),
             FragmentErrorKind::CouldNotFindFragmentById => write!(
                 fmt,
                 "The fragment supposed to be in a the cache but it was not found."
+            ),
+            FragmentErrorKind::MultipleAckHeaders => write!(
+                fmt,
+                "The fragment contains an ack header but a previous ack header has already been registered."
+            ),
+            FragmentErrorKind::MissingAckHeader => write!(
+                fmt,
+                "No ack headers were registered with any of the fragments."
             ),
         }
     }

@@ -293,32 +293,31 @@ impl VirtualConnection {
                     if let Ok((fragment_header, acked_header)) = packet_reader.read_fragment() {
                         let payload = packet_reader.read_payload();
 
-                        match self
-                            .fragmentation
-                            .handle_fragment(fragment_header, &payload)
-                        {
-                            Ok(Some(payload)) => {
+                        match self.fragmentation.handle_fragment(
+                            fragment_header,
+                            &payload,
+                            acked_header,
+                        ) {
+                            Ok(Some((payload, acked_header))) => {
                                 Self::queue_packet(
                                     sender,
                                     payload.into_boxed_slice(),
                                     self.remote_address,
                                     header.delivery_guarantee(),
-                                    OrderingGuarantee::None,
+                                    header.ordering_guarantee(),
                                 )?;
+
+                                self.congestion_handler
+                                    .process_incoming(acked_header.sequence());
+                                self.acknowledge_handler.process_incoming(
+                                    acked_header.sequence(),
+                                    acked_header.ack_seq(),
+                                    acked_header.ack_field(),
+                                );
                             }
                             Ok(None) => return Ok(()),
                             Err(e) => return Err(e),
                         };
-
-                        if let Some(acked_header) = acked_header {
-                            self.congestion_handler
-                                .process_incoming(acked_header.sequence());
-                            self.acknowledge_handler.process_incoming(
-                                acked_header.sequence(),
-                                acked_header.ack_seq(),
-                                acked_header.ack_field(),
-                            );
-                        }
                     }
                 } else {
                     let acked_header = packet_reader.read_acknowledge_header()?;
@@ -463,10 +462,10 @@ mod tests {
 
         let standard_header = [protocol_version, vec![1, 1, 2]].concat();
 
-        let acked_header = vec![1, 0, 0, 2, 0, 0, 0, 3];
-        let first_fragment = vec![0, 1, 1, 3];
-        let second_fragment = vec![0, 1, 2, 3];
-        let third_fragment = vec![0, 1, 3, 3];
+        let acked_header = vec![0, 0, 0, 4, 0, 0, 255, 255, 0, 0, 0, 0];
+        let first_fragment = vec![0, 0, 1, 4];
+        let second_fragment = vec![0, 0, 2, 4];
+        let third_fragment = vec![0, 0, 3, 4];
 
         let (tx, rx) = unbounded::<SocketEvent>();
 
@@ -781,6 +780,40 @@ mod tests {
                 + constants::ACKED_PACKET_HEADER
                 + constants::ARRANGING_PACKET_HEADER) as usize,
         );
+    }
+
+    #[test]
+    fn ensure_input_header_data_does_not_access_out_of_bounds() {
+        let mut protocol_version = Vec::new();
+        protocol_version
+            .write_u16::<BigEndian>(ProtocolVersion::get_crc16())
+            .unwrap();
+
+        let standard_header = [protocol_version, vec![1, 1, 2]].concat();
+
+        let acked_header = vec![0, 0, 255, 4, 0, 0, 255, 255, 0, 0, 0, 0];
+
+        let (tx, rx) = unbounded::<SocketEvent>();
+
+        use crate::error::{ErrorKind, FragmentErrorKind};
+
+        let mut connection = create_virtual_connection();
+        let result = connection.process_incoming(
+            [standard_header.as_slice(), acked_header.as_slice()]
+                .concat()
+                .as_slice(),
+            &tx,
+            Instant::now(),
+        );
+
+        match result {
+            Err(ErrorKind::FragmentError(FragmentErrorKind::ExceededMaxFragments)) => {
+                // Ok
+            }
+            _ => {
+                panic!["Supposed to get a fragment error"];
+            }
+        }
     }
 
     /// ======= helper functions =========
