@@ -1,6 +1,10 @@
 # Change Log
 This document contains information about the releases of this crate.
 
+## [0.3.2] - 2019-09-24
+- Acknowledgement is sent after all fragments arrived
+- Don't read out-of-bounds on malformed headers 
+
 ## [0.3.1] - 2019-09-16
 - Documentation improvements (docs, book, readme)
 - Allow a Socket to be in blocking mode
