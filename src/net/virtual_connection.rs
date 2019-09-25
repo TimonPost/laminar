@@ -274,7 +274,7 @@ impl VirtualConnection {
                             self.remote_address,
                             header.delivery_guarantee(),
                             OrderingGuarantee::Sequenced(Some(arranging_header.stream_id())),
-                        )?;
+                        );
                     }
 
                     return Ok(());
@@ -286,7 +286,7 @@ impl VirtualConnection {
                     self.remote_address,
                     header.delivery_guarantee(),
                     header.ordering_guarantee(),
-                )?;
+                );
             }
             DeliveryGuarantee::Reliable => {
                 if header.is_fragment() {
@@ -305,7 +305,7 @@ impl VirtualConnection {
                                     self.remote_address,
                                     header.delivery_guarantee(),
                                     header.ordering_guarantee(),
-                                )?;
+                                );
 
                                 self.congestion_handler
                                     .process_incoming(acked_header.sequence());
@@ -342,7 +342,7 @@ impl VirtualConnection {
                                 self.remote_address,
                                 header.delivery_guarantee(),
                                 OrderingGuarantee::Sequenced(Some(arranging_header.stream_id())),
-                            )?;
+                            );
                         }
                     } else if let OrderingGuarantee::Ordered(_id) = header.ordering_guarantee() {
                         let arranging_header = packet_reader.read_arranging_header(u16::from(
@@ -364,7 +364,7 @@ impl VirtualConnection {
                                 self.remote_address,
                                 header.delivery_guarantee(),
                                 OrderingGuarantee::Ordered(Some(arranging_header.stream_id())),
-                            )?;
+                            );
 
                             while let Some(packet) = stream.iter_mut().next() {
                                 Self::queue_packet(
@@ -373,7 +373,7 @@ impl VirtualConnection {
                                     self.remote_address,
                                     header.delivery_guarantee(),
                                     OrderingGuarantee::Ordered(Some(arranging_header.stream_id())),
-                                )?;
+                                );
                             }
                         }
                     } else {
@@ -385,7 +385,7 @@ impl VirtualConnection {
                             self.remote_address,
                             header.delivery_guarantee(),
                             header.ordering_guarantee(),
-                        )?;
+                        );
                     }
 
                     self.congestion_handler
@@ -408,14 +408,14 @@ impl VirtualConnection {
         remote_addr: SocketAddr,
         delivery: DeliveryGuarantee,
         ordering: OrderingGuarantee,
-    ) -> Result<()> {
+    ) {
         tx.send(SocketEvent::Packet(Packet::new(
             remote_addr,
             payload,
             delivery,
             ordering,
-        )))?;
-        Ok(())
+        )))
+        .unwrap();
     }
 
     /// This will gather dropped packets from the acknowledgment handler.

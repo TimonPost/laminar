@@ -20,7 +20,7 @@ fn server_address() -> SocketAddr {
 }
 
 /// This is an example of how to send data to an specific address.
-pub fn send_data() -> Result<()> {
+pub fn send_data() {
     // Setup a udp socket and bind it to the client address.
     let mut socket = Socket::bind(client_address()).unwrap();
 

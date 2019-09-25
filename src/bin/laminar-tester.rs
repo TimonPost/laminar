@@ -135,7 +135,7 @@ fn run_server(server_config: ServerConfiguration) -> Result<()> {
                     throughput.tick();
                 }
                 SocketEvent::Connect(address) => {
-                    socket.send(Packet::unreliable(address, vec![0])).unwrap();
+                    socket.send(Packet::unreliable(address, vec![0]));
                 }
                 _ => error!("Event not handled yet."),
             }
@@ -172,7 +172,7 @@ fn test_steady_stream(config: ClientConfiguration, mut socket: Socket) {
     let mut packets_sent = 0;
 
     loop {
-        socket.send(test_packet.clone()).unwrap();
+        socket.send(test_packet.clone());
         socket.manual_poll(Instant::now());
         while let Some(_) = socket.recv() {}
 

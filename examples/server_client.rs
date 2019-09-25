@@ -67,7 +67,7 @@ fn client() -> Result<(), ErrorKind> {
         socket.send(Packet::reliable_unordered(
             server,
             line.clone().into_bytes(),
-        ))?;
+        ));
 
         socket.manual_poll(Instant::now());
 
