@@ -1,4 +1,4 @@
-use crate::packet::{DeliveryGuarantee, OrderingGuarantee};
+use crate::packet::{DeliveryGuarantee, OrderingGuarantee, PacketType};
 use std::net::SocketAddr;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -173,6 +173,44 @@ impl Packet {
     /// Returns the [`OrderingGuarantee`](./enum.OrderingGuarantee.html) of this packet.
     pub fn order_guarantee(&self) -> OrderingGuarantee {
         self.ordering
+    }
+}
+
+/// This packet type has similar properties to `Packet` except that it doesn't own anything, and additionally has `PacketType`.
+#[derive(Debug)]
+pub struct GenericPacket<'a> {
+    pub(crate) packet_type: PacketType,
+    /// the raw payload of the packet
+    pub(crate) payload: &'a [u8],
+    /// defines on how the packet will be delivered.
+    pub(crate) delivery: DeliveryGuarantee,
+    /// defines on how the packet will be ordered.
+    pub(crate) ordering: OrderingGuarantee,
+}
+
+impl<'a> GenericPacket<'a> {
+    /// This will create a user packet that can be received by the user.
+    pub fn user_packet(
+        payload: &'a [u8],
+        delivery: DeliveryGuarantee,
+        ordering: OrderingGuarantee,
+    ) -> Self {
+        Self {
+            packet_type: PacketType::Packet,
+            payload,
+            delivery,
+            ordering,
+        }
+    }
+
+    /// This will create a heartbeat packet that is expected to be sent over the network
+    pub fn heartbeat_packet(payload: &'a [u8]) -> Self {
+        Self {
+            packet_type: PacketType::Heartbeat,
+            payload,
+            delivery: DeliveryGuarantee::Unreliable,
+            ordering: OrderingGuarantee::None,
+        }
     }
 }
 

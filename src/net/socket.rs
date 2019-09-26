@@ -3,7 +3,7 @@ use crate::{
     config::Config,
     error::{ErrorKind, Result},
     net::{connection::ActiveConnections, events::SocketEvent, link_conditioner::LinkConditioner},
-    packet::{DeliveryGuarantee, Outgoing, Packet},
+    packet::{DeliveryGuarantee, GenericPacket, Packet},
 };
 use crossbeam_channel::{self, unbounded, Receiver, SendError, Sender, TryRecvError};
 use log::error;
@@ -14,14 +14,39 @@ use std::{
     time::{Duration, Instant},
 };
 
+// Wrap `LinkConditioner` and `UdpSocket` together
+#[derive(Debug)]
+struct SocketWithConditioner {
+    socket: UdpSocket,
+    link_conditioner: Option<LinkConditioner>,
+}
+
+impl SocketWithConditioner {
+    pub fn new(socket: UdpSocket, link_conditioner: Option<LinkConditioner>) -> Self {
+        Self {
+            socket,
+            link_conditioner,
+        }
+    }
+    // In the presence of a link conditioner, we would like it to determine whether or not we should
+    // send a single packet over the UDP socket.
+    pub fn send_packet(&mut self, addr: &SocketAddr, payload: &[u8]) -> Result<usize> {
+        if let Some(ref mut link) = self.link_conditioner {
+            if !link.should_send() {
+                return Ok(0);
+            }
+        }
+        Ok(self.socket.send_to(payload, addr)?)
+    }
+}
+
 /// A reliable UDP socket implementation with configurable reliability and ordering guarantees.
 #[derive(Debug)]
 pub struct Socket {
-    socket: UdpSocket,
+    socket_wrapper: SocketWithConditioner,
     config: Config,
     connections: ActiveConnections,
     recv_buffer: Vec<u8>,
-    link_conditioner: Option<LinkConditioner>,
     event_sender: Sender<SocketEvent>,
     packet_receiver: Receiver<Packet>,
 
@@ -71,10 +96,9 @@ impl Socket {
         let (packet_sender, packet_receiver) = unbounded();
         Ok(Socket {
             recv_buffer: vec![0; config.receive_buffer_max_size],
-            socket,
+            socket_wrapper: SocketWithConditioner::new(socket, None),
             config,
             connections: ActiveConnections::new(),
-            link_conditioner: None,
             event_sender,
             packet_receiver,
 
@@ -177,12 +201,12 @@ impl Socket {
 
     /// Set the link conditioner for this socket. See [LinkConditioner] for further details.
     pub fn set_link_conditioner(&mut self, link_conditioner: Option<LinkConditioner>) {
-        self.link_conditioner = link_conditioner;
+        self.socket_wrapper.link_conditioner = link_conditioner;
     }
 
     /// Get the local socket address
     pub fn local_addr(&self) -> Result<SocketAddr> {
-        Ok(self.socket.local_addr()?)
+        Ok(self.socket_wrapper.socket.local_addr()?)
     }
 
     /// Iterate through the dead connections and disconnect them by removing them from the
@@ -224,7 +248,7 @@ impl Socket {
             .heartbeat_required_connections(heartbeat_interval, time)
             .map(|connection| {
                 (
-                    connection.create_and_process_heartbeat(time),
+                    connection.process_outgoing(GenericPacket::heartbeat_packet(&[]), None, time),
                     connection.remote_address,
                 )
             })
@@ -233,9 +257,13 @@ impl Socket {
         let mut bytes_sent = 0;
 
         for (heartbeat_packet, address) in heartbeat_packets_and_addrs {
-            if self.should_send_packet() {
-                bytes_sent += self.send_packet(&address, &heartbeat_packet.contents())?;
-            }
+            let packet = heartbeat_packet?
+                .into_iter()
+                .next()
+                .expect("Heartbeat packet must exists");
+            bytes_sent += self
+                .socket_wrapper
+                .send_packet(&address, &packet.contents())?;
         }
 
         Ok(bytes_sent)
@@ -247,54 +275,51 @@ impl Socket {
             self.connections
                 .get_or_insert_connection(packet.addr(), &self.config, time);
 
-        let dropped = connection.gather_dropped_packets();
-        let mut processed_packets: Vec<Outgoing> = dropped
-            .iter()
-            .flat_map(|waiting_packet| {
-                connection.process_outgoing(
-                    &waiting_packet.payload,
-                    // Because a delivery guarantee is only sent with reliable packets
-                    DeliveryGuarantee::Reliable,
-                    // This is stored with the dropped packet because they could be mixed
-                    waiting_packet.ordering_guarantee,
-                    waiting_packet.item_identifier,
-                    time,
-                )
-            })
-            .collect();
+        let mut bytes_sent = 0;
 
-        let processed_packet = connection.process_outgoing(
-            packet.payload(),
-            packet.delivery_guarantee(),
-            packet.order_guarantee(),
+        // TODO maybe dropped packets shouldn't depend on how often a user sends a packet?
+        let dropped_packets = connection.gather_dropped_packets();
+        for dropped in dropped_packets {
+            let packets = connection.process_outgoing(
+                GenericPacket {
+                    packet_type: dropped.packet_type,
+                    payload: &dropped.payload,
+                    // Because a delivery guarantee is only sent with reliable packets
+                    delivery: DeliveryGuarantee::Reliable,
+                    // This is stored with the dropped packet because they could be mixed
+                    ordering: dropped.ordering_guarantee,
+                },
+                dropped.item_identifier,
+                time,
+            )?;
+
+            for outgoing in packets {
+                bytes_sent += self
+                    .socket_wrapper
+                    .send_packet(&packet.addr(), &outgoing.contents())?;
+            }
+        }
+
+        let packets = connection.process_outgoing(
+            GenericPacket::user_packet(
+                packet.payload(),
+                packet.delivery_guarantee(),
+                packet.order_guarantee(),
+            ),
             None,
             time,
         )?;
-
-        processed_packets.push(processed_packet);
-
-        let mut bytes_sent = 0;
-
-        for processed_packet in processed_packets {
-            if self.should_send_packet() {
-                match processed_packet {
-                    Outgoing::Packet(outgoing) => {
-                        bytes_sent += self.send_packet(&packet.addr(), &outgoing.contents())?;
-                    }
-                    Outgoing::Fragments(packets) => {
-                        for outgoing in packets {
-                            bytes_sent += self.send_packet(&packet.addr(), &outgoing.contents())?;
-                        }
-                    }
-                }
-            }
+        for outgoing in packets {
+            bytes_sent += self
+                .socket_wrapper
+                .send_packet(&packet.addr(), &outgoing.contents())?;
         }
         Ok(bytes_sent)
     }
 
     // On success the packet will be sent on the `event_sender`
     fn recv_from(&mut self, time: Instant) -> Result<UdpSocketState> {
-        match self.socket.recv_from(&mut self.recv_buffer) {
+        match self.socket_wrapper.socket.recv_from(&mut self.recv_buffer) {
             Ok((recv_len, address)) => {
                 if recv_len == 0 {
                     return Err(ErrorKind::ReceivedDataToShort);
@@ -309,13 +334,12 @@ impl Socket {
                     self.connections
                         .get_or_create_connection(address, &self.config, time);
 
-                match connection {
-                    Left(existing) => {
-                        existing.process_incoming(received_payload, &self.event_sender, time)?;
-                    }
-                    Right(mut anonymous) => {
-                        anonymous.process_incoming(received_payload, &self.event_sender, time)?;
-                    }
+                let packets = match connection {
+                    Left(existing) => existing.process_incoming(received_payload, time)?,
+                    Right(mut anonymous) => anonymous.process_incoming(received_payload, time)?,
+                };
+                for (packet, _) in packets {
+                    self.event_sender.send(SocketEvent::Packet(packet)).unwrap();
                 }
             }
             Err(e) => {
@@ -335,22 +359,6 @@ impl Socket {
         }
     }
 
-    // Send a single packet over the UDP socket.
-    fn send_packet(&self, addr: &SocketAddr, payload: &[u8]) -> Result<usize> {
-        let bytes_sent = self.socket.send_to(payload, addr)?;
-        Ok(bytes_sent)
-    }
-
-    // In the presence of a link conditioner, we would like it to determine whether or not we should
-    // send a packet.
-    fn should_send_packet(&mut self) -> bool {
-        if let Some(link_conditioner) = &mut self.link_conditioner {
-            link_conditioner.should_send()
-        } else {
-            true
-        }
-    }
-
     #[cfg(test)]
     fn connection_count(&self) -> usize {
         self.connections.count()
@@ -359,9 +367,9 @@ impl Socket {
     #[cfg(test)]
     fn forget_all_incoming_packets(&mut self) {
         std::thread::sleep(std::time::Duration::from_millis(100));
-        self.socket.set_nonblocking(true).unwrap();
+        self.socket_wrapper.socket.set_nonblocking(true).unwrap();
         loop {
-            match self.socket.recv_from(&mut self.recv_buffer) {
+            match self.socket_wrapper.socket.recv_from(&mut self.recv_buffer) {
                 Ok((recv_len, _address)) => {
                     if recv_len == 0 {
                         panic!("Received data too short");
@@ -371,7 +379,8 @@ impl Socket {
                     if e.kind() != io::ErrorKind::WouldBlock {
                         panic!("Encountered an error receiving data: {:?}", e);
                     } else {
-                        self.socket
+                        self.socket_wrapper
+                            .socket
                             .set_nonblocking(!self.config.blocking_mode)
                             .unwrap();
                         return;
@@ -705,7 +714,7 @@ mod tests {
         while let Some(message) = server.recv() {
             match message {
                 SocketEvent::Connect(_) => {}
-                SocketEvent::Packet(_packet) => {
+                SocketEvent::Packet(_) => {
                     cnt += 1;
                 }
                 SocketEvent::Timeout(_) => {
