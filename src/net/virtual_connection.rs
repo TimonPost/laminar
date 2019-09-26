@@ -54,9 +54,8 @@ impl VirtualConnection {
         }
     }
 
-    /// Determine if this connection should be dropped due to its state
-    pub fn should_be_dropped(&self) -> bool {
-        self.acknowledge_handler.packets_in_flight() > self.config.max_packets_in_flight
+    pub fn packets_in_flight(&self) -> u16 {
+        self.acknowledge_handler.packets_in_flight()
     }
 
     /// Returns a [Duration] representing the interval since we last heard from the client
@@ -938,5 +937,116 @@ mod tests {
         if iter.next().is_some() {
             panic!("Expected not fragmented packet")
         }
+    }
+
+    #[test]
+    fn sending_large_unreliable_packet_should_fail() {
+        let mut connection = create_virtual_connection();
+        let buffer = vec![1; 5000];
+
+        let res = connection.process_outgoing(
+            PacketInfo::user_packet(
+                &buffer,
+                DeliveryGuarantee::Unreliable,
+                OrderingGuarantee::None,
+            ),
+            None,
+            Instant::now(),
+        );
+
+        assert_eq!(res.is_err(), true);
+    }
+
+    #[test]
+    fn send_returns_right_size() {
+        let mut connection = create_virtual_connection();
+        let buffer = vec![1; 1024];
+
+        let mut packets = connection
+            .process_outgoing(
+                PacketInfo::user_packet(
+                    &buffer,
+                    DeliveryGuarantee::Unreliable,
+                    OrderingGuarantee::None,
+                ),
+                None,
+                Instant::now(),
+            )
+            .unwrap()
+            .into_iter();
+        let packet = packets.next().unwrap();
+
+        assert_eq!(
+            packet.contents().len(),
+            1024 + constants::STANDARD_HEADER_SIZE as usize
+        );
+        assert_eq!(packets.next().is_none(), true);
+    }
+
+    #[test]
+    fn fragmentation_send_returns_right_size() {
+        let fragment_packet_size =
+            constants::STANDARD_HEADER_SIZE + constants::FRAGMENT_HEADER_SIZE;
+
+        let mut connection = create_virtual_connection();
+        let buffer = vec![1; 4000];
+
+        let packets = connection
+            .process_outgoing(
+                PacketInfo::user_packet(
+                    &buffer,
+                    DeliveryGuarantee::Reliable,
+                    OrderingGuarantee::None,
+                ),
+                None,
+                Instant::now(),
+            )
+            .unwrap()
+            .into_iter();
+
+        // the first fragment of an sequence of fragments contains also the acknowledgment header.
+        assert_eq!(
+            packets.fold(0, |acc, p| acc + p.contents().len()),
+            4000 + (fragment_packet_size * 4 + constants::ACKED_PACKET_HEADER) as usize
+        );
+    }
+
+    #[test]
+    fn ordered_16_bit_overflow() {
+        let mut send_conn = create_virtual_connection();
+        let mut recv_conn = create_virtual_connection();
+
+        let time = Instant::now();
+        let mut last_recv_value = 0u32;
+        for idx in 1..100_000u32 {
+            let data_to_send = idx.to_ne_bytes();
+            let packet_sent = send_conn
+                .process_outgoing(
+                    PacketInfo::user_packet(
+                        &data_to_send,
+                        DeliveryGuarantee::Reliable,
+                        OrderingGuarantee::None,
+                    ),
+                    None,
+                    time,
+                )
+                .unwrap()
+                .into_iter()
+                .next()
+                .unwrap();
+
+            let packets = recv_conn
+                .process_incoming(&packet_sent.contents(), time)
+                .unwrap();
+
+            for (packet, _) in packets.into_iter() {
+                let mut recv_buff = [0; 4];
+                recv_buff.copy_from_slice(packet.payload());
+                let value = u32::from_ne_bytes(recv_buff);
+                assert_eq!(value, last_recv_value + 1);
+                last_recv_value = value;
+            }
+        }
+        assert_eq![last_recv_value, 99999];
     }
 }
