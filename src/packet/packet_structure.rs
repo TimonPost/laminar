@@ -241,7 +241,7 @@ mod tests {
     }
 
     fn test_payload() -> Vec<u8> {
-        return "test".as_bytes().to_vec();
+        b"test".to_vec()
     }
 
     fn test_addr() -> SocketAddr {

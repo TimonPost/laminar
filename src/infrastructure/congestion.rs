@@ -60,7 +60,10 @@ mod test {
     fn rtt_value_is_updated() {
         let mut congestion_handler = CongestionHandler::new(&Config::default());
 
-        assert_eq!(congestion_handler.rtt_measurer.get_rtt(), 0.);
+        assert_eq!(
+            congestion_handler.rtt_measurer.get_rtt().abs() < std::f32::EPSILON,
+            true
+        );
         congestion_handler.process_outgoing(1, Instant::now());
         congestion_handler.process_incoming(1);
         assert_eq!(congestion_handler.rtt_measurer.get_rtt() != 0., true);
