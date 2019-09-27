@@ -182,9 +182,9 @@ pub struct GenericPacket<'a> {
     pub(crate) packet_type: PacketType,
     /// the raw payload of the packet
     pub(crate) payload: &'a [u8],
-    /// defines on how the packet will be delivered.
+    /// defines how the packet will be delivered.
     pub(crate) delivery: DeliveryGuarantee,
-    /// defines on how the packet will be ordered.
+    /// defines how the packet will be ordered.
     pub(crate) ordering: OrderingGuarantee,
 }
 
