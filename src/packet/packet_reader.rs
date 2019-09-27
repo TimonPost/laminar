@@ -204,7 +204,7 @@ mod tests {
         let mut reader = PacketReader::new(reliable_ordered_payload.as_slice());
 
         let arranging_header = reader
-            .read_arranging_header(StandardHeader::size() as u16)
+            .read_arranging_header(u16::from(StandardHeader::size()))
             .unwrap();
 
         assert_eq!(arranging_header.arranging_id(), 1);
@@ -225,7 +225,9 @@ mod tests {
         let standard_header = reader.read_standard_header().unwrap();
         let acked_header = reader.read_acknowledge_header().unwrap();
         let arranging_header = reader
-            .read_arranging_header((StandardHeader::size() + AckedPacketHeader::size()) as u16)
+            .read_arranging_header(u16::from(
+                StandardHeader::size() + AckedPacketHeader::size(),
+            ))
             .unwrap();
 
         assert_eq!(standard_header.protocol_version(), 1);

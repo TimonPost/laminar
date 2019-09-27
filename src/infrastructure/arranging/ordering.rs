@@ -432,22 +432,10 @@ mod tests {
         ( [$( $x:expr ),*] , [$( $y:expr),*] , $stream_id:expr) => {
         {
             // initialize vector of given range on the left.
-            let mut before: Vec<u16> = Vec::new();
-            $(
-                before.push($x);
-            )*
+            let before = [$($x,)*];
 
             // initialize vector of given range on the right.
-            let mut after: Vec<u16> = Vec::new();
-            $(
-                after.push($y);
-            )*
-
-            // generate test packets
-            let mut packets = Vec::new();
-            for (_, v) in before.iter().enumerate() {
-                packets.push(Packet::new(*v, $stream_id));
-            }
+            let after = [$($y,)*];
 
             // create system to handle the ordering of our packets.
             let mut ordering_system = OrderingSystem::<Packet>::new();
@@ -455,26 +443,17 @@ mod tests {
             // get stream '1' to order the packets on.
             let stream = ordering_system.get_or_create_stream(1);
 
-            // order packets
-            let mut ordered_packets = Vec::new();
-
-            for packet in packets.into_iter() {
-                match stream.arrange(packet.sequence, packet.clone()) {
-                    Some(packet) => {
-                        ordered_packets.push(packet.sequence);
-                         // empty the remaining ordered packets into an vector so that we can check if they are ordered.
-                        let mut iter = stream.iter_mut();
-
-                        while let Some(packet) = iter.next() {
-                            ordered_packets.push(packet.sequence);
-                        }
-                    }
-                    None => {}
-                };
-            }
+            let ordered_packets : Vec<_> = before.into_iter()
+                .filter_map(|seq| stream.arrange(*seq, Packet::new(*seq, $stream_id))
+                    .map(|p| Some(p).into_iter() // if we get some packets, append packets from stream as well
+                        .chain(stream.iter_mut())
+                        .map(|p| p.sequence)
+                        .collect::<Vec<_>>()))
+                    .flatten()
+                    .collect();
 
              // assert if the expected range of the given numbers equals to the processed range which is in sequence.
-             assert_eq!(after, ordered_packets);
+             assert_eq!(after.to_vec(), ordered_packets);
             }
         };
     }

@@ -793,7 +793,7 @@ mod tests {
 
         let acked_header = vec![0, 0, 255, 4, 0, 0, 255, 255, 0, 0, 0, 0];
 
-        let (tx, rx) = unbounded::<SocketEvent>();
+        let (tx, _rx) = unbounded::<SocketEvent>();
 
         use crate::error::{ErrorKind, FragmentErrorKind};
 
