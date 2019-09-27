@@ -45,7 +45,7 @@ mod test {
 
     #[test]
     fn not_valid_version() {
-        let protocol_id = crc16::checksum_x25("not-laminar".as_bytes());
+        let protocol_id = crc16::checksum_x25(b"not-laminar");
         assert!(!ProtocolVersion::valid_version(protocol_id));
     }
 

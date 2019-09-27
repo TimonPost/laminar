@@ -136,7 +136,7 @@ mod tests {
     use crate::packet::{DeliveryGuarantee, OrderingGuarantee, OutgoingPacketBuilder};
 
     fn test_payload() -> Vec<u8> {
-        return "test".as_bytes().to_vec();
+        b"test".to_vec()
     }
 
     #[test]

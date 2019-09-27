@@ -185,23 +185,10 @@ mod tests {
         ( [$( $x:expr ),*], [$( $y:expr),*], $stream_id:expr) => {
             {
                 // initialize vector of given range on the left.
-                let mut before: Vec<u16> = Vec::new();
-                $(
-                    before.push($x);
-                )*
+                let before = [$($x,)*];
 
                 // initialize vector of given range on the right.
-                let mut after: Vec<u16> = Vec::new();
-                $(
-                    after.push($y);
-                )*
-
-                // generate test packets
-                let mut packets = Vec::new();
-
-                for (_, v) in before.iter().enumerate() {
-                    packets.push(Packet::new(*v, $stream_id));
-                }
+                let after = [$($y,)*];
 
                 // create system to handle sequenced packets.
                 let mut sequence_system = SequencingSystem::<Packet>::new();
@@ -210,17 +197,13 @@ mod tests {
                 let stream = sequence_system.get_or_create_stream(1);
 
                 // get packets arranged in sequence.
-                let mut sequenced_packets = Vec::new();
-
-                for packet in packets.into_iter() {
-                    match stream.arrange(packet.sequence, packet.clone()) {
-                        Some(packet) => { sequenced_packets.push(packet.sequence);},
-                        None => {}
-                    };
-                }
+                let sequenced_packets: Vec<_> = before.into_iter()
+                    .filter_map(|seq| stream.arrange(*seq, Packet::new(*seq, $stream_id)) // filter sequenced packets
+                        .map(|p| p.sequence))
+                    .collect();
 
                // assert if the expected range of the given numbers equals to the processed range which is in sequence.
-               assert_eq!(after, sequenced_packets);
+               assert_eq!(after.to_vec(), sequenced_packets);
             }
         };
     }

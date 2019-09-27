@@ -36,7 +36,7 @@ impl RttMeasurer {
 
     #[cfg(test)]
     pub fn get_rtt(&self) -> f32 {
-        return self.rtt;
+        self.rtt
     }
 
     /// This will get the smoothed round trip time (rtt) from the time we last heard from a packet.
@@ -84,8 +84,8 @@ mod test {
     use std::net::ToSocketAddrs;
     use std::time::{Duration, Instant};
 
-    static TEST_HOST_IP: &'static str = "127.0.0.1";
-    static TEST_PORT: &'static str = "20000";
+    static TEST_HOST_IP: &str = "127.0.0.1";
+    static TEST_PORT: &str = "20000";
 
     #[test]
     fn test_create_connection() {
@@ -119,6 +119,6 @@ mod test {
         let smoothed_rtt = network_quality.smooth_out_rtt(300);
 
         // 300ms has exceeded 50ms over the max allowed rtt. So we check if or smoothing factor is now 10% from 50.
-        assert_eq!(smoothed_rtt, 5.0);
+        assert_eq!((smoothed_rtt - 5.0f32).abs() < std::f32::EPSILON, true);
     }
 }

@@ -297,7 +297,7 @@ impl Socket {
         match self.socket.recv_from(&mut self.recv_buffer) {
             Ok((recv_len, address)) => {
                 if recv_len == 0 {
-                    return Err(ErrorKind::ReceivedDataToShort)?;
+                    return Err(ErrorKind::ReceivedDataToShort);
                 }
                 let received_payload = &self.recv_buffer[..recv_len];
 
@@ -359,26 +359,26 @@ impl Socket {
     #[cfg(test)]
     fn forget_all_incoming_packets(&mut self) {
         std::thread::sleep(std::time::Duration::from_millis(100));
-        self.socket.set_nonblocking(true);
+        self.socket.set_nonblocking(true).unwrap();
         loop {
             match self.socket.recv_from(&mut self.recv_buffer) {
                 Ok((recv_len, _address)) => {
                     if recv_len == 0 {
                         panic!("Received data too short");
                     }
-                    &self.recv_buffer[..recv_len];
                 }
                 Err(e) => {
                     if e.kind() != io::ErrorKind::WouldBlock {
                         panic!("Encountered an error receiving data: {:?}", e);
                     } else {
-                        self.socket.set_nonblocking(!self.config.blocking_mode);
+                        self.socket
+                            .set_nonblocking(!self.config.blocking_mode)
+                            .unwrap();
                         return;
                     }
                 }
             }
         }
-        self.socket.set_nonblocking(!self.config.blocking_mode);
     }
 }
 
@@ -415,10 +415,7 @@ mod tests {
         let time = Instant::now();
 
         client
-            .send(Packet::unreliable(
-                server_addr,
-                b"Hello world!".iter().cloned().collect::<Vec<_>>(),
-            ))
+            .send(Packet::unreliable(server_addr, b"Hello world!".to_vec()))
             .unwrap();
 
         client.manual_poll(time);
@@ -448,7 +445,7 @@ mod tests {
         sender
             .send(Packet::reliable_unordered(
                 server_addr,
-                b"Hello world!".iter().cloned().collect::<Vec<_>>(),
+                b"Hello world!".to_vec(),
             ))
             .unwrap();
 
@@ -474,7 +471,7 @@ mod tests {
         client
             .send(Packet::reliable_unordered(
                 "127.0.0.1:12335".parse::<SocketAddr>().unwrap(),
-                b"Do not arrive".iter().cloned().collect::<Vec<_>>(),
+                b"Do not arrive".to_vec(),
             ))
             .unwrap();
         client.manual_poll(time);
@@ -559,7 +556,7 @@ mod tests {
         client
             .send(Packet::reliable_sequenced(
                 "127.0.0.1:12329".parse::<SocketAddr>().unwrap(),
-                b"Do not arrive".iter().cloned().collect::<Vec<_>>(),
+                b"Do not arrive".to_vec(),
                 None,
             ))
             .unwrap();
@@ -601,7 +598,7 @@ mod tests {
         client
             .send(Packet::reliable_ordered(
                 "127.0.0.1:12333".parse::<SocketAddr>().unwrap(),
-                b"Do not arrive".iter().cloned().collect::<Vec<_>>(),
+                b"Do not arrive".to_vec(),
                 None,
             ))
             .unwrap();
@@ -643,7 +640,7 @@ mod tests {
         let mut server = Socket::bind_any_with_config(config).unwrap();
 
         let server_addr = server.local_addr().unwrap();
-        let client_addr = client.local_addr().unwrap();
+        let _client_addr = client.local_addr().unwrap();
 
         let time = Instant::now();
 
@@ -708,7 +705,7 @@ mod tests {
         while let Some(message) = server.recv() {
             match message {
                 SocketEvent::Connect(_) => {}
-                SocketEvent::Packet(packet) => {
+                SocketEvent::Packet(_packet) => {
                     cnt += 1;
                 }
                 SocketEvent::Timeout(_) => {
@@ -726,7 +723,7 @@ mod tests {
         config.max_packets_in_flight = 100;
         let mut client = Socket::bind_any_with_config(config.clone()).unwrap();
         config.blocking_mode = true;
-        let mut server = Socket::bind_any_with_config(config).unwrap();
+        let server = Socket::bind_any_with_config(config).unwrap();
 
         let server_addr = server.local_addr().unwrap();
 
@@ -1140,7 +1137,7 @@ mod tests {
                 }
             }
 
-            return set.len();
+            set.len()
         };
 
         // The first chatting sequence sends packets 0..100 from the client to the server. After
@@ -1196,11 +1193,8 @@ mod tests {
             server.manual_poll(time);
 
             while let Some(msg) = server.recv() {
-                match msg {
-                    SocketEvent::Packet(pkt) => {
-                        last_payload = std::str::from_utf8(pkt.payload()).unwrap().to_string();
-                    }
-                    _ => {}
+                if let SocketEvent::Packet(pkt) = msg {
+                    last_payload = std::str::from_utf8(pkt.payload()).unwrap().to_string();
                 }
             }
         }
