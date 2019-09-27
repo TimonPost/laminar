@@ -1,6 +1,5 @@
 use crate::{
     config::Config,
-    either::Either,
     error::{ErrorKind, PacketErrorKind, Result},
     infrastructure::{
         arranging::{Arranging, ArrangingSystem, OrderingSystem, SequencingSystem},
@@ -11,113 +10,14 @@ use crate::{
         STANDARD_HEADER_SIZE,
     },
     packet::{
-        DeliveryGuarantee, GenericPacket, OrderingGuarantee, OutgoingPacket, OutgoingPacketBuilder,
-        Packet, PacketReader, PacketType, SequenceNumber,
+        DeliveryGuarantee, IncomingPackets, OrderingGuarantee, OutgoingPacketBuilder,
+        OutgoingPackets, Packet, PacketInfo, PacketReader, PacketType, SequenceNumber,
     },
 };
 
 use std::fmt;
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};
-
-use std::collections::VecDeque;
-/// Helper class that implements `Iterator`, and is used to return incoming (from bytes to packets) or outgoing (from packet to bytes) packets.
-/// It is used as optimization in cases, where most of the time there is only one element to iterate, and we don't want to create a vector for it
-pub struct ZeroOrMore<T> {
-    data: Either<Option<T>, VecDeque<T>>,
-}
-
-impl<T> ZeroOrMore<T> {
-    fn zero() -> Self {
-        Self {
-            data: Either::Left(None),
-        }
-    }
-
-    fn one(data: T) -> Self {
-        Self {
-            data: Either::Left(Some(data)),
-        }
-    }
-
-    fn many(vec: VecDeque<T>) -> Self {
-        Self {
-            data: Either::Right(vec),
-        }
-    }
-}
-
-impl<T> Iterator for ZeroOrMore<T> {
-    type Item = T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match &mut self.data {
-            Either::Left(option) => option.take(),
-            Either::Right(vec) => vec.pop_front(),
-        }
-    }
-}
-
-/// Stores packets with headers that will be sent to the network
-pub struct OutgoingPackets<'a> {
-    data: ZeroOrMore<OutgoingPacket<'a>>,
-}
-
-impl<'a> OutgoingPackets<'a> {
-    fn one(packet: OutgoingPacket<'a>) -> Self {
-        Self {
-            data: ZeroOrMore::one(packet),
-        }
-    }
-    fn many(packets: VecDeque<OutgoingPacket<'a>>) -> Self {
-        Self {
-            data: ZeroOrMore::many(packets),
-        }
-    }
-}
-
-impl<'a> IntoIterator for OutgoingPackets<'a> {
-    type Item = OutgoingPacket<'a>;
-    type IntoIter = ZeroOrMore<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.data
-    }
-}
-
-/// Stores parsed packets with their types, that was received from network
-pub struct IncomingPackets {
-    data: ZeroOrMore<(Packet, PacketType)>,
-}
-
-impl IncomingPackets {
-    fn zero() -> Self {
-        Self {
-            data: ZeroOrMore::zero(),
-        }
-    }
-
-    fn one(packet: Packet, packet_type: PacketType) -> Self {
-        Self {
-            data: ZeroOrMore::one((packet, packet_type)),
-        }
-    }
-
-    fn many(vec: VecDeque<(Packet, PacketType)>) -> Self {
-        Self {
-            data: ZeroOrMore::many(vec),
-        }
-    }
-}
-
-impl IntoIterator for IncomingPackets {
-    type Item = (Packet, PacketType);
-    type IntoIter = ZeroOrMore<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.data
-    }
-}
 
 /// Contains the information about a certain 'virtual connection' over udp.
 /// This connections also keeps track of network quality, processing packets, buffering data related to connection etc.
@@ -176,7 +76,7 @@ impl VirtualConnection {
     /// This will pre-process the given buffer to be sent over the network.
     pub fn process_outgoing<'a>(
         &mut self,
-        packet: GenericPacket<'a>,
+        packet: PacketInfo<'a>,
         last_item_identifier: Option<SequenceNumber>,
         time: Instant,
     ) -> Result<OutgoingPackets<'a>> {
@@ -525,7 +425,7 @@ mod tests {
     use crate::config::Config;
     use crate::net::constants;
     use crate::packet::header::{AckedPacketHeader, ArrangingHeader, HeaderWriter, StandardHeader};
-    use crate::packet::{DeliveryGuarantee, GenericPacket, OrderingGuarantee, Packet, PacketType};
+    use crate::packet::{DeliveryGuarantee, OrderingGuarantee, Packet, PacketInfo, PacketType};
     use crate::protocol_version::ProtocolVersion;
     use byteorder::{BigEndian, WriteBytesExt};
     use std::io::Write;
@@ -541,7 +441,7 @@ mod tests {
 
         let out_packet = connection
             .process_outgoing(
-                GenericPacket::heartbeat_packet(&[]),
+                PacketInfo::heartbeat_packet(&[]),
                 None,
                 curr_sent + Duration::from_secs(1),
             )
@@ -651,7 +551,7 @@ mod tests {
 
         let packets: Vec<_> = connection
             .process_outgoing(
-                GenericPacket::user_packet(
+                PacketInfo::user_packet(
                     &buffer,
                     DeliveryGuarantee::Reliable,
                     OrderingGuarantee::Ordered(None),
@@ -673,7 +573,7 @@ mod tests {
 
         connection
             .process_outgoing(
-                GenericPacket::user_packet(
+                PacketInfo::user_packet(
                     &buffer,
                     DeliveryGuarantee::Unreliable,
                     OrderingGuarantee::None,
@@ -685,7 +585,7 @@ mod tests {
 
         connection
             .process_outgoing(
-                GenericPacket::user_packet(
+                PacketInfo::user_packet(
                     &buffer,
                     DeliveryGuarantee::Unreliable,
                     OrderingGuarantee::Sequenced(None),
@@ -697,7 +597,7 @@ mod tests {
 
         connection
             .process_outgoing(
-                GenericPacket::user_packet(
+                PacketInfo::user_packet(
                     &buffer,
                     DeliveryGuarantee::Reliable,
                     OrderingGuarantee::Ordered(None),
@@ -709,7 +609,7 @@ mod tests {
 
         connection
             .process_outgoing(
-                GenericPacket::user_packet(
+                PacketInfo::user_packet(
                     &buffer,
                     DeliveryGuarantee::Reliable,
                     OrderingGuarantee::Sequenced(None),
@@ -1025,7 +925,7 @@ mod tests {
 
         let outgoing = connection
             .process_outgoing(
-                GenericPacket::user_packet(&buffer, delivery, ordering),
+                PacketInfo::user_packet(&buffer, delivery, ordering),
                 None,
                 Instant::now(),
             )

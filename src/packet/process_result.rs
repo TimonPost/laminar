@@ -1,0 +1,102 @@
+use crate::either::Either;
+use crate::packet::{OutgoingPacket, Packet, PacketType};
+
+use std::collections::VecDeque;
+/// Helper class that implements `Iterator`, and is used to return incoming (from bytes to packets) or outgoing (from packet to bytes) packets.
+/// It is used as optimization in cases, where most of the time there is only one element to iterate, and we don't want to create a vector for it
+pub struct ZeroOrMore<T> {
+    data: Either<Option<T>, VecDeque<T>>,
+}
+
+impl<T> ZeroOrMore<T> {
+    fn zero() -> Self {
+        Self {
+            data: Either::Left(None),
+        }
+    }
+
+    fn one(data: T) -> Self {
+        Self {
+            data: Either::Left(Some(data)),
+        }
+    }
+
+    fn many(vec: VecDeque<T>) -> Self {
+        Self {
+            data: Either::Right(vec),
+        }
+    }
+}
+
+impl<T> Iterator for ZeroOrMore<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match &mut self.data {
+            Either::Left(option) => option.take(),
+            Either::Right(vec) => vec.pop_front(),
+        }
+    }
+}
+
+/// Stores packets with headers that will be sent to the network
+pub struct OutgoingPackets<'a> {
+    data: ZeroOrMore<OutgoingPacket<'a>>,
+}
+
+impl<'a> OutgoingPackets<'a> {
+    pub fn one(packet: OutgoingPacket<'a>) -> Self {
+        Self {
+            data: ZeroOrMore::one(packet),
+        }
+    }
+
+    pub fn many(packets: VecDeque<OutgoingPacket<'a>>) -> Self {
+        Self {
+            data: ZeroOrMore::many(packets),
+        }
+    }
+}
+
+impl<'a> IntoIterator for OutgoingPackets<'a> {
+    type Item = OutgoingPacket<'a>;
+    type IntoIter = ZeroOrMore<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.data
+    }
+}
+
+/// Stores parsed packets with their types, that was received from network
+pub struct IncomingPackets {
+    data: ZeroOrMore<(Packet, PacketType)>,
+}
+
+impl IncomingPackets {
+    pub fn zero() -> Self {
+        Self {
+            data: ZeroOrMore::zero(),
+        }
+    }
+
+    pub fn one(packet: Packet, packet_type: PacketType) -> Self {
+        Self {
+            data: ZeroOrMore::one((packet, packet_type)),
+        }
+    }
+
+    pub fn many(vec: VecDeque<(Packet, PacketType)>) -> Self {
+        Self {
+            data: ZeroOrMore::many(vec),
+        }
+    }
+}
+
+impl IntoIterator for IncomingPackets {
+    type Item = (Packet, PacketType);
+    type IntoIter = ZeroOrMore<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.data
+    }
+}

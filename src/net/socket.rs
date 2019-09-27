@@ -3,7 +3,7 @@ use crate::{
     config::Config,
     error::{ErrorKind, Result},
     net::{connection::ActiveConnections, events::SocketEvent, link_conditioner::LinkConditioner},
-    packet::{DeliveryGuarantee, GenericPacket, Packet},
+    packet::{DeliveryGuarantee, Packet, PacketInfo},
 };
 use crossbeam_channel::{self, unbounded, Receiver, SendError, Sender, TryRecvError};
 use log::error;
@@ -37,6 +37,18 @@ impl SocketWithConditioner {
             }
         }
         Ok(self.socket.send_to(payload, addr)?)
+    }
+
+    pub fn socket(&mut self) -> &mut UdpSocket {
+        &mut self.socket
+    }
+
+    pub fn local_addr(&self) -> Result<SocketAddr> {
+        Ok(self.socket.local_addr()?)
+    }
+
+    pub fn set_link_conditioner(&mut self, conditioner: Option<LinkConditioner>) {
+        self.link_conditioner = conditioner;
     }
 }
 
@@ -201,12 +213,12 @@ impl Socket {
 
     /// Set the link conditioner for this socket. See [LinkConditioner] for further details.
     pub fn set_link_conditioner(&mut self, link_conditioner: Option<LinkConditioner>) {
-        self.socket_wrapper.link_conditioner = link_conditioner;
+        self.socket_wrapper.set_link_conditioner(link_conditioner);
     }
 
     /// Get the local socket address
     pub fn local_addr(&self) -> Result<SocketAddr> {
-        Ok(self.socket_wrapper.socket.local_addr()?)
+        self.socket_wrapper.local_addr()
     }
 
     /// Iterate through the dead connections and disconnect them by removing them from the
@@ -248,7 +260,7 @@ impl Socket {
             .heartbeat_required_connections(heartbeat_interval, time)
             .map(|connection| {
                 (
-                    connection.process_outgoing(GenericPacket::heartbeat_packet(&[]), None, time),
+                    connection.process_outgoing(PacketInfo::heartbeat_packet(&[]), None, time),
                     connection.remote_address,
                 )
             })
@@ -281,7 +293,7 @@ impl Socket {
         let dropped_packets = connection.gather_dropped_packets();
         for dropped in dropped_packets {
             let packets = connection.process_outgoing(
-                GenericPacket {
+                PacketInfo {
                     packet_type: dropped.packet_type,
                     payload: &dropped.payload,
                     // Because a delivery guarantee is only sent with reliable packets
@@ -301,7 +313,7 @@ impl Socket {
         }
 
         let packets = connection.process_outgoing(
-            GenericPacket::user_packet(
+            PacketInfo::user_packet(
                 packet.payload(),
                 packet.delivery_guarantee(),
                 packet.order_guarantee(),
@@ -319,7 +331,11 @@ impl Socket {
 
     // On success the packet will be sent on the `event_sender`
     fn recv_from(&mut self, time: Instant) -> Result<UdpSocketState> {
-        match self.socket_wrapper.socket.recv_from(&mut self.recv_buffer) {
+        match self
+            .socket_wrapper
+            .socket()
+            .recv_from(&mut self.recv_buffer)
+        {
             Ok((recv_len, address)) => {
                 if recv_len == 0 {
                     return Err(ErrorKind::ReceivedDataToShort);
@@ -338,8 +354,10 @@ impl Socket {
                     Left(existing) => existing.process_incoming(received_payload, time)?,
                     Right(mut anonymous) => anonymous.process_incoming(received_payload, time)?,
                 };
-                for (packet, _) in packets {
-                    self.event_sender.send(SocketEvent::Packet(packet)).unwrap();
+                for (incoming, _) in packets {
+                    self.event_sender
+                        .send(SocketEvent::Packet(incoming))
+                        .unwrap();
                 }
             }
             Err(e) => {
@@ -367,9 +385,13 @@ impl Socket {
     #[cfg(test)]
     fn forget_all_incoming_packets(&mut self) {
         std::thread::sleep(std::time::Duration::from_millis(100));
-        self.socket_wrapper.socket.set_nonblocking(true).unwrap();
+        self.socket_wrapper.socket().set_nonblocking(true).unwrap();
         loop {
-            match self.socket_wrapper.socket.recv_from(&mut self.recv_buffer) {
+            match self
+                .socket_wrapper
+                .socket()
+                .recv_from(&mut self.recv_buffer)
+            {
                 Ok((recv_len, _address)) => {
                     if recv_len == 0 {
                         panic!("Received data too short");
@@ -380,7 +402,7 @@ impl Socket {
                         panic!("Encountered an error receiving data: {:?}", e);
                     } else {
                         self.socket_wrapper
-                            .socket
+                            .socket()
                             .set_nonblocking(!self.config.blocking_mode)
                             .unwrap();
                         return;

@@ -6,11 +6,13 @@ mod enums;
 mod outgoing;
 mod packet_reader;
 mod packet_structure;
+mod process_result;
 
 pub use self::enums::{DeliveryGuarantee, OrderingGuarantee, PacketType};
 pub use self::outgoing::{OutgoingPacket, OutgoingPacketBuilder};
 pub use self::packet_reader::PacketReader;
-pub use self::packet_structure::{GenericPacket, Packet};
+pub use self::packet_structure::{Packet, PacketInfo};
+pub use self::process_result::{IncomingPackets, OutgoingPackets};
 
 pub type SequenceNumber = u16;
 

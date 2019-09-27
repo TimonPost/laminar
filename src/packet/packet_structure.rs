@@ -178,7 +178,7 @@ impl Packet {
 
 /// This packet type has similar properties to `Packet` except that it doesn't own anything, and additionally has `PacketType`.
 #[derive(Debug)]
-pub struct GenericPacket<'a> {
+pub struct PacketInfo<'a> {
     pub(crate) packet_type: PacketType,
     /// the raw payload of the packet
     pub(crate) payload: &'a [u8],
@@ -188,14 +188,14 @@ pub struct GenericPacket<'a> {
     pub(crate) ordering: OrderingGuarantee,
 }
 
-impl<'a> GenericPacket<'a> {
+impl<'a> PacketInfo<'a> {
     /// This will create a user packet that can be received by the user.
     pub fn user_packet(
         payload: &'a [u8],
         delivery: DeliveryGuarantee,
         ordering: OrderingGuarantee,
     ) -> Self {
-        Self {
+        PacketInfo {
             packet_type: PacketType::Packet,
             payload,
             delivery,
@@ -205,7 +205,7 @@ impl<'a> GenericPacket<'a> {
 
     /// This will create a heartbeat packet that is expected to be sent over the network
     pub fn heartbeat_packet(payload: &'a [u8]) -> Self {
-        Self {
+        PacketInfo {
             packet_type: PacketType::Heartbeat,
             payload,
             delivery: DeliveryGuarantee::Unreliable,
