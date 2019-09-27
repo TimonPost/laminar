@@ -2,6 +2,7 @@ use crate::either::Either;
 use crate::packet::{OutgoingPacket, Packet, PacketType};
 
 use std::collections::VecDeque;
+
 /// Helper class that implements `Iterator`, and is used to return incoming (from bytes to packets) or outgoing (from packet to bytes) packets.
 /// It is used as optimization in cases, where most of the time there is only one element to iterate, and we don't want to create a vector for it
 pub struct ZeroOrMore<T> {
@@ -39,18 +40,20 @@ impl<T> Iterator for ZeroOrMore<T> {
     }
 }
 
-/// Stores packets with headers that will be sent to the network
+/// Stores packets with headers that will be sent to the network, implements `IntoIterator` for convenience.
 pub struct OutgoingPackets<'a> {
     data: ZeroOrMore<OutgoingPacket<'a>>,
 }
 
 impl<'a> OutgoingPackets<'a> {
+    /// Store only one packet, without allocating on the heap
     pub fn one(packet: OutgoingPacket<'a>) -> Self {
         Self {
             data: ZeroOrMore::one(packet),
         }
     }
 
+    /// Store multiple packets, allocated on the heap
     pub fn many(packets: VecDeque<OutgoingPacket<'a>>) -> Self {
         Self {
             data: ZeroOrMore::many(packets),
@@ -67,24 +70,27 @@ impl<'a> IntoIterator for OutgoingPackets<'a> {
     }
 }
 
-/// Stores parsed packets with their types, that was received from network
+/// Stores parsed packets with their types, that was received from network, implements `IntoIterator` for convenience.
 pub struct IncomingPackets {
     data: ZeroOrMore<(Packet, PacketType)>,
 }
 
 impl IncomingPackets {
+    /// No packets are stored
     pub fn zero() -> Self {
         Self {
             data: ZeroOrMore::zero(),
         }
     }
 
+    /// Store only one packet, without allocating on the heap
     pub fn one(packet: Packet, packet_type: PacketType) -> Self {
         Self {
             data: ZeroOrMore::one((packet, packet_type)),
         }
     }
 
+    /// Store multiple packets, allocated on the heap
     pub fn many(vec: VecDeque<(Packet, PacketType)>) -> Self {
         Self {
             data: ZeroOrMore::many(vec),

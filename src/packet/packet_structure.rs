@@ -179,6 +179,7 @@ impl Packet {
 /// This packet type has similar properties to `Packet` except that it doesn't own anything, and additionally has `PacketType`.
 #[derive(Debug)]
 pub struct PacketInfo<'a> {
+    /// defines a type of the packet
     pub(crate) packet_type: PacketType,
     /// the raw payload of the packet
     pub(crate) payload: &'a [u8],

@@ -22,12 +22,14 @@ struct SocketWithConditioner {
 }
 
 impl SocketWithConditioner {
+    /// Creates an instance of `SocketWithConditioner`
     pub fn new(socket: UdpSocket, link_conditioner: Option<LinkConditioner>) -> Self {
         Self {
             socket,
             link_conditioner,
         }
     }
+
     // In the presence of a link conditioner, we would like it to determine whether or not we should
     // send a single packet over the UDP socket.
     pub fn send_packet(&mut self, addr: &SocketAddr, payload: &[u8]) -> Result<usize> {
@@ -39,14 +41,17 @@ impl SocketWithConditioner {
         Ok(self.socket.send_to(payload, addr)?)
     }
 
+    /// Returns mutable reference of `UdpSocket`
     pub fn socket(&mut self) -> &mut UdpSocket {
         &mut self.socket
     }
 
+    /// Returns the local socket address
     pub fn local_addr(&self) -> Result<SocketAddr> {
         Ok(self.socket.local_addr()?)
     }
 
+    /// Set the link conditioner for this socket. See [LinkConditioner] for further details.
     pub fn set_link_conditioner(&mut self, conditioner: Option<LinkConditioner>) {
         self.link_conditioner = conditioner;
     }
@@ -216,7 +221,7 @@ impl Socket {
         self.socket_wrapper.set_link_conditioner(link_conditioner);
     }
 
-    /// Get the local socket address
+    /// Returns the local socket address
     pub fn local_addr(&self) -> Result<SocketAddr> {
         self.socket_wrapper.local_addr()
     }
@@ -354,9 +359,9 @@ impl Socket {
                     Left(existing) => existing.process_incoming(received_payload, time)?,
                     Right(mut anonymous) => anonymous.process_incoming(received_payload, time)?,
                 };
-                for (incoming, _) in packets {
+                for incoming in packets {
                     self.event_sender
-                        .send(SocketEvent::Packet(incoming))
+                        .send(SocketEvent::Packet(incoming.0))
                         .unwrap();
                 }
             }
