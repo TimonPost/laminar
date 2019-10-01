@@ -3,8 +3,8 @@ use crate::packet::{OutgoingPacket, Packet, PacketType};
 
 use std::collections::VecDeque;
 
-/// Helper class that implements `Iterator`, and is used to return incoming (from bytes to packets) or outgoing (from packet to bytes) packets.
-/// It is used as optimization in cases, where most of the time there is only one element to iterate, and we don't want to create a vector for it
+/// Struct that implements `Iterator`, and is used to return incoming (from bytes to packets) or outgoing (from packet to bytes) packets.
+/// It is used as optimization in cases, where most of the time there is only one element to iterate, and we don't want to create a vector for it.
 pub struct ZeroOrMore<T> {
     data: Either<Option<T>, VecDeque<T>>,
 }
@@ -46,14 +46,14 @@ pub struct OutgoingPackets<'a> {
 }
 
 impl<'a> OutgoingPackets<'a> {
-    /// Store only one packet, without allocating on the heap
+    /// Stores only one packet, without allocating on the heap.
     pub fn one(packet: OutgoingPacket<'a>) -> Self {
         Self {
             data: ZeroOrMore::one(packet),
         }
     }
 
-    /// Store multiple packets, allocated on the heap
+    /// Stores multiple packets, allocated on the heap.
     pub fn many(packets: VecDeque<OutgoingPacket<'a>>) -> Self {
         Self {
             data: ZeroOrMore::many(packets),
@@ -83,14 +83,14 @@ impl IncomingPackets {
         }
     }
 
-    /// Store only one packet, without allocating on the heap
+    /// Stores only one packet, without allocating on the heap.
     pub fn one(packet: Packet, packet_type: PacketType) -> Self {
         Self {
             data: ZeroOrMore::one((packet, packet_type)),
         }
     }
 
-    /// Store multiple packets, allocated on the heap
+    /// Stores multiple packets, allocated on the heap.
     pub fn many(vec: VecDeque<(Packet, PacketType)>) -> Self {
         Self {
             data: ZeroOrMore::many(vec),

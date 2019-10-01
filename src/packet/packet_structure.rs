@@ -190,7 +190,7 @@ pub struct PacketInfo<'a> {
 }
 
 impl<'a> PacketInfo<'a> {
-    /// This will create a user packet that can be received by the user.
+    /// Creates a user packet that can be received by the user.
     pub fn user_packet(
         payload: &'a [u8],
         delivery: DeliveryGuarantee,
@@ -204,7 +204,7 @@ impl<'a> PacketInfo<'a> {
         }
     }
 
-    /// This will create a heartbeat packet that is expected to be sent over the network
+    /// Creates a heartbeat packet that is expected to be sent over the network.
     pub fn heartbeat_packet(payload: &'a [u8]) -> Self {
         PacketInfo {
             packet_type: PacketType::Heartbeat,
