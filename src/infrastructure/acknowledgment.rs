@@ -1,5 +1,4 @@
-use crate::packet::OrderingGuarantee;
-use crate::packet::SequenceNumber;
+use crate::packet::{OrderingGuarantee, PacketType, SequenceNumber};
 use crate::sequence_buffer::{sequence_greater_than, sequence_less_than, SequenceBuffer};
 use std::collections::HashMap;
 
@@ -101,6 +100,7 @@ impl AcknowledgmentHandler {
     /// Enqueue the outgoing packet for acknowledgment.
     pub fn process_outgoing(
         &mut self,
+        packet_type: PacketType,
         payload: &[u8],
         ordering_guarantee: OrderingGuarantee,
         item_identifier: Option<SequenceNumber>,
@@ -108,6 +108,7 @@ impl AcknowledgmentHandler {
         self.sent_packets.insert(
             self.sequence_number,
             SentPacket {
+                packet_type,
                 payload: Box::from(payload),
                 ordering_guarantee,
                 item_identifier,
@@ -138,8 +139,9 @@ impl AcknowledgmentHandler {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SentPacket {
+    pub packet_type: PacketType,
     pub payload: Box<[u8]>,
     pub ordering_guarantee: OrderingGuarantee,
     pub item_identifier: Option<SequenceNumber>,
@@ -154,7 +156,7 @@ pub struct ReceivedPacket;
 mod test {
     use crate::infrastructure::acknowledgment::ReceivedPacket;
     use crate::infrastructure::{AcknowledgmentHandler, SentPacket};
-    use crate::packet::OrderingGuarantee;
+    use crate::packet::{OrderingGuarantee, PacketType};
     use log::debug;
 
     #[test]
@@ -162,7 +164,12 @@ mod test {
         let mut handler = AcknowledgmentHandler::new();
         assert_eq!(handler.local_sequence_num(), 0);
         for i in 0..10 {
-            handler.process_outgoing(vec![].as_slice(), OrderingGuarantee::None, None);
+            handler.process_outgoing(
+                PacketType::Packet,
+                vec![].as_slice(),
+                OrderingGuarantee::None,
+                None,
+            );
             assert_eq!(handler.local_sequence_num(), i + 1);
         }
     }
@@ -171,7 +178,12 @@ mod test {
     fn local_seq_num_wraps_on_overflow() {
         let mut handler = AcknowledgmentHandler::new();
         handler.sequence_number = u16::max_value();
-        handler.process_outgoing(vec![].as_slice(), OrderingGuarantee::None, None);
+        handler.process_outgoing(
+            PacketType::Packet,
+            vec![].as_slice(),
+            OrderingGuarantee::None,
+            None,
+        );
         assert_eq!(handler.local_sequence_num(), 0);
     }
 
@@ -202,9 +214,19 @@ mod test {
         let mut handler = AcknowledgmentHandler::new();
 
         handler.sequence_number = 0;
-        handler.process_outgoing(vec![1, 2, 3].as_slice(), OrderingGuarantee::None, None);
+        handler.process_outgoing(
+            PacketType::Packet,
+            vec![1, 2, 3].as_slice(),
+            OrderingGuarantee::None,
+            None,
+        );
         handler.sequence_number = 40;
-        handler.process_outgoing(vec![1, 2, 4].as_slice(), OrderingGuarantee::None, None);
+        handler.process_outgoing(
+            PacketType::Packet,
+            vec![1, 2, 4].as_slice(),
+            OrderingGuarantee::None,
+            None,
+        );
 
         static ARBITRARY: u16 = 23;
         handler.process_incoming(ARBITRARY, 40, 0);
@@ -212,9 +234,10 @@ mod test {
         assert_eq!(
             handler.dropped_packets(),
             vec![SentPacket {
+                packet_type: PacketType::Packet,
                 payload: vec![1, 2, 3].into_boxed_slice(),
                 ordering_guarantee: OrderingGuarantee::None,
-                item_identifier: None,
+                item_identifier: None
             }]
         );
     }
@@ -226,7 +249,12 @@ mod test {
 
         for i in 0..500 {
             handler.sequence_number = i;
-            handler.process_outgoing(vec![1, 2, 3].as_slice(), OrderingGuarantee::None, None);
+            handler.process_outgoing(
+                PacketType::Packet,
+                vec![1, 2, 3].as_slice(),
+                OrderingGuarantee::None,
+                None,
+            );
 
             other.process_incoming(i, handler.remote_sequence_num(), handler.ack_bitfield());
             handler.process_incoming(i, other.remote_sequence_num(), other.ack_bitfield());
@@ -243,7 +271,12 @@ mod test {
         let mut drop_count = 0;
 
         for i in 0..100 {
-            handler.process_outgoing(vec![1, 2, 3].as_slice(), OrderingGuarantee::None, None);
+            handler.process_outgoing(
+                PacketType::Packet,
+                vec![1, 2, 3].as_slice(),
+                OrderingGuarantee::None,
+                None,
+            );
             handler.sequence_number = i;
 
             // dropping every 4th with modulo's
@@ -293,7 +326,12 @@ mod test {
     #[test]
     fn test_process_outgoing() {
         let mut handler = AcknowledgmentHandler::new();
-        handler.process_outgoing(vec![1, 2, 3].as_slice(), OrderingGuarantee::None, None);
+        handler.process_outgoing(
+            PacketType::Packet,
+            vec![1, 2, 3].as_slice(),
+            OrderingGuarantee::None,
+            None,
+        );
         assert_eq!(handler.sent_packets.len(), 1);
         assert_eq!(handler.local_sequence_num(), 1);
     }
