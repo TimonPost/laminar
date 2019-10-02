@@ -48,7 +48,6 @@ impl StandardHeader {
     }
 
     /// Returns the PacketType
-    #[cfg(test)]
     pub fn packet_type(&self) -> PacketType {
         self.packet_type
     }
