@@ -103,6 +103,8 @@ impl Display for DecodingErrorKind {
 pub enum PacketErrorKind {
     /// The maximal allowed size of the packet was exceeded
     ExceededMaxPacketSize,
+    /// Only `PacketType::Packet` can be fragmented
+    PacketCannotBeFragmented,
 }
 
 impl Display for PacketErrorKind {
@@ -110,6 +112,9 @@ impl Display for PacketErrorKind {
         match *self {
             PacketErrorKind::ExceededMaxPacketSize => {
                 write!(fmt, "The packet size was bigger than the max allowed size.")
+            }
+            PacketErrorKind::PacketCannotBeFragmented => {
+                write!(fmt, "The packet type cannot be fragmented.")
             }
         }
     }

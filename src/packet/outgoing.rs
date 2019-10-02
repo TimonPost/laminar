@@ -122,14 +122,6 @@ impl<'p> OutgoingPacket<'p> {
     }
 }
 
-/// Enum for storing different kinds of outgoing types with data.
-pub enum Outgoing<'a> {
-    /// Represents a single packet.
-    Packet(OutgoingPacket<'a>),
-    /// Represents a packet that is fragmented and thus contains more than one `OutgoingPacket`.
-    Fragments(Vec<OutgoingPacket<'a>>),
-}
-
 #[cfg(test)]
 mod tests {
     use crate::packet::PacketType;

@@ -10,13 +10,11 @@ use crate::{
         STANDARD_HEADER_SIZE,
     },
     packet::{
-        DeliveryGuarantee, OrderingGuarantee, Outgoing, OutgoingPacket, OutgoingPacketBuilder,
-        Packet, PacketReader, PacketType, SequenceNumber,
+        DeliveryGuarantee, IncomingPackets, OrderingGuarantee, OutgoingPacketBuilder,
+        OutgoingPackets, Packet, PacketInfo, PacketReader, PacketType, SequenceNumber,
     },
-    SocketEvent,
 };
 
-use crossbeam_channel::{self, Sender};
 use std::fmt;
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};
@@ -31,7 +29,7 @@ pub struct VirtualConnection {
     /// The address of the remote endpoint
     pub remote_address: SocketAddr,
 
-    ordering_system: OrderingSystem<Box<[u8]>>,
+    ordering_system: OrderingSystem<(Box<[u8]>, PacketType)>,
     sequencing_system: SequencingSystem<Box<[u8]>>,
     acknowledge_handler: AcknowledgmentHandler,
     congestion_handler: CongestionHandler,
@@ -75,40 +73,27 @@ impl VirtualConnection {
         time.duration_since(self.last_sent)
     }
 
-    /// This will create a heartbeat packet that is expected to be sent over the network
-    pub fn create_and_process_heartbeat(&mut self, time: Instant) -> OutgoingPacket<'static> {
-        self.last_sent = time;
-        self.congestion_handler
-            .process_outgoing(self.acknowledge_handler.local_sequence_num(), time);
-
-        OutgoingPacketBuilder::new(&[])
-            .with_default_header(
-                PacketType::Heartbeat,
-                DeliveryGuarantee::Unreliable,
-                OrderingGuarantee::None,
-            )
-            .build()
-    }
-
     /// This will pre-process the given buffer to be sent over the network.
     pub fn process_outgoing<'a>(
         &mut self,
-        payload: &'a [u8],
-        delivery_guarantee: DeliveryGuarantee,
-        ordering_guarantee: OrderingGuarantee,
+        packet: PacketInfo<'a>,
         last_item_identifier: Option<SequenceNumber>,
         time: Instant,
-    ) -> Result<Outgoing<'a>> {
-        match delivery_guarantee {
+    ) -> Result<OutgoingPackets<'a>> {
+        self.last_sent = time;
+        match packet.delivery {
             DeliveryGuarantee::Unreliable => {
-                if payload.len() <= self.config.receive_buffer_max_size {
-                    let mut builder = OutgoingPacketBuilder::new(payload).with_default_header(
-                        PacketType::Packet,
-                        delivery_guarantee,
-                        ordering_guarantee,
-                    );
+                if packet.payload.len() <= self.config.receive_buffer_max_size {
+                    if packet.packet_type == PacketType::Heartbeat {
+                        // TODO (bug?) is this really required here?
+                        self.congestion_handler
+                            .process_outgoing(self.acknowledge_handler.local_sequence_num(), time);
+                    }
 
-                    if let OrderingGuarantee::Sequenced(stream_id) = ordering_guarantee {
+                    let mut builder = OutgoingPacketBuilder::new(packet.payload)
+                        .with_default_header(packet.packet_type, packet.delivery, packet.ordering);
+
+                    if let OrderingGuarantee::Sequenced(stream_id) = packet.ordering {
                         let item_identifier = self
                             .sequencing_system
                             .get_or_create_stream(stream_id.unwrap_or(DEFAULT_SEQUENCING_STREAM))
@@ -117,25 +102,24 @@ impl VirtualConnection {
                         builder = builder.with_sequencing_header(item_identifier as u16, stream_id);
                     };
 
-                    Ok(Outgoing::Packet(builder.build()))
+                    Ok(OutgoingPackets::one(builder.build()))
                 } else {
-                    Err(ErrorKind::PacketError(
-                        PacketErrorKind::ExceededMaxPacketSize,
-                    ))
+                    Err(PacketErrorKind::ExceededMaxPacketSize.into())
                 }
             }
             DeliveryGuarantee::Reliable => {
-                let payload_length = payload.len() as u16;
+                let payload_length = packet.payload.len() as u16;
 
                 let mut item_identifier_value = None;
                 let outgoing = {
                     // spit the packet if the payload length is greater than the allowed fragment size.
                     if payload_length <= self.config.fragment_size {
-                        let mut builder = OutgoingPacketBuilder::new(payload).with_default_header(
-                            PacketType::Packet,
-                            delivery_guarantee,
-                            ordering_guarantee,
-                        );
+                        let mut builder = OutgoingPacketBuilder::new(packet.payload)
+                            .with_default_header(
+                                packet.packet_type,
+                                packet.delivery,
+                                packet.ordering,
+                            );
 
                         builder = builder.with_acknowledgment_header(
                             self.acknowledge_handler.local_sequence_num(),
@@ -143,7 +127,7 @@ impl VirtualConnection {
                             self.acknowledge_handler.ack_bitfield(),
                         );
 
-                        if let OrderingGuarantee::Ordered(stream_id) = ordering_guarantee {
+                        if let OrderingGuarantee::Ordered(stream_id) = packet.ordering {
                             let item_identifier =
                                 if let Some(item_identifier) = last_item_identifier {
                                     item_identifier
@@ -160,7 +144,7 @@ impl VirtualConnection {
                             builder = builder.with_ordering_header(item_identifier, stream_id);
                         };
 
-                        if let OrderingGuarantee::Sequenced(stream_id) = ordering_guarantee {
+                        if let OrderingGuarantee::Sequenced(stream_id) = packet.ordering {
                             let item_identifier =
                                 if let Some(item_identifier) = last_item_identifier {
                                     item_identifier
@@ -177,10 +161,13 @@ impl VirtualConnection {
                             builder = builder.with_sequencing_header(item_identifier, stream_id);
                         };
 
-                        Outgoing::Packet(builder.build())
+                        OutgoingPackets::one(builder.build())
                     } else {
-                        Outgoing::Fragments(
-                            Fragmentation::spit_into_fragments(payload, &self.config)?
+                        if packet.packet_type != PacketType::Packet {
+                            return Err(PacketErrorKind::PacketCannotBeFragmented.into());
+                        }
+                        OutgoingPackets::many(
+                            Fragmentation::spit_into_fragments(packet.payload, &self.config)?
                                 .into_iter()
                                 .enumerate()
                                 .map(|(fragment_id, fragment)| {
@@ -192,9 +179,9 @@ impl VirtualConnection {
 
                                     let mut builder = OutgoingPacketBuilder::new(fragment)
                                         .with_default_header(
-                                            PacketType::Fragment,
-                                            delivery_guarantee,
-                                            ordering_guarantee,
+                                            PacketType::Fragment, // change from Packet to Fragment type, it only matters when assembling/dissasembling packet header.
+                                            packet.delivery,
+                                            packet.ordering,
                                         );
 
                                     builder = builder.with_fragment_header(
@@ -218,12 +205,12 @@ impl VirtualConnection {
                     }
                 };
 
-                self.last_sent = time;
                 self.congestion_handler
                     .process_outgoing(self.acknowledge_handler.local_sequence_num(), time);
                 self.acknowledge_handler.process_outgoing(
-                    payload,
-                    ordering_guarantee,
+                    packet.packet_type,
+                    packet.payload,
+                    packet.ordering,
                     item_identifier_value,
                 );
 
@@ -236,9 +223,8 @@ impl VirtualConnection {
     pub fn process_incoming(
         &mut self,
         received_data: &[u8],
-        sender: &Sender<SocketEvent>,
         time: Instant,
-    ) -> crate::Result<()> {
+    ) -> Result<IncomingPackets> {
         self.last_heard = time;
 
         let mut packet_reader = PacketReader::new(received_data);
@@ -252,7 +238,7 @@ impl VirtualConnection {
         if header.is_heartbeat() {
             // Heartbeat packets are unreliable, unordered and empty packets.
             // We already updated our `self.last_heard` time, nothing else to be done.
-            return Ok(());
+            return Ok(IncomingPackets::zero());
         }
 
         match header.delivery_guarantee() {
@@ -268,25 +254,29 @@ impl VirtualConnection {
                         .get_or_create_stream(arranging_header.stream_id());
 
                     if let Some(packet) = stream.arrange(arranging_header.arranging_id(), payload) {
-                        Self::queue_packet(
-                            sender,
-                            packet,
-                            self.remote_address,
-                            header.delivery_guarantee(),
-                            OrderingGuarantee::Sequenced(Some(arranging_header.stream_id())),
-                        )?;
+                        return Ok(IncomingPackets::one(
+                            Packet::new(
+                                self.remote_address,
+                                packet,
+                                header.delivery_guarantee(),
+                                OrderingGuarantee::Sequenced(Some(arranging_header.stream_id())),
+                            ),
+                            header.packet_type(),
+                        ));
                     }
 
-                    return Ok(());
+                    return Ok(IncomingPackets::zero());
                 }
 
-                Self::queue_packet(
-                    sender,
-                    packet_reader.read_payload(),
-                    self.remote_address,
-                    header.delivery_guarantee(),
-                    header.ordering_guarantee(),
-                )?;
+                return Ok(IncomingPackets::one(
+                    Packet::new(
+                        self.remote_address,
+                        packet_reader.read_payload(),
+                        header.delivery_guarantee(),
+                        header.ordering_guarantee(),
+                    ),
+                    header.packet_type(),
+                ));
             }
             DeliveryGuarantee::Reliable => {
                 if header.is_fragment() {
@@ -299,14 +289,6 @@ impl VirtualConnection {
                             acked_header,
                         ) {
                             Ok(Some((payload, acked_header))) => {
-                                Self::queue_packet(
-                                    sender,
-                                    payload.into_boxed_slice(),
-                                    self.remote_address,
-                                    header.delivery_guarantee(),
-                                    header.ordering_guarantee(),
-                                )?;
-
                                 self.congestion_handler
                                     .process_incoming(acked_header.sequence());
                                 self.acknowledge_handler.process_incoming(
@@ -314,13 +296,31 @@ impl VirtualConnection {
                                     acked_header.ack_seq(),
                                     acked_header.ack_field(),
                                 );
+
+                                return Ok(IncomingPackets::one(
+                                    Packet::new(
+                                        self.remote_address,
+                                        payload.into_boxed_slice(),
+                                        header.delivery_guarantee(),
+                                        header.ordering_guarantee(),
+                                    ),
+                                    PacketType::Packet, // change from Fragment to Packet type, it only matters when assembling/dissasembling packet header.
+                                ));
                             }
-                            Ok(None) => return Ok(()),
+                            Ok(None) => return Ok(IncomingPackets::zero()),
                             Err(e) => return Err(e),
                         };
                     }
                 } else {
                     let acked_header = packet_reader.read_acknowledge_header()?;
+
+                    self.congestion_handler
+                        .process_incoming(acked_header.sequence());
+                    self.acknowledge_handler.process_incoming(
+                        acked_header.sequence(),
+                        acked_header.ack_seq(),
+                        acked_header.ack_field(),
+                    );
 
                     if let OrderingGuarantee::Sequenced(_) = header.ordering_guarantee() {
                         let arranging_header = packet_reader.read_arranging_header(u16::from(
@@ -336,13 +336,17 @@ impl VirtualConnection {
                         if let Some(packet) =
                             stream.arrange(arranging_header.arranging_id(), payload)
                         {
-                            Self::queue_packet(
-                                sender,
-                                packet,
-                                self.remote_address,
-                                header.delivery_guarantee(),
-                                OrderingGuarantee::Sequenced(Some(arranging_header.stream_id())),
-                            )?;
+                            return Ok(IncomingPackets::one(
+                                Packet::new(
+                                    self.remote_address,
+                                    packet,
+                                    header.delivery_guarantee(),
+                                    OrderingGuarantee::Sequenced(Some(
+                                        arranging_header.stream_id(),
+                                    )),
+                                ),
+                                header.packet_type(),
+                            ));
                         }
                     } else if let OrderingGuarantee::Ordered(_id) = header.ordering_guarantee() {
                         let arranging_header = packet_reader.read_arranging_header(u16::from(
@@ -354,68 +358,46 @@ impl VirtualConnection {
                         let stream = self
                             .ordering_system
                             .get_or_create_stream(arranging_header.stream_id());
-
-                        if let Some(packet) =
-                            stream.arrange(arranging_header.arranging_id(), payload)
-                        {
-                            Self::queue_packet(
-                                sender,
-                                packet,
-                                self.remote_address,
-                                header.delivery_guarantee(),
-                                OrderingGuarantee::Ordered(Some(arranging_header.stream_id())),
-                            )?;
-
-                            while let Some(packet) = stream.iter_mut().next() {
-                                Self::queue_packet(
-                                    sender,
-                                    packet,
-                                    self.remote_address,
-                                    header.delivery_guarantee(),
-                                    OrderingGuarantee::Ordered(Some(arranging_header.stream_id())),
-                                )?;
-                            }
-                        }
+                        let address = self.remote_address;
+                        return Ok(IncomingPackets::many(
+                            stream
+                                .arrange(
+                                    arranging_header.arranging_id(),
+                                    (payload, header.packet_type()),
+                                )
+                                .into_iter()
+                                .chain(stream.iter_mut())
+                                .map(|(packet, packet_type)| {
+                                    (
+                                        Packet::new(
+                                            address,
+                                            packet,
+                                            header.delivery_guarantee(),
+                                            OrderingGuarantee::Ordered(Some(
+                                                arranging_header.stream_id(),
+                                            )),
+                                        ),
+                                        packet_type,
+                                    )
+                                })
+                                .collect(),
+                        ));
                     } else {
                         let payload = packet_reader.read_payload();
-
-                        Self::queue_packet(
-                            sender,
-                            payload,
-                            self.remote_address,
-                            header.delivery_guarantee(),
-                            header.ordering_guarantee(),
-                        )?;
+                        return Ok(IncomingPackets::one(
+                            Packet::new(
+                                self.remote_address,
+                                payload,
+                                header.delivery_guarantee(),
+                                header.ordering_guarantee(),
+                            ),
+                            header.packet_type(),
+                        ));
                     }
-
-                    self.congestion_handler
-                        .process_incoming(acked_header.sequence());
-                    self.acknowledge_handler.process_incoming(
-                        acked_header.sequence(),
-                        acked_header.ack_seq(),
-                        acked_header.ack_field(),
-                    );
                 }
             }
         }
-
-        Ok(())
-    }
-
-    fn queue_packet(
-        tx: &Sender<SocketEvent>,
-        payload: Box<[u8]>,
-        remote_addr: SocketAddr,
-        delivery: DeliveryGuarantee,
-        ordering: OrderingGuarantee,
-    ) -> Result<()> {
-        tx.send(SocketEvent::Packet(Packet::new(
-            remote_addr,
-            payload,
-            delivery,
-            ordering,
-        )))?;
-        Ok(())
+        Ok(IncomingPackets::zero())
     }
 
     /// This will gather dropped packets from the acknowledgment handler.
@@ -443,15 +425,46 @@ mod tests {
     use crate::config::Config;
     use crate::net::constants;
     use crate::packet::header::{AckedPacketHeader, ArrangingHeader, HeaderWriter, StandardHeader};
-    use crate::packet::{DeliveryGuarantee, OrderingGuarantee, Outgoing, Packet, PacketType};
+    use crate::packet::{DeliveryGuarantee, OrderingGuarantee, Packet, PacketInfo, PacketType};
     use crate::protocol_version::ProtocolVersion;
-    use crate::SocketEvent;
     use byteorder::{BigEndian, WriteBytesExt};
-    use crossbeam_channel::{unbounded, TryRecvError};
     use std::io::Write;
-    use std::time::Instant;
+    use std::time::{Duration, Instant};
 
     const PAYLOAD: [u8; 4] = [1, 2, 3, 4];
+
+    #[test]
+    fn set_last_sent_and_last_heard_when_processing() {
+        let mut connection = create_virtual_connection();
+        let curr_sent = connection.last_sent;
+        let curr_heard = connection.last_heard;
+
+        let out_packet = connection
+            .process_outgoing(
+                PacketInfo::heartbeat_packet(&[]),
+                None,
+                curr_sent + Duration::from_secs(1),
+            )
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
+        let in_packet = connection
+            .process_incoming(&out_packet.contents(), curr_heard + Duration::from_secs(2))
+            .unwrap()
+            .into_iter()
+            .next();
+
+        assert_eq!(
+            connection.last_sent.duration_since(curr_sent),
+            Duration::from_secs(1)
+        );
+        assert_eq!(
+            connection.last_heard.duration_since(curr_heard),
+            Duration::from_secs(2)
+        );
+        assert_eq!(in_packet.is_none(), true);
+    }
 
     #[test]
     fn assure_right_fragmentation() {
@@ -467,20 +480,19 @@ mod tests {
         let second_fragment = vec![0, 0, 2, 4];
         let third_fragment = vec![0, 0, 3, 4];
 
-        let (tx, rx) = unbounded::<SocketEvent>();
-
         let mut connection = create_virtual_connection();
-        connection
+        let packet = connection
             .process_incoming(
                 [standard_header.as_slice(), acked_header.as_slice()]
                     .concat()
                     .as_slice(),
-                &tx,
                 Instant::now(),
             )
-            .unwrap();
-        assert!(rx.try_recv().is_err());
-        connection
+            .unwrap()
+            .into_iter()
+            .next();
+        assert!(packet.is_none());
+        let packet = connection
             .process_incoming(
                 [
                     standard_header.as_slice(),
@@ -489,12 +501,13 @@ mod tests {
                 ]
                 .concat()
                 .as_slice(),
-                &tx,
                 Instant::now(),
             )
-            .unwrap();
-        assert!(rx.try_recv().is_err());
-        connection
+            .unwrap()
+            .into_iter()
+            .next();
+        assert!(packet.is_none());
+        let packet = connection
             .process_incoming(
                 [
                     standard_header.as_slice(),
@@ -503,12 +516,13 @@ mod tests {
                 ]
                 .concat()
                 .as_slice(),
-                &tx,
                 Instant::now(),
             )
-            .unwrap();
-        assert!(rx.try_recv().is_err());
-        connection
+            .unwrap()
+            .into_iter()
+            .next();
+        assert!(packet.is_none());
+        let (packets, _) = connection
             .process_incoming(
                 [
                     standard_header.as_slice(),
@@ -517,22 +531,16 @@ mod tests {
                 ]
                 .concat()
                 .as_slice(),
-                &tx,
                 Instant::now(),
             )
+            .unwrap()
+            .into_iter()
+            .next()
             .unwrap();
-
-        let complete_fragment = rx.try_recv().unwrap();
-
-        match complete_fragment {
-            SocketEvent::Packet(fragment) => assert_eq!(
-                fragment.payload(),
-                &*[PAYLOAD, PAYLOAD, PAYLOAD].concat().into_boxed_slice()
-            ),
-            _ => {
-                panic!("Expected fragment other result.");
-            }
-        }
+        assert_eq!(
+            packets.payload(),
+            &*[PAYLOAD, PAYLOAD, PAYLOAD].concat().into_boxed_slice()
+        );
     }
 
     #[test]
@@ -541,22 +549,20 @@ mod tests {
 
         let buffer = vec![1; 4000];
 
-        let outgoing = connection
+        let packets: Vec<_> = connection
             .process_outgoing(
-                &buffer,
-                DeliveryGuarantee::Reliable,
-                OrderingGuarantee::Ordered(None),
+                PacketInfo::user_packet(
+                    &buffer,
+                    DeliveryGuarantee::Reliable,
+                    OrderingGuarantee::Ordered(None),
+                ),
                 None,
                 Instant::now(),
             )
-            .unwrap();
-
-        match outgoing {
-            Outgoing::Packet(_) => panic!("Expected fragment got packet"),
-            Outgoing::Fragments(fragments) => {
-                assert_eq!(fragments.len(), 4);
-            }
-        }
+            .unwrap()
+            .into_iter()
+            .collect();
+        assert_eq!(packets.len(), 4);
     }
 
     #[test]
@@ -567,9 +573,11 @@ mod tests {
 
         connection
             .process_outgoing(
-                &buffer,
-                DeliveryGuarantee::Unreliable,
-                OrderingGuarantee::None,
+                PacketInfo::user_packet(
+                    &buffer,
+                    DeliveryGuarantee::Unreliable,
+                    OrderingGuarantee::None,
+                ),
                 None,
                 Instant::now(),
             )
@@ -577,9 +585,11 @@ mod tests {
 
         connection
             .process_outgoing(
-                &buffer,
-                DeliveryGuarantee::Unreliable,
-                OrderingGuarantee::Sequenced(None),
+                PacketInfo::user_packet(
+                    &buffer,
+                    DeliveryGuarantee::Unreliable,
+                    OrderingGuarantee::Sequenced(None),
+                ),
                 None,
                 Instant::now(),
             )
@@ -587,9 +597,11 @@ mod tests {
 
         connection
             .process_outgoing(
-                &buffer,
-                DeliveryGuarantee::Reliable,
-                OrderingGuarantee::Ordered(None),
+                PacketInfo::user_packet(
+                    &buffer,
+                    DeliveryGuarantee::Reliable,
+                    OrderingGuarantee::Ordered(None),
+                ),
                 None,
                 Instant::now(),
             )
@@ -597,9 +609,11 @@ mod tests {
 
         connection
             .process_outgoing(
-                &buffer,
-                DeliveryGuarantee::Reliable,
-                OrderingGuarantee::Sequenced(None),
+                PacketInfo::user_packet(
+                    &buffer,
+                    DeliveryGuarantee::Reliable,
+                    OrderingGuarantee::Sequenced(None),
+                ),
                 None,
                 Instant::now(),
             )
@@ -614,11 +628,11 @@ mod tests {
             DeliveryGuarantee::Unreliable,
             OrderingGuarantee::Sequenced(Some(1)),
             &mut connection,
-            Ok(SocketEvent::Packet(Packet::unreliable_sequenced(
+            Some(Packet::unreliable_sequenced(
                 get_fake_addr(),
                 PAYLOAD.to_vec(),
                 Some(1),
-            ))),
+            )),
             1,
         );
 
@@ -626,11 +640,11 @@ mod tests {
             DeliveryGuarantee::Unreliable,
             OrderingGuarantee::Sequenced(Some(1)),
             &mut connection,
-            Ok(SocketEvent::Packet(Packet::unreliable_sequenced(
+            Some(Packet::unreliable_sequenced(
                 get_fake_addr(),
                 PAYLOAD.to_vec(),
                 Some(1),
-            ))),
+            )),
             3,
         );
 
@@ -638,7 +652,7 @@ mod tests {
             DeliveryGuarantee::Unreliable,
             OrderingGuarantee::Sequenced(Some(1)),
             &mut connection,
-            Err(TryRecvError::Empty),
+            None,
             2,
         );
 
@@ -646,11 +660,11 @@ mod tests {
             DeliveryGuarantee::Unreliable,
             OrderingGuarantee::Sequenced(Some(1)),
             &mut connection,
-            Ok(SocketEvent::Packet(Packet::unreliable_sequenced(
+            Some(Packet::unreliable_sequenced(
                 get_fake_addr(),
                 PAYLOAD.to_vec(),
                 Some(1),
-            ))),
+            )),
             4,
         );
 
@@ -658,11 +672,11 @@ mod tests {
             DeliveryGuarantee::Reliable,
             OrderingGuarantee::Sequenced(Some(1)),
             &mut connection,
-            Ok(SocketEvent::Packet(Packet::reliable_sequenced(
+            Some(Packet::reliable_sequenced(
                 get_fake_addr(),
                 PAYLOAD.to_vec(),
                 Some(1),
-            ))),
+            )),
             5,
         );
     }
@@ -675,11 +689,11 @@ mod tests {
             DeliveryGuarantee::Reliable,
             OrderingGuarantee::Ordered(Some(1)),
             &mut connection,
-            Ok(SocketEvent::Packet(Packet::reliable_ordered(
+            Some(Packet::reliable_ordered(
                 get_fake_addr(),
                 PAYLOAD.to_vec(),
                 Some(1),
-            ))),
+            )),
             0,
         );
 
@@ -687,7 +701,7 @@ mod tests {
             DeliveryGuarantee::Reliable,
             OrderingGuarantee::Ordered(Some(1)),
             &mut connection,
-            Err(TryRecvError::Empty),
+            None,
             2,
         );
 
@@ -695,7 +709,7 @@ mod tests {
             DeliveryGuarantee::Reliable,
             OrderingGuarantee::Ordered(Some(1)),
             &mut connection,
-            Err(TryRecvError::Empty),
+            None,
             3,
         );
 
@@ -703,11 +717,11 @@ mod tests {
             DeliveryGuarantee::Reliable,
             OrderingGuarantee::Ordered(Some(1)),
             &mut connection,
-            Ok(SocketEvent::Packet(Packet::reliable_ordered(
+            Some(Packet::reliable_ordered(
                 get_fake_addr(),
                 PAYLOAD.to_vec(),
                 Some(1),
-            ))),
+            )),
             1,
         );
     }
@@ -719,27 +733,24 @@ mod tests {
         assert_incoming_without_order(
             DeliveryGuarantee::Unreliable,
             &mut connection,
-            SocketEvent::Packet(Packet::unreliable(get_fake_addr(), PAYLOAD.to_vec())),
+            Packet::unreliable(get_fake_addr(), PAYLOAD.to_vec()),
         );
 
         assert_incoming_without_order(
             DeliveryGuarantee::Reliable,
             &mut connection,
-            SocketEvent::Packet(Packet::reliable_unordered(
-                get_fake_addr(),
-                PAYLOAD.to_vec(),
-            )),
+            Packet::reliable_unordered(get_fake_addr(), PAYLOAD.to_vec()),
         );
 
         assert_incoming_with_order(
             DeliveryGuarantee::Unreliable,
             OrderingGuarantee::Sequenced(Some(1)),
             &mut connection,
-            Ok(SocketEvent::Packet(Packet::unreliable_sequenced(
+            Some(Packet::unreliable_sequenced(
                 get_fake_addr(),
                 PAYLOAD.to_vec(),
                 Some(1),
-            ))),
+            )),
             1,
         );
 
@@ -747,11 +758,11 @@ mod tests {
             DeliveryGuarantee::Reliable,
             OrderingGuarantee::Ordered(Some(1)),
             &mut connection,
-            Ok(SocketEvent::Packet(Packet::reliable_ordered(
+            Some(Packet::reliable_ordered(
                 get_fake_addr(),
                 PAYLOAD.to_vec(),
                 Some(1),
-            ))),
+            )),
             0,
         );
     }
@@ -793,8 +804,6 @@ mod tests {
 
         let acked_header = vec![0, 0, 255, 4, 0, 0, 255, 255, 0, 0, 0, 0];
 
-        let (tx, _rx) = unbounded::<SocketEvent>();
-
         use crate::error::{ErrorKind, FragmentErrorKind};
 
         let mut connection = create_virtual_connection();
@@ -802,7 +811,6 @@ mod tests {
             [standard_header.as_slice(), acked_header.as_slice()]
                 .concat()
                 .as_slice(),
-            &tx,
             Instant::now(),
         );
 
@@ -830,7 +838,7 @@ mod tests {
         delivery: DeliveryGuarantee,
         ordering: OrderingGuarantee,
         connection: &mut VirtualConnection,
-        result_event: Result<SocketEvent, TryRecvError>,
+        result_packet: Option<Packet>,
         order_id: u16,
     ) {
         let mut packet = Vec::new();
@@ -867,25 +875,20 @@ mod tests {
 
         packet.write_all(&PAYLOAD).unwrap();
 
-        let (tx, rx) = unbounded::<SocketEvent>();
-
-        connection
-            .process_incoming(packet.as_slice(), &tx, Instant::now())
-            .unwrap();
-
-        let event = rx.try_recv();
-
-        match event {
-            Ok(val) => assert_eq!(val, result_event.unwrap()),
-            Err(e) => assert_eq!(e, result_event.err().unwrap()),
-        }
+        let packets = connection
+            .process_incoming(packet.as_slice(), Instant::now())
+            .unwrap()
+            .into_iter()
+            .next()
+            .map(|(packet, _)| packet);
+        assert_eq!(packets, result_packet);
     }
 
-    // assert that the given `DeliveryGuarantee` results into the given `SocketEvent` after processing.
+    // assert that the given `DeliveryGuarantee` results into the given `Packet` after processing.
     fn assert_incoming_without_order(
         delivery: DeliveryGuarantee,
         connection: &mut VirtualConnection,
-        result_event: SocketEvent,
+        result_packet: Packet,
     ) {
         let mut packet = Vec::new();
 
@@ -900,15 +903,14 @@ mod tests {
 
         packet.write_all(&PAYLOAD).unwrap();
 
-        let (tx, rx) = unbounded::<SocketEvent>();
-
-        connection
-            .process_incoming(packet.as_slice(), &tx, Instant::now())
+        let (packet, _) = connection
+            .process_incoming(packet.as_slice(), Instant::now())
+            .unwrap()
+            .into_iter()
+            .next()
             .unwrap();
 
-        let event = rx.try_recv();
-
-        assert_eq!(event, Ok(result_event));
+        assert_eq!(packet, result_packet);
     }
 
     // assert that the size of the processed header is the same as the given one.
@@ -922,14 +924,19 @@ mod tests {
         let buffer = vec![1; 500];
 
         let outgoing = connection
-            .process_outgoing(&buffer, delivery, ordering, None, Instant::now())
+            .process_outgoing(
+                PacketInfo::user_packet(&buffer, delivery, ordering),
+                None,
+                Instant::now(),
+            )
             .unwrap();
-
-        match outgoing {
-            Outgoing::Packet(packet) => {
-                assert_eq!(packet.contents().len() - buffer.len(), expected_header_size);
-            }
-            Outgoing::Fragments(_) => panic!("Expected packet got fragment"),
+        let mut iter = outgoing.into_iter();
+        assert_eq!(
+            iter.next().unwrap().contents().len() - buffer.len(),
+            expected_header_size
+        );
+        if iter.next().is_some() {
+            panic!("Expected not fragmented packet")
         }
     }
 }
