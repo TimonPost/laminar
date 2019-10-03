@@ -22,7 +22,7 @@ pub struct NetworkEmulator {
 }
 
 impl NetworkEmulator {
-    /// Created an emulated socket by binding to a address.
+    /// Creates an emulated socket by binding to an address.
     /// If other socket already was bound to this address, error will be returned instead.
     pub fn new_socket(&self, address: SocketAddr) -> Result<EmulatedSocket> {
         match self.network.borrow_mut().entry(address) {
@@ -59,7 +59,7 @@ pub struct EmulatedSocket {
 }
 
 impl EmulatedSocket {
-    /// Set the link conditioner for this socket. See [LinkConditioner] for further details.
+    /// Sets the link conditioner for this socket. See [LinkConditioner] for further details.
     pub fn set_link_conditioner(&mut self, conditioner: Option<LinkConditioner>) {
         self.conditioner = conditioner;
     }
@@ -106,6 +106,7 @@ impl SocketReceiver for EmulatedSocket {
             },
         )
     }
+
     /// Returns the socket address that this socket was created from.
     fn local_addr(&self) -> Result<SocketAddr> {
         Ok(self.address)

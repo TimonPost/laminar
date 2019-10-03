@@ -36,14 +36,14 @@ impl FakeSocket {
         self.handler.event_receiver().clone()
     }
 
-    /// Send a packet
+    /// Send a packet.
     pub fn send(&mut self, packet: Packet) -> Result<()> {
         // we can savely unwrap, because receiver will always exist
         self.handler.event_sender().send(packet).unwrap();
         Ok(())
     }
 
-    /// Receive a packet
+    /// Receive a packet.
     pub fn recv(&mut self) -> Option<SocketEvent> {
         if let Ok(event) = self.handler.event_receiver().try_recv() {
             Some(event)
@@ -52,7 +52,7 @@ impl FakeSocket {
         }
     }
 
-    /// Process any inbound/outbound packets and handle idle clients
+    /// Process any inbound/outbound packets and handle idle clients.
     pub fn manual_poll(&mut self, time: Instant) {
         self.handler.manual_poll(time);
     }
@@ -62,7 +62,7 @@ impl FakeSocket {
         self.handler.connections_count()
     }
 
-    /// Set the link conditioner for this socket. See [LinkConditioner] for further details.
+    /// Sets the link conditioner for this socket. See [LinkConditioner] for further details.
     pub fn set_link_conditioner(&mut self, conditioner: Option<LinkConditioner>) {
         self.socket.set_link_conditioner(conditioner);
     }

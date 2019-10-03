@@ -21,12 +21,12 @@ pub trait SocketReceiver: Debug {
         &mut self,
         buffer: &'a mut [u8],
     ) -> Result<Option<(&'a [u8], SocketAddr)>>;
+
     /// Returns the socket address that this socket was created from.
     fn local_addr(&self) -> Result<SocketAddr>;
 }
 
 /// A reliable generic socket implementation with configurable reliability and ordering guarantees.
-/// Owns all core components: active connections, connection handler, event sender/receiver, socket sender/receiver.
 #[derive(Debug)]
 pub struct SocketController<TSender: SocketSender, TReceiver: SocketReceiver> {
     is_blocking_mode: bool,
@@ -70,11 +70,11 @@ impl<TSender: SocketSender, TReceiver: SocketReceiver> SocketController<TSender,
             {
                 Ok(Some((payload, address))) => {
                     if let Some(conn) = self.connections.get_mut(&address) {
-                        handler.handle_packet(conn, payload, time);
+                        handler.process_packet(conn, payload, time);
                     } else {
                         // create connection but do not add to active connections list
                         let mut conn = handler.create_connection(address, time, Some(payload));
-                        handler.handle_packet(&mut conn, payload, time);
+                        handler.process_packet(&mut conn, payload, time);
                     }
                 }
                 Ok(None) => break,
@@ -85,14 +85,14 @@ impl<TSender: SocketSender, TReceiver: SocketReceiver> SocketController<TSender,
             }
         }
 
-        // Now grab all the packets waiting to be sent and send them
+        // Now grab all the waiting packets and send them
         while let Ok(event) = self.user_event_receiver.try_recv() {
             // get or create connection
             let conn = self
                 .connections
                 .entry(event.addr())
                 .or_insert_with(|| handler.create_connection(event.addr(), time, None));
-            handler.handle_event(conn, event, time);
+            handler.process_event(conn, event, time);
         }
 
         // Update all connections
@@ -100,11 +100,12 @@ impl<TSender: SocketSender, TReceiver: SocketReceiver> SocketController<TSender,
             handler.update(conn, time);
         }
 
-        // Iterate through all connections and remove those that should be dropped.
+        // Iterate through all connections and remove those that should be dropped
         self.connections
             .retain(|_, conn| !handler.should_drop(conn, time));
     }
 
+    /// Returns the socket address that this socket was created from.
     pub fn local_addr(&self) -> Result<SocketAddr> {
         self.socket_receiver.local_addr()
     }

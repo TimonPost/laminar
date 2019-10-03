@@ -1047,6 +1047,6 @@ mod tests {
                 last_recv_value = value;
             }
         }
-        assert_eq![last_recv_value, 99999];
+        assert_eq![last_recv_value, 99_999];
     }
 }

@@ -12,7 +12,7 @@ use std::{self, net::SocketAddr, time::Instant};
 /// * Processes incoming data (from a socket) or events (from a user).
 /// * Updates connection state: resends dropped packets, sends heartbeat packet, etc.
 /// * Creates new connections.
-/// * Checks if connection should be dropped.
+/// * Checks if the connection should be dropped.
 /// It doesn't own connections, but only owns necessary components to process them.
 #[derive(Debug)]
 pub struct ConnectionController<PacketSender> {
@@ -29,7 +29,7 @@ type UserEvent = Packet;
 type ConnectionEvent = SocketEvent;
 
 impl<PacketSender: SocketSender> ConnectionController<PacketSender> {
-    /// Creates a new instance of `ConnectionHandler`.
+    /// Creates a new instance of `ConnectionController`.
     pub fn new(
         config: Config,
         packet_sender: PacketSender,
@@ -42,50 +42,53 @@ impl<PacketSender: SocketSender> ConnectionController<PacketSender> {
         }
     }
 
-    /// Creates new connection. Also will init it and send connection event to a user.
+    /// Creates new connection and initialize it by sending an connection event to the user.
+    /// * address - defines a address that connection is associated with.
+    /// * time - creation time, used by connection, so that it doesn't get dropped immediately or send heartbeat packet.
+    /// * initial_data - if initiated by remote host, this will hold that a packet data.
     pub fn create_connection(
         &self,
         address: SocketAddr,
         time: Instant,
         initial_data: Option<&[u8]>,
     ) -> Connection {
-        // emit connect event if this is initiated by remote host.
+        // Emit connect event if this is initiated by the remote host.
         if initial_data.is_some() {
             self.event_sender
                 .send(ConnectionEvent::Connect(address))
-                .unwrap();
+                .expect("Event receiver must exists.");
         }
         Connection::new(address, &self.config, time)
     }
 
-    /// Determine if this connection should be dropped due to its state.
+    /// Determine if the given `Connection` should be dropped due to its state.
     pub fn should_drop(&self, connection: &mut Connection, time: Instant) -> bool {
         let should_drop = connection.packets_in_flight() > self.config.max_packets_in_flight
             || connection.last_heard(time) >= self.config.idle_connection_timeout;
         if should_drop {
             self.event_sender
                 .send(ConnectionEvent::Timeout(connection.remote_address))
-                .unwrap();
+                .expect("Event receiver must exists.");
         }
         should_drop
     }
 
-    /// Handle a packet received from a socket.
-    pub fn handle_packet(&mut self, connection: &mut Connection, payload: &[u8], time: Instant) {
+    /// Process a received packet: parse it and emit an event.
+    pub fn process_packet(&mut self, connection: &mut Connection, payload: &[u8], time: Instant) {
         match connection.process_incoming(payload, time) {
             Ok(packets) => {
                 for incoming in packets {
                     self.event_sender
                         .send(ConnectionEvent::Packet(incoming.0))
-                        .unwrap();
+                        .expect("Event receiver must exists.");
                 }
             }
             Err(err) => error!("Error occured processing incomming packet: {:?}", err),
         }
     }
 
-    /// Handle an event received from a user.
-    pub fn handle_event(&mut self, connection: &mut Connection, event: UserEvent, time: Instant) {
+    /// Process a received event and send a packet.
+    pub fn process_event(&mut self, connection: &mut Connection, event: UserEvent, time: Instant) {
         self.send_packets(
             &connection.remote_address.clone(),
             connection.process_outgoing(
@@ -105,8 +108,7 @@ impl<PacketSender: SocketSender> ConnectionController<PacketSender> {
     /// This function gets called very frequently.
     pub fn update(&mut self, connection: &mut Connection, time: Instant) {
         // resend dropped packets
-        let dropped_packets = connection.gather_dropped_packets();
-        for dropped in dropped_packets {
+        for dropped in connection.gather_dropped_packets() {
             let packets = connection.process_outgoing(
                 PacketInfo {
                     packet_type: dropped.packet_type,
@@ -122,7 +124,7 @@ impl<PacketSender: SocketSender> ConnectionController<PacketSender> {
             self.send_packets(&connection.remote_address, packets, "dropped packets");
         }
 
-        // send heartbeat packets if required.
+        // send heartbeat packets if required
         if let Some(heartbeat_interval) = self.config.heartbeat_interval {
             if connection.last_sent(time) >= heartbeat_interval {
                 self.send_packets(
@@ -134,7 +136,7 @@ impl<PacketSender: SocketSender> ConnectionController<PacketSender> {
         }
     }
 
-    /// Helper function that sends multiple outgoing packets
+    /// Sends multiple outgoing packets.
     fn send_packets(
         &mut self,
         address: &SocketAddr,
