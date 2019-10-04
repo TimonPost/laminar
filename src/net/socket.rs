@@ -1,7 +1,7 @@
 use crate::{
     config::Config,
     error::{ErrorKind, Result},
-    net::{events::SocketEvent, SocketController, SocketReceiver, SocketSender},
+    net::{events::SocketEvent, LinkConditioner, SocketController, SocketReceiver, SocketSender},
     packet::Packet,
 };
 use crossbeam_channel::{self, Receiver, Sender, TryRecvError};
@@ -12,11 +12,39 @@ use std::{
     time::{Duration, Instant},
 };
 
-/// Provides a `SocketSender` implementation for `UdpSocket`
-impl SocketSender for UdpSocket {
-    // Send a single packet over the UDP socket.
+// Wrap `LinkConditioner` and `UdpSocket` together. LinkConditioner is enabled when building with a "tester" feature.
+#[derive(Debug)]
+struct SocketWithConditioner {
+    socket: UdpSocket,
+    link_conditioner: Option<LinkConditioner>,
+}
+
+impl SocketWithConditioner {
+    pub fn new(socket: UdpSocket, link_conditioner: Option<LinkConditioner>) -> Self {
+        SocketWithConditioner {
+            socket,
+            link_conditioner,
+        }
+    }
+}
+/// Provides a `SocketSender` implementation for `SocketWithConditioner`
+impl SocketSender for SocketWithConditioner {
+    // When `LinkConditioner` is enabled, it will determine whether packet will be sent or not.
     fn send_packet(&mut self, addr: &SocketAddr, payload: &[u8]) -> Result<usize> {
-        Ok(self.send_to(payload, addr)?)
+        if cfg!(feature = "tester") {
+            if let Some(ref mut link) = self.link_conditioner {
+                if !link.should_send() {
+                    return Ok(0);
+                }
+            }
+        }
+        Ok(self.socket.send_to(payload, addr)?)
+    }
+
+    /// Set the link conditioner for this socket. See [LinkConditioner] for further details.
+    #[cfg(feature = "tester")]
+    fn set_link_conditioner(&mut self, link_conditioner: Option<LinkConditioner>) {
+        self.link_conditioner = link_conditioner;
     }
 }
 
@@ -51,8 +79,8 @@ impl SocketReceiver for UdpSocket {
 /// A reliable UDP socket implementation with configurable reliability and ordering guarantees.
 #[derive(Debug)]
 pub struct Socket {
-    // Stores an instance of `SocketHandler` where `SocketSender` and SocketReceiver` is a real `UdpSocket`.
-    handler: SocketController<UdpSocket, UdpSocket>,
+    // Stores an instance of `SocketController` where `SocketSender` uses a `UdpSocket` (with `LinkConditioner`, if enabled) and SocketReceiver` is a `UdpSocket`.
+    handler: SocketController<SocketWithConditioner, UdpSocket>,
 }
 
 impl Socket {
@@ -90,7 +118,10 @@ impl Socket {
         socket.set_nonblocking(!config.blocking_mode)?;
         Ok(Socket {
             handler: SocketController::new(
-                socket.try_clone().expect("Cannot clone a socket"),
+                SocketWithConditioner::new(
+                    socket.try_clone().expect("Cannot clone a socket"),
+                    None,
+                ),
                 socket,
                 config,
             ),
@@ -154,5 +185,11 @@ impl Socket {
     /// Returns the local socket address
     pub fn local_addr(&self) -> Result<SocketAddr> {
         self.handler.local_addr()
+    }
+
+    /// Set the link conditioner for this socket. See [LinkConditioner] for further details.
+    #[cfg(feature = "tester")]
+    pub fn set_link_conditioner(&mut self, link_conditioner: Option<LinkConditioner>) {
+        self.handler.set_link_conditioner(link_conditioner);
     }
 }

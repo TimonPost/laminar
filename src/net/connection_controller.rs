@@ -8,6 +8,9 @@ use crossbeam_channel::Sender;
 use log::error;
 use std::{self, net::SocketAddr, time::Instant};
 
+#[cfg(feature = "tester")]
+use crate::net::LinkConditioner;
+
 /// Controls all aspects of the connection:
 /// * Processes incoming data (from a socket) or events (from a user).
 /// * Updates connection state: resends dropped packets, sends heartbeat packet, etc.
@@ -55,7 +58,7 @@ impl<PacketSender: SocketSender> ConnectionController<PacketSender> {
         // Emit connect event if this is initiated by the remote host.
         if initial_data.is_some() {
             self.event_sender
-                .send(ConnectionEvent::Connect(address))
+                .send(SocketEvent::Connect(address))
                 .expect("Event receiver must exists.");
         }
         Connection::new(address, &self.config, time)
@@ -67,7 +70,7 @@ impl<PacketSender: SocketSender> ConnectionController<PacketSender> {
             || connection.last_heard(time) >= self.config.idle_connection_timeout;
         if should_drop {
             self.event_sender
-                .send(ConnectionEvent::Timeout(connection.remote_address))
+                .send(SocketEvent::Timeout(connection.remote_address))
                 .expect("Event receiver must exists.");
         }
         should_drop
@@ -79,7 +82,7 @@ impl<PacketSender: SocketSender> ConnectionController<PacketSender> {
             Ok(packets) => {
                 for incoming in packets {
                     self.event_sender
-                        .send(ConnectionEvent::Packet(incoming.0))
+                        .send(SocketEvent::Packet(incoming.0))
                         .expect("Event receiver must exists.");
                 }
             }
@@ -89,8 +92,9 @@ impl<PacketSender: SocketSender> ConnectionController<PacketSender> {
 
     /// Process a received event and send a packet.
     pub fn process_event(&mut self, connection: &mut Connection, event: UserEvent, time: Instant) {
+        let addr = connection.remote_address;
         self.send_packets(
-            &connection.remote_address.clone(),
+            &addr,
             connection.process_outgoing(
                 PacketInfo::user_packet(
                     event.payload(),
@@ -126,14 +130,21 @@ impl<PacketSender: SocketSender> ConnectionController<PacketSender> {
 
         // send heartbeat packets if required
         if let Some(heartbeat_interval) = self.config.heartbeat_interval {
+            let addr = connection.remote_address;
             if connection.last_sent(time) >= heartbeat_interval {
                 self.send_packets(
-                    &connection.remote_address.clone(),
+                    &addr,
                     connection.process_outgoing(PacketInfo::heartbeat_packet(&[]), None, time),
                     "heatbeat packet",
                 );
             }
         }
+    }
+
+    /// Set the link conditioner for this socket. See [LinkConditioner] for further details.
+    #[cfg(feature = "tester")]
+    pub fn set_link_conditioner(&mut self, link_conditioner: Option<LinkConditioner>) {
+        self.packet_sender.set_link_conditioner(link_conditioner);
     }
 
     /// Sends multiple outgoing packets.

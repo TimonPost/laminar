@@ -1,4 +1,4 @@
-use crate::net::SocketController;
+use crate::net::{LinkConditioner, SocketController};
 use crate::test_utils::*;
 use crate::{error::Result, Config, Packet, SocketEvent};
 use crossbeam_channel::{Receiver, Sender};

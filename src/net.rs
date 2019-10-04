@@ -3,6 +3,7 @@
 
 mod connection_controller;
 mod events;
+mod link_conditioner;
 mod quality;
 mod socket;
 mod socket_controller;
@@ -12,6 +13,7 @@ pub mod constants;
 
 pub use self::connection_controller::ConnectionController;
 pub use self::events::SocketEvent;
+pub use self::link_conditioner::LinkConditioner;
 pub use self::quality::{NetworkQuality, RttMeasurer};
 pub use self::socket::Socket;
 pub use self::socket_controller::{SocketController, SocketReceiver, SocketSender};

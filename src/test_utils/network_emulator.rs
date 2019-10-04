@@ -1,7 +1,6 @@
-use super::LinkConditioner;
 use crate::{
     error::Result,
-    net::{SocketReceiver, SocketSender},
+    net::{LinkConditioner, SocketReceiver, SocketSender},
 };
 
 use std::{
@@ -81,6 +80,13 @@ impl SocketSender for EmulatedSocket {
         } else {
             Ok(0)
         }
+    }
+
+    /// Set the link conditioner for this socket. See [LinkConditioner] for further details.
+    #[cfg(feature = "tester")]
+    fn set_link_conditioner(&mut self, _link_conditioner: Option<LinkConditioner>) {
+        // emulated socket has link_conditioner without enabling "tester" feature.
+        unimplemented!()
     }
 }
 

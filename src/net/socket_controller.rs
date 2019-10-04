@@ -8,10 +8,17 @@ use crossbeam_channel::{self, unbounded, Receiver, Sender};
 use log::error;
 use std::{self, collections::HashMap, fmt::Debug, net::SocketAddr, time::Instant};
 
+#[cfg(feature = "tester")]
+use crate::net::LinkConditioner;
+
 /// This trait can be implemented to send data to the socket.
 pub trait SocketSender: Debug {
     // Send a single packet to the socket.
     fn send_packet(&mut self, addr: &SocketAddr, payload: &[u8]) -> Result<usize>;
+
+    /// Set the link conditioner for this socket. See [LinkConditioner] for further details.
+    #[cfg(feature = "tester")]
+    fn set_link_conditioner(&mut self, link_conditioner: Option<LinkConditioner>);
 }
 
 /// This trait can be implemented to receive data from the socket.
@@ -124,6 +131,12 @@ impl<TSender: SocketSender, TReceiver: SocketReceiver> SocketController<TSender,
         &self.event_receiver
     }
 
+    /// Set the link conditioner for this socket. See [LinkConditioner] for further details.
+    #[cfg(feature = "tester")]
+    pub fn set_link_conditioner(&mut self, link_conditioner: Option<LinkConditioner>) {
+        self.handler.set_link_conditioner(link_conditioner);
+    }
+
     /// Returns a number of active connections.
     #[cfg(test)]
     pub fn connections_count(&self) -> usize {
@@ -133,6 +146,7 @@ impl<TSender: SocketSender, TReceiver: SocketReceiver> SocketController<TSender,
 
 #[cfg(test)]
 mod tests {
+    use crate::net::LinkConditioner;
     use crate::test_utils::*;
     use crate::{Config, Packet, SocketEvent};
 
