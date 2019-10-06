@@ -1,5 +1,6 @@
+use crate::log;
 use crate::net::constants::{DEFAULT_MTU, FRAGMENT_SIZE_DEFAULT, MAX_FRAGMENTS_DEFAULT};
-use std::{default::Default, time::Duration};
+use std::{default::Default, rc::Rc, time::Duration};
 
 #[derive(Clone, Debug)]
 /// Contains the configuration options to configure laminar for special use-cases.
@@ -54,6 +55,8 @@ pub struct Config {
     /// When we send a reliable packet, it is stored locally until an acknowledgement comes back to
     /// us, if that store grows to a size
     pub max_packets_in_flight: u16,
+    /// Logger used for this instance of laminar. See [log::LaminarLogger] for more details.
+    pub logger: Rc<dyn log::LaminarLogger>,
 }
 
 impl Default for Config {
@@ -72,6 +75,7 @@ impl Default for Config {
             socket_event_buffer_size: 1024,
             socket_polling_timeout: Some(Duration::from_millis(1)),
             max_packets_in_flight: 512,
+            logger: Rc::new(log::DefaultLogger),
         }
     }
 }

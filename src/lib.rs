@@ -26,6 +26,7 @@ mod config;
 mod either;
 mod error;
 mod infrastructure;
+pub mod log;
 mod net;
 mod packet;
 mod protocol_version;

@@ -1,4 +1,5 @@
 use crate::either::Either::{Left, Right};
+use crate::error;
 use crate::{
     config::Config,
     error::{ErrorKind, Result},
@@ -6,7 +7,6 @@ use crate::{
     packet::{DeliveryGuarantee, Packet, PacketInfo},
 };
 use crossbeam_channel::{self, unbounded, Receiver, SendError, Sender, TryRecvError};
-use log::error;
 use std::{
     self, io,
     net::{Ipv4Addr, SocketAddr, SocketAddrV4, ToSocketAddrs, UdpSocket},
@@ -183,7 +183,10 @@ impl Socket {
             match self.recv_from(time) {
                 Ok(UdpSocketState::MaybeMore) => continue,
                 Ok(UdpSocketState::MaybeEmpty) => break,
-                Err(e) => error!("Encountered an error receiving data: {:?}", e),
+                Err(e) => error!(
+                    self.config.logger,
+                    "Encountered an error receiving data: {:?}", e
+                ),
             }
         }
 
@@ -192,14 +195,20 @@ impl Socket {
             if let Err(e) = self.send_to(p, time) {
                 match e {
                     ErrorKind::IOError(ref e) if e.kind() == io::ErrorKind::WouldBlock => {}
-                    _ => error!("There was an error sending packet: {:?}", e),
+                    _ => error!(
+                        self.config.logger,
+                        "There was an error sending packet: {:?}", e
+                    ),
                 }
             }
         }
 
         // Check for idle clients
         if let Err(e) = self.handle_idle_clients(time) {
-            error!("Encountered an error when sending TimeoutEvent: {:?}", e);
+            error!(
+                self.config.logger,
+                "Encountered an error when sending TimeoutEvent: {:?}", e
+            );
         }
 
         // Handle any dead clients
@@ -210,7 +219,10 @@ impl Socket {
             if let Err(e) = self.send_heartbeat_packets(heartbeat_interval, time) {
                 match e {
                     ErrorKind::IOError(ref e) if e.kind() == io::ErrorKind::WouldBlock => {}
-                    _ => error!("There was an error sending a heartbeat packet: {:?}", e),
+                    _ => error!(
+                        self.config.logger,
+                        "There was an error sending a heartbeat packet: {:?}", e
+                    ),
                 }
             }
         }
@@ -367,7 +379,11 @@ impl Socket {
             }
             Err(e) => {
                 if e.kind() != io::ErrorKind::WouldBlock {
-                    error!("Encountered an error receiving data: {:?}", e);
+                    let err = format!["{:?}", e];
+                    error!(
+                        self.config.logger,
+                        "Encountered an error receiving data: {}", err
+                    );
                     return Err(e.into());
                 } else {
                     return Ok(UdpSocketState::MaybeEmpty);
