@@ -8,17 +8,10 @@ use crossbeam_channel::{self, unbounded, Receiver, Sender};
 use log::error;
 use std::{self, collections::HashMap, fmt::Debug, net::SocketAddr, time::Instant};
 
-#[cfg(feature = "tester")]
-use crate::net::LinkConditioner;
-
 /// This trait can be implemented to send data to the socket.
 pub trait SocketSender: Debug {
     // Send a single packet to the socket.
     fn send_packet(&mut self, addr: &SocketAddr, payload: &[u8]) -> Result<usize>;
-
-    /// Set the link conditioner for this socket. See [LinkConditioner] for further details.
-    #[cfg(feature = "tester")]
-    fn set_link_conditioner(&mut self, link_conditioner: Option<LinkConditioner>);
 }
 
 /// This trait can be implemented to receive data from the socket.
@@ -129,12 +122,6 @@ impl<TSender: SocketSender, TReceiver: SocketReceiver> SocketController<TSender,
     /// a separate thread.
     pub fn event_receiver(&self) -> &Receiver<SocketEvent> {
         &self.event_receiver
-    }
-
-    /// Set the link conditioner for this socket. See [LinkConditioner] for further details.
-    #[cfg(feature = "tester")]
-    pub fn set_link_conditioner(&mut self, link_conditioner: Option<LinkConditioner>) {
-        self.handler.set_link_conditioner(link_conditioner);
     }
 
     /// Returns a number of active connections.
@@ -861,5 +848,21 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[quickcheck_macros::quickcheck]
+    fn do_not_panic_on_arbitrary_packets(bytes: Vec<u8>) {
+        use crate::net::socket_controller::SocketSender;
+
+        let network = NetworkEmulator::default();
+        let mut server = FakeSocket::bind(&network, server_address(), Config::default()).unwrap();
+        let mut client_socket = network.new_socket(client_address()).unwrap();
+
+        client_socket
+            .send_packet(&server_address(), &bytes)
+            .unwrap();
+
+        let time = Instant::now();
+        server.manual_poll(time);
     }
 }

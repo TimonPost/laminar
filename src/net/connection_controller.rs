@@ -8,9 +8,6 @@ use crossbeam_channel::Sender;
 use log::error;
 use std::{self, net::SocketAddr, time::Instant};
 
-#[cfg(feature = "tester")]
-use crate::net::LinkConditioner;
-
 /// Controls all aspects of the connection:
 /// * Processes incoming data (from a socket) or events (from a user).
 /// * Updates connection state: resends dropped packets, sends heartbeat packet, etc.
@@ -139,12 +136,6 @@ impl<PacketSender: SocketSender> ConnectionController<PacketSender> {
                 );
             }
         }
-    }
-
-    /// Set the link conditioner for this socket. See [LinkConditioner] for further details.
-    #[cfg(feature = "tester")]
-    pub fn set_link_conditioner(&mut self, link_conditioner: Option<LinkConditioner>) {
-        self.packet_sender.set_link_conditioner(link_conditioner);
     }
 
     /// Sends multiple outgoing packets.

@@ -8,6 +8,7 @@ use crossbeam_channel::{self, Receiver, Sender, TryRecvError};
 use std::{
     self,
     net::{Ipv4Addr, SocketAddr, SocketAddrV4, ToSocketAddrs, UdpSocket},
+    sync::{Arc, Mutex},
     thread::{sleep, yield_now},
     time::{Duration, Instant},
 };
@@ -16,11 +17,11 @@ use std::{
 #[derive(Debug)]
 struct SocketWithConditioner {
     socket: UdpSocket,
-    link_conditioner: Option<LinkConditioner>,
+    link_conditioner: Arc<Mutex<Option<LinkConditioner>>>,
 }
 
 impl SocketWithConditioner {
-    pub fn new(socket: UdpSocket, link_conditioner: Option<LinkConditioner>) -> Self {
+    pub fn new(socket: UdpSocket, link_conditioner: Arc<Mutex<Option<LinkConditioner>>>) -> Self {
         SocketWithConditioner {
             socket,
             link_conditioner,
@@ -32,19 +33,17 @@ impl SocketSender for SocketWithConditioner {
     // When `LinkConditioner` is enabled, it will determine whether packet will be sent or not.
     fn send_packet(&mut self, addr: &SocketAddr, payload: &[u8]) -> Result<usize> {
         if cfg!(feature = "tester") {
-            if let Some(ref mut link) = self.link_conditioner {
+            if let Some(ref mut link) = *self
+                .link_conditioner
+                .lock()
+                .expect("Lock is already held by current thread.")
+            {
                 if !link.should_send() {
                     return Ok(0);
                 }
             }
         }
         Ok(self.socket.send_to(payload, addr)?)
-    }
-
-    /// Set the link conditioner for this socket. See [LinkConditioner] for further details.
-    #[cfg(feature = "tester")]
-    fn set_link_conditioner(&mut self, link_conditioner: Option<LinkConditioner>) {
-        self.link_conditioner = link_conditioner;
     }
 }
 
@@ -81,6 +80,7 @@ impl SocketReceiver for UdpSocket {
 pub struct Socket {
     // Stores an instance of `SocketController` where `SocketSender` uses a `UdpSocket` (with `LinkConditioner`, if enabled) and SocketReceiver` is a `UdpSocket`.
     handler: SocketController<SocketWithConditioner, UdpSocket>,
+    link_conditioner: Arc<Mutex<Option<LinkConditioner>>>,
 }
 
 impl Socket {
@@ -116,15 +116,17 @@ impl Socket {
 
     fn bind_internal(socket: UdpSocket, config: Config) -> Result<Self> {
         socket.set_nonblocking(!config.blocking_mode)?;
+        let link_conditioner = Arc::new(Mutex::new(Default::default()));
         Ok(Socket {
             handler: SocketController::new(
                 SocketWithConditioner::new(
                     socket.try_clone().expect("Cannot clone a socket"),
-                    None,
+                    link_conditioner.clone(),
                 ),
                 socket,
                 config,
             ),
+            link_conditioner,
         })
     }
 
@@ -144,8 +146,10 @@ impl Socket {
 
     /// Send a packet
     pub fn send(&mut self, packet: Packet) -> Result<()> {
-        // we can savely unwrap, because receiver will always exist
-        self.handler.event_sender().send(packet).unwrap();
+        self.handler
+            .event_sender()
+            .send(packet)
+            .expect("Receiver must exists.");
         Ok(())
     }
 
@@ -190,6 +194,9 @@ impl Socket {
     /// Set the link conditioner for this socket. See [LinkConditioner] for further details.
     #[cfg(feature = "tester")]
     pub fn set_link_conditioner(&mut self, link_conditioner: Option<LinkConditioner>) {
-        self.handler.set_link_conditioner(link_conditioner);
+        *self
+            .link_conditioner
+            .lock()
+            .expect("Lock is already held by current thread.") = link_conditioner;
     }
 }

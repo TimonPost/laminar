@@ -35,7 +35,7 @@ impl NetworkEmulator {
                 Ok(EmulatedSocket {
                     network: self.network.clone(),
                     address,
-                    conditioner: None,
+                    conditioner: Default::default(),
                 })
             }
         }
@@ -54,12 +54,11 @@ impl NetworkEmulator {
 pub struct EmulatedSocket {
     network: GlobalBindings,
     address: SocketAddr,
-    conditioner: Option<LinkConditioner>,
+    conditioner: Rc<RefCell<Option<LinkConditioner>>>,
 }
 
 impl EmulatedSocket {
-    /// Sets the link conditioner for this socket. See [LinkConditioner] for further details.
-    pub fn set_link_conditioner(&mut self, conditioner: Option<LinkConditioner>) {
+    pub fn set_link_conditioner(&mut self, conditioner: Rc<RefCell<Option<LinkConditioner>>>) {
         self.conditioner = conditioner;
     }
 }
@@ -67,7 +66,7 @@ impl EmulatedSocket {
 impl SocketSender for EmulatedSocket {
     /// Sends a packet to and address if there is a socket bound to it. Otherwise it will simply be ignored.
     fn send_packet(&mut self, addr: &SocketAddr, payload: &[u8]) -> Result<usize> {
-        let send = if let Some(conditioner) = &mut self.conditioner {
+        let send = if let Some(ref mut conditioner) = *self.conditioner.borrow_mut() {
             conditioner.should_send()
         } else {
             true
@@ -80,13 +79,6 @@ impl SocketSender for EmulatedSocket {
         } else {
             Ok(0)
         }
-    }
-
-    /// Set the link conditioner for this socket. See [LinkConditioner] for further details.
-    #[cfg(feature = "tester")]
-    fn set_link_conditioner(&mut self, _link_conditioner: Option<LinkConditioner>) {
-        // emulated socket has link_conditioner without enabling "tester" feature.
-        unimplemented!()
     }
 }
 
