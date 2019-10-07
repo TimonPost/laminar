@@ -1,4 +1,4 @@
-use crate::net::{LinkConditioner, SocketReceiver, SocketSender};
+use crate::net::{DatagramSocket, LinkConditioner};
 
 use std::{
     cell::RefCell,
@@ -51,19 +51,19 @@ impl NetworkEmulator {
 pub struct EmulatedSocket {
     network: GlobalBindings,
     address: SocketAddr,
-    conditioner: Rc<RefCell<Option<LinkConditioner>>>,
+    conditioner: Option<LinkConditioner>,
 }
 
 impl EmulatedSocket {
-    pub fn set_link_conditioner(&mut self, conditioner: Rc<RefCell<Option<LinkConditioner>>>) {
+    pub fn set_link_conditioner(&mut self, conditioner: Option<LinkConditioner>) {
         self.conditioner = conditioner;
     }
 }
 
-impl SocketSender for EmulatedSocket {
+impl DatagramSocket for EmulatedSocket {
     /// Sends a packet to and address if there is a socket bound to it. Otherwise it will simply be ignored.
     fn send_packet(&mut self, addr: &SocketAddr, payload: &[u8]) -> Result<usize> {
-        let send = if let Some(ref mut conditioner) = *self.conditioner.borrow_mut() {
+        let send = if let Some(ref mut conditioner) = self.conditioner {
             conditioner.should_send()
         } else {
             true
@@ -77,9 +77,7 @@ impl SocketSender for EmulatedSocket {
             Ok(0)
         }
     }
-}
 
-impl SocketReceiver for EmulatedSocket {
     /// Receives a packet from this socket.
     fn receive_packet<'a>(&mut self, buffer: &'a mut [u8]) -> Result<(&'a [u8], SocketAddr)> {
         if let Some((addr, payload)) = self
@@ -100,5 +98,9 @@ impl SocketReceiver for EmulatedSocket {
     /// Returns the socket address that this socket was created from.
     fn local_addr(&self) -> Result<SocketAddr> {
         Ok(self.address)
+    }
+
+    fn is_blocking_mode(&self) -> bool {
+        false
     }
 }

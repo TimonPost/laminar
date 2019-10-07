@@ -1,53 +1,92 @@
 use crate::{
-    config::Config,
-    net::{events::SocketEvent, ConnectionController, VirtualConnection},
-    packet::Packet,
+    config::Config, net::Connection, net::ConnectionEventAddress, net::ConnectionMessenger,
 };
 use crossbeam_channel::{self, unbounded, Receiver, Sender};
 use log::error;
 use std::{self, collections::HashMap, fmt::Debug, io::Result, net::SocketAddr, time::Instant};
 
-/// This trait can be implemented to send data to the socket.
-pub trait SocketSender: Debug {
-    // Sends a single packet to the socket.
-    fn send_packet(&mut self, addr: &SocketAddr, payload: &[u8]) -> Result<usize>;
-}
+// TODO: maybe we can make a breaking change and use this instead of `ConnectionEventAddress` trait?
+// #[derive(Debug)]
+// pub struct ConnectionEvent<Event: Debug>(pub SocketAddr, pub Event);
 
-/// This trait can be implemented to receive data from the socket.
-pub trait SocketReceiver: Debug {
+/// A datagram socket is a type of network socket which provides a connectionless point for sending or receiving data packets.
+pub trait DatagramSocket: Debug {
+    /// Sends a single packet to the socket.
+    fn send_packet(&mut self, addr: &SocketAddr, payload: &[u8]) -> Result<usize>;
+
     /// Receives a single packet from the socket.
     fn receive_packet<'a>(&mut self, buffer: &'a mut [u8]) -> Result<(&'a [u8], SocketAddr)>;
 
     /// Returns the socket address that this socket was created from.
     fn local_addr(&self) -> Result<SocketAddr>;
+
+    /// Returns whether socket operates in blocking or nonblocking mode.
+    fn is_blocking_mode(&self) -> bool;
 }
 
-/// A reliable generic socket implementation with configurable reliability and ordering guarantees.
+// This will be used by a `Connection`.
 #[derive(Debug)]
-pub struct SocketImpl<TSender: SocketSender, TReceiver: SocketReceiver> {
-    is_blocking_mode: bool,
-    connections: HashMap<SocketAddr, VirtualConnection>,
-    socket_receiver: TReceiver,
-    receive_buffer: Vec<u8>,
-    user_event_receiver: Receiver<Packet>,
-    handler: ConnectionController<TSender>,
-    // Stores event receiver, so that user can clone it.
-    event_receiver: Receiver<SocketEvent>,
-    // Stores event sender, so that user can clone it.
-    user_event_sender: Sender<Packet>,
+struct SocketEventSenderAndConfig<TSocket: DatagramSocket, ReceiveEvent: Debug> {
+    config: Config,
+    socket: TSocket,
+    event_sender: Sender<ReceiveEvent>,
 }
 
-impl<TSender: SocketSender, TReceiver: SocketReceiver> SocketImpl<TSender, TReceiver> {
-    pub fn new(socket_sender: TSender, socket_receiver: TReceiver, config: Config) -> Self {
+impl<TSocket: DatagramSocket, ReceiveEvent: Debug>
+    SocketEventSenderAndConfig<TSocket, ReceiveEvent>
+{
+    fn new(config: Config, socket: TSocket, event_sender: Sender<ReceiveEvent>) -> Self {
+        Self {
+            config,
+            socket,
+            event_sender,
+        }
+    }
+}
+
+impl<TSocket: DatagramSocket, ReceiveEvent: Debug> ConnectionMessenger<ReceiveEvent>
+    for SocketEventSenderAndConfig<TSocket, ReceiveEvent>
+{
+    fn config(&self) -> &Config {
+        &self.config
+    }
+
+    fn send_event(&mut self, _address: &SocketAddr, event: ReceiveEvent) {
+        self.event_sender.send(event).expect("Receiver must exists");
+    }
+
+    fn send_packet(&mut self, address: &SocketAddr, payload: &[u8]) {
+        if let Err(err) = self.socket.send_packet(address, payload) {
+            error!("Error occured sending a packet (to {}): {}", address, err)
+        }
+    }
+}
+
+/// Implements a concept of connections on top of datagram socket.
+/// Connection capabilities depends on what is an actual `Connection` type.
+/// Connection type also defines a type of sending and receiving events.
+#[derive(Debug)]
+pub struct ConnectionManager<TSocket: DatagramSocket, TConnection: Connection> {
+    connections: HashMap<SocketAddr, TConnection>,
+    receive_buffer: Vec<u8>,
+    user_event_receiver: Receiver<TConnection::SendEvent>,
+    messenger: SocketEventSenderAndConfig<TSocket, TConnection::ReceiveEvent>,
+    // Stores event receiver, so that user can clone it.
+    event_receiver: Receiver<TConnection::ReceiveEvent>,
+    // Stores event sender, so that user can clone it.
+    user_event_sender: Sender<TConnection::SendEvent>,
+}
+
+impl<TSocket: DatagramSocket, TConnection: Connection> ConnectionManager<TSocket, TConnection> {
+    /// Creates an instance of `ConnectionManager` by passing a socket and config.
+    pub fn new(socket: TSocket, config: Config) -> Self {
         let (event_sender, event_receiver) = unbounded();
         let (user_event_sender, user_event_receiver) = unbounded();
-        SocketImpl {
-            is_blocking_mode: config.blocking_mode,
-            socket_receiver,
+        ConnectionManager {
             receive_buffer: vec![0; config.receive_buffer_max_size],
             connections: Default::default(),
             user_event_receiver,
-            handler: ConnectionController::new(config, socket_sender, event_sender),
+            messenger: SocketEventSenderAndConfig::new(config, socket, event_sender),
             user_event_sender,
             event_receiver,
         }
@@ -57,20 +96,21 @@ impl<TSender: SocketSender, TReceiver: SocketReceiver> SocketImpl<TSender, TRece
     /// Process connection specific logic for active connections.
     /// Remove dropped connections from active connections list.
     pub fn manual_poll(&mut self, time: Instant) {
-        let handler = &mut self.handler;
+        let messenger = &mut self.messenger;
         // First we pull all newly arrived packets and handle them
         loop {
-            match self
-                .socket_receiver
+            match messenger
+                .socket
                 .receive_packet(self.receive_buffer.as_mut())
             {
                 Ok((payload, address)) => {
                     if let Some(conn) = self.connections.get_mut(&address) {
-                        handler.process_packet(conn, payload, time);
+                        conn.process_packet(messenger, payload, time);
                     } else {
-                        // create connection but do not add to active connections list
-                        let mut conn = handler.create_connection(address, time, Some(payload));
-                        handler.process_packet(&mut conn, payload, time);
+                        // Create connection, but do not add to active connections list
+                        let mut conn =
+                            TConnection::create_connection(messenger, address, time, Some(payload));
+                        conn.process_packet(messenger, payload, time);
                     }
                 }
                 Err(e) => {
@@ -80,8 +120,8 @@ impl<TSender: SocketSender, TReceiver: SocketReceiver> SocketImpl<TSender, TRece
                     break;
                 }
             }
-            // to prevent from blocking, break after receiving first packet
-            if self.is_blocking_mode {
+            // To prevent from blocking, break after receiving first packet
+            if messenger.socket.is_blocking_mode() {
                 break;
             }
         }
@@ -89,40 +129,45 @@ impl<TSender: SocketSender, TReceiver: SocketReceiver> SocketImpl<TSender, TRece
         // Now grab all the waiting packets and send them
         while let Ok(event) = self.user_event_receiver.try_recv() {
             // get or create connection
-            let conn = self
-                .connections
-                .entry(event.addr())
-                .or_insert_with(|| handler.create_connection(event.addr(), time, None));
-            handler.process_event(conn, event, time);
+            let conn = self.connections.entry(event.address()).or_insert_with(|| {
+                TConnection::create_connection(messenger, event.address(), time, None)
+            });
+            conn.process_event(messenger, event, time);
         }
 
         // Update all connections
         for conn in self.connections.values_mut() {
-            handler.update(conn, time);
+            conn.update(messenger, time);
         }
 
         // Iterate through all connections and remove those that should be dropped
         self.connections
-            .retain(|_, conn| !handler.should_drop(conn, time));
-    }
-
-    /// Returns the socket address that this socket was created from.
-    pub fn local_addr(&self) -> Result<SocketAddr> {
-        self.socket_receiver.local_addr()
+            .retain(|_, conn| !conn.should_drop(messenger, time));
     }
 
     /// Returns a handle to the event sender which provides a thread-safe way to enqueue user events
     /// to be processed. This should be used when the socket is busy running its polling loop in a
     /// separate thread.
-    pub fn event_sender(&self) -> &Sender<Packet> {
+    pub fn event_sender(&self) -> &Sender<TConnection::SendEvent> {
         &self.user_event_sender
     }
 
     /// Returns a handle to the event receiver which provides a thread-safe way to retrieve events
     /// from the connections. This should be used when the socket is busy running its polling loop in
     /// a separate thread.
-    pub fn event_receiver(&self) -> &Receiver<SocketEvent> {
+    pub fn event_receiver(&self) -> &Receiver<TConnection::ReceiveEvent> {
         &self.event_receiver
+    }
+
+    /// Returns socket reference.
+    pub fn socket(&self) -> &TSocket {
+        &self.messenger.socket
+    }
+
+    /// Returns socket mutable reference.
+    #[allow(dead_code)]
+    pub fn socket_mut(&mut self) -> &mut TSocket {
+        &mut self.messenger.socket
     }
 
     /// Returns a number of active connections.
@@ -853,8 +898,7 @@ mod tests {
 
     #[quickcheck_macros::quickcheck]
     fn do_not_panic_on_arbitrary_packets(bytes: Vec<u8>) {
-        use crate::net::socket_impl::SocketSender;
-
+        use crate::net::DatagramSocket;
         let network = NetworkEmulator::default();
         let mut server = FakeSocket::bind(&network, server_address(), Config::default()).unwrap();
         let mut client_socket = network.new_socket(client_address()).unwrap();

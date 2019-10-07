@@ -1,14 +1,16 @@
 use crate::{
     config::Config,
     error::Result,
-    net::{events::SocketEvent, LinkConditioner, SocketImpl, SocketReceiver, SocketSender},
+    net::{
+        events::SocketEvent, ConnectionManager, DatagramSocket, LinkConditioner, VirtualConnection,
+    },
     packet::Packet,
 };
+
 use crossbeam_channel::{self, Receiver, Sender, TryRecvError};
 use std::{
     self,
     net::{Ipv4Addr, SocketAddr, SocketAddrV4, ToSocketAddrs, UdpSocket},
-    sync::{Arc, Mutex},
     thread::{sleep, yield_now},
     time::{Duration, Instant},
 };
@@ -16,28 +18,33 @@ use std::{
 // Wrap `LinkConditioner` and `UdpSocket` together. LinkConditioner is enabled when building with a "tester" feature.
 #[derive(Debug)]
 struct SocketWithConditioner {
+    is_blocking_mode: bool,
     socket: UdpSocket,
-    link_conditioner: Arc<Mutex<Option<LinkConditioner>>>,
+    link_conditioner: Option<LinkConditioner>,
 }
 
 impl SocketWithConditioner {
-    pub fn new(socket: UdpSocket, link_conditioner: Arc<Mutex<Option<LinkConditioner>>>) -> Self {
-        SocketWithConditioner {
+    pub fn new(socket: UdpSocket, is_blocking_mode: bool) -> Result<Self> {
+        socket.set_nonblocking(!is_blocking_mode)?;
+        Ok(SocketWithConditioner {
+            is_blocking_mode,
             socket,
-            link_conditioner,
-        }
+            link_conditioner: None,
+        })
+    }
+
+    #[cfg(feature = "tester")]
+    pub fn set_link_conditioner(&mut self, link_conditioner: Option<LinkConditioner>) {
+        self.link_conditioner = link_conditioner;
     }
 }
-/// Provides a `SocketSender` implementation for `SocketWithConditioner`
-impl SocketSender for SocketWithConditioner {
+
+/// Provides a `DatagramSocket` implementation for `SocketWithConditioner`
+impl DatagramSocket for SocketWithConditioner {
     // When `LinkConditioner` is enabled, it will determine whether packet will be sent or not.
     fn send_packet(&mut self, addr: &SocketAddr, payload: &[u8]) -> std::io::Result<usize> {
         if cfg!(feature = "tester") {
-            if let Some(ref mut link) = *self
-                .link_conditioner
-                .lock()
-                .expect("Lock is already held by current thread.")
-            {
+            if let Some(ref mut link) = &mut self.link_conditioner {
                 if !link.should_send() {
                     return Ok(0);
                 }
@@ -45,30 +52,32 @@ impl SocketSender for SocketWithConditioner {
         }
         self.socket.send_to(payload, addr)
     }
-}
 
-/// Provides a `SocketReceiver` implementation for `UdpSocket`
-impl SocketReceiver for UdpSocket {
     /// Receive a single packet from UDP socket.
     fn receive_packet<'a>(
         &mut self,
         buffer: &'a mut [u8],
     ) -> std::io::Result<(&'a [u8], SocketAddr)> {
-        self.recv_from(buffer)
+        self.socket
+            .recv_from(buffer)
             .map(move |(recv_len, address)| (&buffer[..recv_len], address))
     }
+
     /// Returns the socket address that this socket was created from.
     fn local_addr(&self) -> std::io::Result<SocketAddr> {
-        self.local_addr()
+        self.socket.local_addr()
+    }
+
+    /// Returns whether socket operates in blocking or nonblocking mode.
+    fn is_blocking_mode(&self) -> bool {
+        self.is_blocking_mode
     }
 }
 
 /// A reliable UDP socket implementation with configurable reliability and ordering guarantees.
 #[derive(Debug)]
 pub struct Socket {
-    // Stores an instance of `SocketImpl` where `SocketSender` uses a `UdpSocket` (with `LinkConditioner`, if enabled) and SocketReceiver` is a `UdpSocket`.
-    handler: SocketImpl<SocketWithConditioner, UdpSocket>,
-    link_conditioner: Arc<Mutex<Option<LinkConditioner>>>,
+    handler: ConnectionManager<SocketWithConditioner, VirtualConnection>,
 }
 
 impl Socket {
@@ -103,18 +112,11 @@ impl Socket {
     }
 
     fn bind_internal(socket: UdpSocket, config: Config) -> Result<Self> {
-        socket.set_nonblocking(!config.blocking_mode)?;
-        let link_conditioner = Arc::new(Mutex::new(Default::default()));
         Ok(Socket {
-            handler: SocketImpl::new(
-                SocketWithConditioner::new(
-                    socket.try_clone().expect("Cannot clone a socket"),
-                    link_conditioner.clone(),
-                ),
-                socket,
+            handler: ConnectionManager::new(
+                SocketWithConditioner::new(socket, config.blocking_mode)?,
                 config,
             ),
-            link_conditioner,
         })
     }
 
@@ -176,15 +178,14 @@ impl Socket {
 
     /// Returns the local socket address
     pub fn local_addr(&self) -> Result<SocketAddr> {
-        Ok(self.handler.local_addr()?)
+        Ok(self.handler.socket().local_addr()?)
     }
 
     /// Set the link conditioner for this socket. See [LinkConditioner] for further details.
     #[cfg(feature = "tester")]
     pub fn set_link_conditioner(&mut self, link_conditioner: Option<LinkConditioner>) {
-        *self
-            .link_conditioner
-            .lock()
-            .expect("Lock is already held by current thread.") = link_conditioner;
+        self.handler
+            .socket_mut()
+            .set_link_conditioner(link_conditioner);
     }
 }

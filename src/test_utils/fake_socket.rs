@@ -1,26 +1,20 @@
-use crate::net::{LinkConditioner, SocketImpl};
+use crate::net::{ConnectionManager, LinkConditioner, VirtualConnection};
 use crate::test_utils::*;
 use crate::{error::Result, Config, Packet, SocketEvent};
 use crossbeam_channel::{Receiver, Sender};
 
-use std::{cell::RefCell, net::SocketAddr, rc::Rc, time::Instant};
+use std::{net::SocketAddr, time::Instant};
 
 /// Provides a similar to the real a `Socket`, but with emulated socket implementation.
 pub struct FakeSocket {
-    handler: SocketImpl<EmulatedSocket, EmulatedSocket>,
-    // store Rc to link conditioner, so we can set it in the `EmulatedSocket`.
-    link_conditioner: Rc<RefCell<Option<LinkConditioner>>>,
+    handler: ConnectionManager<EmulatedSocket, VirtualConnection>,
 }
 
 impl FakeSocket {
     /// Binds to the socket.
     pub fn bind(network: &NetworkEmulator, addr: SocketAddr, config: Config) -> Result<Self> {
-        let link_conditioner = Rc::new(RefCell::new(Default::default()));
-        let mut socket = network.new_socket(addr)?;
-        socket.set_link_conditioner(link_conditioner.clone());
         Ok(Self {
-            handler: SocketImpl::new(socket.clone(), socket.clone(), config),
-            link_conditioner,
+            handler: ConnectionManager::new(network.new_socket(addr)?, config),
         })
     }
 
@@ -66,6 +60,6 @@ impl FakeSocket {
 
     /// Sets the link conditioner for this socket. See [LinkConditioner] for further details.
     pub fn set_link_conditioner(&mut self, conditioner: Option<LinkConditioner>) {
-        *self.link_conditioner.borrow_mut() = conditioner;
+        self.handler.socket_mut().set_link_conditioner(conditioner);
     }
 }
