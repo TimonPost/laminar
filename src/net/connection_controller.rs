@@ -1,6 +1,6 @@
 use crate::{
     config::Config,
-    error::Result,
+    error::{ErrorKind, Result},
     net::{events::SocketEvent, SocketSender, VirtualConnection},
     packet::{DeliveryGuarantee, OutgoingPackets, Packet, PacketInfo},
 };
@@ -61,7 +61,7 @@ impl<PacketSender: SocketSender> ConnectionController<PacketSender> {
         Connection::new(address, &self.config, time)
     }
 
-    /// Determine if the given `Connection` should be dropped due to its state.
+    /// Determines if the given `Connection` should be dropped due to its state.
     pub fn should_drop(&self, connection: &mut Connection, time: Instant) -> bool {
         let should_drop = connection.packets_in_flight() > self.config.max_packets_in_flight
             || connection.last_heard(time) >= self.config.idle_connection_timeout;
@@ -73,21 +73,28 @@ impl<PacketSender: SocketSender> ConnectionController<PacketSender> {
         should_drop
     }
 
-    /// Process a received packet: parse it and emit an event.
+    /// Processes a received packet: parse it and emit an event.
     pub fn process_packet(&mut self, connection: &mut Connection, payload: &[u8], time: Instant) {
-        match connection.process_incoming(payload, time) {
-            Ok(packets) => {
-                for incoming in packets {
-                    self.event_sender
-                        .send(SocketEvent::Packet(incoming.0))
-                        .expect("Event receiver must exists.");
+        if !payload.is_empty() {
+            match connection.process_incoming(payload, time) {
+                Ok(packets) => {
+                    for incoming in packets {
+                        self.event_sender
+                            .send(SocketEvent::Packet(incoming.0))
+                            .expect("Event receiver must exists.");
+                    }
                 }
+                Err(err) => error!("Error occured processing incomming packet: {:?}", err),
             }
-            Err(err) => error!("Error occured processing incomming packet: {:?}", err),
+        } else {
+            error!(
+                "Error processing packet: {}",
+                ErrorKind::ReceivedDataToShort
+            );
         }
     }
 
-    /// Process a received event and send a packet.
+    /// Processes a received event and send a packet.
     pub fn process_event(&mut self, connection: &mut Connection, event: UserEvent, time: Instant) {
         let addr = connection.remote_address;
         self.send_packets(
@@ -105,10 +112,10 @@ impl<PacketSender: SocketSender> ConnectionController<PacketSender> {
         );
     }
 
-    /// Process various connection related tasks: resend dropped packets, send heartbeat packet, etc...
+    /// Processes various connection-related tasks: resend dropped packets, send heartbeat packet, etc...
     /// This function gets called very frequently.
     pub fn update(&mut self, connection: &mut Connection, time: Instant) {
-        // resend dropped packets
+        // Resend dropped packets
         for dropped in connection.gather_dropped_packets() {
             let packets = connection.process_outgoing(
                 PacketInfo {
@@ -125,7 +132,7 @@ impl<PacketSender: SocketSender> ConnectionController<PacketSender> {
             self.send_packets(&connection.remote_address, packets, "dropped packets");
         }
 
-        // send heartbeat packets if required
+        // Send heartbeat packets if required
         if let Some(heartbeat_interval) = self.config.heartbeat_interval {
             let addr = connection.remote_address;
             if connection.last_sent(time) >= heartbeat_interval {

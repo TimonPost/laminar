@@ -1,7 +1,7 @@
 use crate::{
     config::Config,
-    error::{ErrorKind, Result},
-    net::{events::SocketEvent, LinkConditioner, SocketController, SocketReceiver, SocketSender},
+    error::Result,
+    net::{events::SocketEvent, LinkConditioner, SocketImpl, SocketReceiver, SocketSender},
     packet::Packet,
 };
 use crossbeam_channel::{self, Receiver, Sender, TryRecvError};
@@ -31,7 +31,7 @@ impl SocketWithConditioner {
 /// Provides a `SocketSender` implementation for `SocketWithConditioner`
 impl SocketSender for SocketWithConditioner {
     // When `LinkConditioner` is enabled, it will determine whether packet will be sent or not.
-    fn send_packet(&mut self, addr: &SocketAddr, payload: &[u8]) -> Result<usize> {
+    fn send_packet(&mut self, addr: &SocketAddr, payload: &[u8]) -> std::io::Result<usize> {
         if cfg!(feature = "tester") {
             if let Some(ref mut link) = *self
                 .link_conditioner
@@ -43,7 +43,7 @@ impl SocketSender for SocketWithConditioner {
                 }
             }
         }
-        Ok(self.socket.send_to(payload, addr)?)
+        self.socket.send_to(payload, addr)
     }
 }
 
@@ -53,33 +53,21 @@ impl SocketReceiver for UdpSocket {
     fn receive_packet<'a>(
         &mut self,
         buffer: &'a mut [u8],
-    ) -> Result<Option<(&'a [u8], SocketAddr)>> {
-        Ok(match self.recv_from(buffer) {
-            Ok((recv_len, address)) => {
-                if recv_len == 0 {
-                    return Err(ErrorKind::ReceivedDataToShort);
-                }
-                Some((&buffer[..recv_len], address))
-            }
-            Err(e) => {
-                if e.kind() != std::io::ErrorKind::WouldBlock {
-                    return Err(e.into());
-                }
-                None
-            }
-        })
+    ) -> std::io::Result<(&'a [u8], SocketAddr)> {
+        self.recv_from(buffer)
+            .map(move |(recv_len, address)| (&buffer[..recv_len], address))
     }
     /// Returns the socket address that this socket was created from.
-    fn local_addr(&self) -> Result<SocketAddr> {
-        Ok(self.local_addr()?)
+    fn local_addr(&self) -> std::io::Result<SocketAddr> {
+        self.local_addr()
     }
 }
 
 /// A reliable UDP socket implementation with configurable reliability and ordering guarantees.
 #[derive(Debug)]
 pub struct Socket {
-    // Stores an instance of `SocketController` where `SocketSender` uses a `UdpSocket` (with `LinkConditioner`, if enabled) and SocketReceiver` is a `UdpSocket`.
-    handler: SocketController<SocketWithConditioner, UdpSocket>,
+    // Stores an instance of `SocketImpl` where `SocketSender` uses a `UdpSocket` (with `LinkConditioner`, if enabled) and SocketReceiver` is a `UdpSocket`.
+    handler: SocketImpl<SocketWithConditioner, UdpSocket>,
     link_conditioner: Arc<Mutex<Option<LinkConditioner>>>,
 }
 
@@ -118,7 +106,7 @@ impl Socket {
         socket.set_nonblocking(!config.blocking_mode)?;
         let link_conditioner = Arc::new(Mutex::new(Default::default()));
         Ok(Socket {
-            handler: SocketController::new(
+            handler: SocketImpl::new(
                 SocketWithConditioner::new(
                     socket.try_clone().expect("Cannot clone a socket"),
                     link_conditioner.clone(),
@@ -188,7 +176,7 @@ impl Socket {
 
     /// Returns the local socket address
     pub fn local_addr(&self) -> Result<SocketAddr> {
-        self.handler.local_addr()
+        Ok(self.handler.local_addr()?)
     }
 
     /// Set the link conditioner for this socket. See [LinkConditioner] for further details.

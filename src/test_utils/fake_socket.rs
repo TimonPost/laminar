@@ -1,4 +1,4 @@
-use crate::net::{LinkConditioner, SocketController};
+use crate::net::{LinkConditioner, SocketImpl};
 use crate::test_utils::*;
 use crate::{error::Result, Config, Packet, SocketEvent};
 use crossbeam_channel::{Receiver, Sender};
@@ -7,7 +7,7 @@ use std::{cell::RefCell, net::SocketAddr, rc::Rc, time::Instant};
 
 /// Provides a similar to the real a `Socket`, but with emulated socket implementation.
 pub struct FakeSocket {
-    handler: SocketController<EmulatedSocket, EmulatedSocket>,
+    handler: SocketImpl<EmulatedSocket, EmulatedSocket>,
     // store Rc to link conditioner, so we can set it in the `EmulatedSocket`.
     link_conditioner: Rc<RefCell<Option<LinkConditioner>>>,
 }
@@ -19,7 +19,7 @@ impl FakeSocket {
         let mut socket = network.new_socket(addr)?;
         socket.set_link_conditioner(link_conditioner.clone());
         Ok(Self {
-            handler: SocketController::new(socket.clone(), socket.clone(), config),
+            handler: SocketImpl::new(socket.clone(), socket.clone(), config),
             link_conditioner,
         })
     }
@@ -38,14 +38,14 @@ impl FakeSocket {
         self.handler.event_receiver().clone()
     }
 
-    /// Send a packet.
+    /// Sends a packet.
     pub fn send(&mut self, packet: Packet) -> Result<()> {
         // we can savely unwrap, because receiver will always exist
         self.handler.event_sender().send(packet).unwrap();
         Ok(())
     }
 
-    /// Receive a packet.
+    /// Receives a packet.
     pub fn recv(&mut self) -> Option<SocketEvent> {
         if let Ok(event) = self.handler.event_receiver().try_recv() {
             Some(event)
@@ -54,7 +54,7 @@ impl FakeSocket {
         }
     }
 
-    /// Process any inbound/outbound packets and handle idle clients.
+    /// Processes any inbound/outbound packets and handle idle clients.
     pub fn manual_poll(&mut self, time: Instant) {
         self.handler.manual_poll(time);
     }

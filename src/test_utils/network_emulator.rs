@@ -1,12 +1,10 @@
-use crate::{
-    error::Result,
-    net::{LinkConditioner, SocketReceiver, SocketSender},
-};
+use crate::net::{LinkConditioner, SocketReceiver, SocketSender};
 
 use std::{
     cell::RefCell,
     collections::hash_map::Entry,
     collections::{HashMap, VecDeque},
+    io::Result,
     net::SocketAddr,
     rc::Rc,
 };
@@ -28,8 +26,7 @@ impl NetworkEmulator {
             Entry::Occupied(_) => Err(std::io::Error::new(
                 std::io::ErrorKind::AddrInUse,
                 "Cannot bind to address",
-            )
-            .into()),
+            )),
             Entry::Vacant(entry) => {
                 entry.insert(Default::default());
                 Ok(EmulatedSocket {
@@ -83,26 +80,21 @@ impl SocketSender for EmulatedSocket {
 }
 
 impl SocketReceiver for EmulatedSocket {
-    /// Receive a packet from this socket.
-    fn receive_packet<'a>(
-        &mut self,
-        buffer: &'a mut [u8],
-    ) -> Result<Option<(&'a [u8], SocketAddr)>> {
-        Ok(
-            if let Some((addr, payload)) = self
-                .network
-                .borrow_mut()
-                .get_mut(&self.address)
-                .unwrap()
-                .pop_front()
-            {
-                let slice = &mut buffer[..payload.len()];
-                slice.copy_from_slice(payload.as_ref());
-                Some((slice, addr))
-            } else {
-                None
-            },
-        )
+    /// Receives a packet from this socket.
+    fn receive_packet<'a>(&mut self, buffer: &'a mut [u8]) -> Result<(&'a [u8], SocketAddr)> {
+        if let Some((addr, payload)) = self
+            .network
+            .borrow_mut()
+            .get_mut(&self.address)
+            .unwrap()
+            .pop_front()
+        {
+            let slice = &mut buffer[..payload.len()];
+            slice.copy_from_slice(payload.as_ref());
+            Ok((slice, addr))
+        } else {
+            Err(std::io::ErrorKind::WouldBlock.into())
+        }
     }
 
     /// Returns the socket address that this socket was created from.

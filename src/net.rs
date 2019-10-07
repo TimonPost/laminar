@@ -6,7 +6,7 @@ mod events;
 mod link_conditioner;
 mod quality;
 mod socket;
-mod socket_controller;
+mod socket_impl;
 mod virtual_connection;
 
 pub mod constants;
@@ -16,5 +16,5 @@ pub use self::events::SocketEvent;
 pub use self::link_conditioner::LinkConditioner;
 pub use self::quality::{NetworkQuality, RttMeasurer};
 pub use self::socket::Socket;
-pub use self::socket_controller::{SocketController, SocketReceiver, SocketSender};
+pub use self::socket_impl::{SocketImpl, SocketReceiver, SocketSender};
 pub use self::virtual_connection::VirtualConnection;

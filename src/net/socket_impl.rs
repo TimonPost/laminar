@@ -1,26 +1,22 @@
 use crate::{
     config::Config,
-    error::Result,
     net::{events::SocketEvent, ConnectionController, VirtualConnection},
     packet::Packet,
 };
 use crossbeam_channel::{self, unbounded, Receiver, Sender};
 use log::error;
-use std::{self, collections::HashMap, fmt::Debug, net::SocketAddr, time::Instant};
+use std::{self, collections::HashMap, fmt::Debug, io::Result, net::SocketAddr, time::Instant};
 
 /// This trait can be implemented to send data to the socket.
 pub trait SocketSender: Debug {
-    // Send a single packet to the socket.
+    // Sends a single packet to the socket.
     fn send_packet(&mut self, addr: &SocketAddr, payload: &[u8]) -> Result<usize>;
 }
 
 /// This trait can be implemented to receive data from the socket.
 pub trait SocketReceiver: Debug {
     /// Receives a single packet from the socket.
-    fn receive_packet<'a>(
-        &mut self,
-        buffer: &'a mut [u8],
-    ) -> Result<Option<(&'a [u8], SocketAddr)>>;
+    fn receive_packet<'a>(&mut self, buffer: &'a mut [u8]) -> Result<(&'a [u8], SocketAddr)>;
 
     /// Returns the socket address that this socket was created from.
     fn local_addr(&self) -> Result<SocketAddr>;
@@ -28,7 +24,7 @@ pub trait SocketReceiver: Debug {
 
 /// A reliable generic socket implementation with configurable reliability and ordering guarantees.
 #[derive(Debug)]
-pub struct SocketController<TSender: SocketSender, TReceiver: SocketReceiver> {
+pub struct SocketImpl<TSender: SocketSender, TReceiver: SocketReceiver> {
     is_blocking_mode: bool,
     connections: HashMap<SocketAddr, VirtualConnection>,
     socket_receiver: TReceiver,
@@ -41,11 +37,11 @@ pub struct SocketController<TSender: SocketSender, TReceiver: SocketReceiver> {
     user_event_sender: Sender<Packet>,
 }
 
-impl<TSender: SocketSender, TReceiver: SocketReceiver> SocketController<TSender, TReceiver> {
+impl<TSender: SocketSender, TReceiver: SocketReceiver> SocketImpl<TSender, TReceiver> {
     pub fn new(socket_sender: TSender, socket_receiver: TReceiver, config: Config) -> Self {
         let (event_sender, event_receiver) = unbounded();
         let (user_event_sender, user_event_receiver) = unbounded();
-        SocketController {
+        SocketImpl {
             is_blocking_mode: config.blocking_mode,
             socket_receiver,
             receive_buffer: vec![0; config.receive_buffer_max_size],
@@ -68,7 +64,7 @@ impl<TSender: SocketSender, TReceiver: SocketReceiver> SocketController<TSender,
                 .socket_receiver
                 .receive_packet(self.receive_buffer.as_mut())
             {
-                Ok(Some((payload, address))) => {
+                Ok((payload, address)) => {
                     if let Some(conn) = self.connections.get_mut(&address) {
                         handler.process_packet(conn, payload, time);
                     } else {
@@ -77,9 +73,14 @@ impl<TSender: SocketSender, TReceiver: SocketReceiver> SocketController<TSender,
                         handler.process_packet(&mut conn, payload, time);
                     }
                 }
-                Ok(None) => break,
-                Err(e) => error!("Encountered an error receiving data: {:?}", e),
+                Err(e) => {
+                    if e.kind() != std::io::ErrorKind::WouldBlock {
+                        error!("Encountered an error receiving data: {:?}", e);
+                    }
+                    break;
+                }
             }
+            // to prevent from blocking, break after receiving first packet
             if self.is_blocking_mode {
                 break;
             }
@@ -852,7 +853,7 @@ mod tests {
 
     #[quickcheck_macros::quickcheck]
     fn do_not_panic_on_arbitrary_packets(bytes: Vec<u8>) {
-        use crate::net::socket_controller::SocketSender;
+        use crate::net::socket_impl::SocketSender;
 
         let network = NetworkEmulator::default();
         let mut server = FakeSocket::bind(&network, server_address(), Config::default()).unwrap();
