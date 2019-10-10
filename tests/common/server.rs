@@ -1,5 +1,5 @@
 use crossbeam_channel::{Receiver, Sender, TryIter};
-use laminar::{Config, Packet, Socket, SocketEvent, ThroughputMonitoring};
+use laminar::{Packet, Socket, SocketEvent, ThroughputMonitoring};
 
 use log::error;
 use std::net::SocketAddr;

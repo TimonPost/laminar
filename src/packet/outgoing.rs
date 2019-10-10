@@ -104,6 +104,7 @@ impl<'p> OutgoingPacketBuilder<'p> {
 }
 
 /// Packet that that contains data which is ready to be sent to a remote endpoint.
+#[derive(Debug)]
 pub struct OutgoingPacket<'p> {
     header: Vec<u8>,
     payload: &'p [u8],
