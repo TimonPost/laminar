@@ -1,5 +1,5 @@
-use laminar::{Config, Packet, Socket};
-use log::{error, info};
+use laminar::{Packet, Socket};
+use log::info;
 use std::net::SocketAddr;
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
@@ -38,7 +38,7 @@ impl Client {
 
             for _ in 0..packets_to_send {
                 let packet = create_packet();
-                socket.send(packet);
+                socket.send(packet).unwrap();
                 socket.manual_poll(Instant::now());
 
                 let beginning_park = Instant::now();
