@@ -80,7 +80,7 @@ impl RttMeasurer {
 mod test {
     use super::RttMeasurer;
     use crate::config::Config;
-    use crate::net::connection::VirtualConnection;
+    use crate::net::VirtualConnection;
     use std::net::ToSocketAddrs;
     use std::time::{Duration, Instant};
 

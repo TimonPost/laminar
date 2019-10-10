@@ -37,6 +37,9 @@ mod throughput;
 #[cfg(feature = "tester")]
 pub use self::throughput::ThroughputMonitoring;
 
+#[cfg(test)]
+pub mod test_utils;
+
 pub use self::config::Config;
 pub use self::error::{ErrorKind, Result};
 pub use self::net::{LinkConditioner, Socket, SocketEvent};

@@ -8,7 +8,7 @@ use rand_pcg::Pcg64Mcg as Random;
 use std::time::Duration;
 
 /// Network simulator. Used to simulate network conditions as dropped packets and packet delays.
-/// For use in [Socket::set_link_conditioner](crate::net::Socket::set_link_conditioner).
+/// For use in [FakeSocket::set_link_conditioner](crate::test_utils::FakeSocket::set_link_conditioner).
 #[derive(Clone, Debug)]
 pub struct LinkConditioner {
     // Value between 0 and 1, representing the % change a packet will be dropped on sending
