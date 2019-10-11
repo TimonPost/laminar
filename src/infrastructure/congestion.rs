@@ -1,9 +1,9 @@
 use std::time::Instant;
 
 use crate::{
-    Config,
     net::{NetworkQuality, RttMeasurer},
     sequence_buffer::{CongestionData, SequenceBuffer},
+    Config,
 };
 
 /// Type that is responsible for keeping track of congestion information.
@@ -45,8 +45,8 @@ impl CongestionHandler {
 mod test {
     use std::time::Instant;
 
-    use crate::Config;
     use crate::infrastructure::CongestionHandler;
+    use crate::Config;
 
     #[test]
     fn congestion_entry_created() {

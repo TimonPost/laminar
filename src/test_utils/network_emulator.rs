@@ -1,7 +1,7 @@
 use std::{
     cell::RefCell,
-    collections::{HashMap, VecDeque},
     collections::hash_map::Entry,
+    collections::{HashMap, VecDeque},
     io::Result,
     net::SocketAddr,
     rc::Rc,

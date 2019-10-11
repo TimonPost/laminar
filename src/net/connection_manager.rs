@@ -1,6 +1,6 @@
 use std::{self, collections::HashMap, fmt::Debug, io::Result, net::SocketAddr, time::Instant};
 
-use crossbeam_channel::{self, Receiver, Sender, unbounded};
+use crossbeam_channel::{self, unbounded, Receiver, Sender};
 use log::error;
 
 use crate::{
@@ -187,9 +187,9 @@ mod tests {
         time::{Duration, Instant},
     };
 
-    use crate::{Config, Packet, SocketEvent};
     use crate::net::LinkConditioner;
     use crate::test_utils::*;
+    use crate::{Config, Packet, SocketEvent};
 
     /// The socket address of where the server is located.
     const SERVER_ADDR: &str = "127.0.0.1:10001";

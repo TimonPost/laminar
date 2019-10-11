@@ -11,7 +11,7 @@ use crate::{
     config::Config,
     error::Result,
     net::{
-        ConnectionManager, DatagramSocket, events::SocketEvent, LinkConditioner, VirtualConnection,
+        events::SocketEvent, ConnectionManager, DatagramSocket, LinkConditioner, VirtualConnection,
     },
     packet::Packet,
 };

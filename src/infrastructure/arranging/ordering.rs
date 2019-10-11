@@ -301,7 +301,7 @@ impl<'a, T> Iterator for IterMut<'a, T> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Arranging, ArrangingSystem, is_u16_within_half_window_from_start, OrderingSystem};
+    use super::{is_u16_within_half_window_from_start, Arranging, ArrangingSystem, OrderingSystem};
 
     #[derive(Debug, PartialEq, Clone)]
     struct Packet {

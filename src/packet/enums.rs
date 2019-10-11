@@ -118,8 +118,8 @@ mod tests {
     use std::convert::TryFrom;
 
     use crate::packet::{
-        EnumConverter,
         enums::{DeliveryGuarantee, OrderingGuarantee, PacketType},
+        EnumConverter,
     };
 
     #[test]

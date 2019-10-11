@@ -19,4 +19,3 @@ mod socket;
 mod virtual_connection;
 
 pub mod constants;
-

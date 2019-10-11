@@ -1,10 +1,10 @@
 use crate::{
     net::constants::{DEFAULT_ORDERING_STREAM, DEFAULT_SEQUENCING_STREAM},
     packet::{
-        DeliveryGuarantee,
         header::{
             AckedPacketHeader, ArrangingHeader, FragmentHeader, HeaderWriter, StandardHeader,
-        }, OrderingGuarantee, PacketType,
+        },
+        DeliveryGuarantee, OrderingGuarantee, PacketType,
     },
 };
 
@@ -125,8 +125,8 @@ impl<'p> OutgoingPacket<'p> {
 
 #[cfg(test)]
 mod tests {
-    use crate::packet::{DeliveryGuarantee, OrderingGuarantee, OutgoingPacketBuilder};
     use crate::packet::PacketType;
+    use crate::packet::{DeliveryGuarantee, OrderingGuarantee, OutgoingPacketBuilder};
 
     fn test_payload() -> Vec<u8> {
         b"test".to_vec()

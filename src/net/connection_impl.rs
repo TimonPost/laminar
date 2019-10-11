@@ -7,7 +7,7 @@ use crate::error::{ErrorKind, Result};
 use crate::packet::{DeliveryGuarantee, OutgoingPackets, Packet, PacketInfo};
 
 use super::{
-    Connection, ConnectionEventAddress, ConnectionMessenger, events::SocketEvent, VirtualConnection,
+    events::SocketEvent, Connection, ConnectionEventAddress, ConnectionMessenger, VirtualConnection,
 };
 
 /// Required by `ConnectionManager` to properly handle connection event.

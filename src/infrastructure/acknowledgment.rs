@@ -157,8 +157,8 @@ pub struct ReceivedPacket;
 mod test {
     use log::debug;
 
-    use crate::infrastructure::{AcknowledgmentHandler, SentPacket};
     use crate::infrastructure::acknowledgment::ReceivedPacket;
+    use crate::infrastructure::{AcknowledgmentHandler, SentPacket};
     use crate::packet::{OrderingGuarantee, PacketType};
 
     #[test]

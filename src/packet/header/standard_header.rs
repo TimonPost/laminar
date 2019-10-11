@@ -123,8 +123,8 @@ mod tests {
     use std::io::Cursor;
 
     use crate::net::constants::STANDARD_HEADER_SIZE;
-    use crate::packet::{DeliveryGuarantee, EnumConverter, OrderingGuarantee, PacketType};
     use crate::packet::header::{HeaderReader, HeaderWriter, StandardHeader};
+    use crate::packet::{DeliveryGuarantee, EnumConverter, OrderingGuarantee, PacketType};
 
     #[test]
     fn serialize() {

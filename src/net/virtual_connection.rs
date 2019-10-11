@@ -6,8 +6,8 @@ use crate::{
     config::Config,
     error::{ErrorKind, PacketErrorKind, Result},
     infrastructure::{
-        AcknowledgmentHandler,
-        arranging::{Arranging, ArrangingSystem, OrderingSystem, SequencingSystem}, CongestionHandler, Fragmentation, SentPacket,
+        arranging::{Arranging, ArrangingSystem, OrderingSystem, SequencingSystem},
+        AcknowledgmentHandler, CongestionHandler, Fragmentation, SentPacket,
     },
     net::constants::{
         ACKED_PACKET_HEADER, DEFAULT_ORDERING_STREAM, DEFAULT_SEQUENCING_STREAM,
@@ -427,8 +427,8 @@ mod tests {
 
     use crate::config::Config;
     use crate::net::constants;
-    use crate::packet::{DeliveryGuarantee, OrderingGuarantee, Packet, PacketInfo, PacketType};
     use crate::packet::header::{AckedPacketHeader, ArrangingHeader, HeaderWriter, StandardHeader};
+    use crate::packet::{DeliveryGuarantee, OrderingGuarantee, Packet, PacketInfo, PacketType};
     use crate::protocol_version::ProtocolVersion;
 
     use super::VirtualConnection;

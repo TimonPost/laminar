@@ -6,7 +6,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use clap::{App, AppSettings, load_yaml};
+use clap::{load_yaml, App, AppSettings};
 use log::{debug, error, info};
 
 use laminar::{Packet, Result, Socket, SocketEvent, ThroughputMonitoring};
