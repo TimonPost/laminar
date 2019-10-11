@@ -100,11 +100,11 @@ Basically this is almost TCP-like but then sequencing instead of ordering.
 ```rust
 use laminar::Packet;
 
-// You can create packets with different reliabilities
+// Creates packets with different reliabilities
 let unreliable = Packet::unreliable(destination, bytes);
 let reliable = Packet::reliable_unordered(destination, bytes);
 
-// We can specify on which stream and how to order our packets, checkout our book and documentation for more information
+// Specifies on which stream and how to order our packets, checkout our book and documentation for more information
 let unreliable = Packet::unreliable_sequenced(destination, bytes, Some(1));
 let reliable_sequenced = Packet::reliable_sequenced(destination, bytes, Some(2));
 let reliable_ordered = Packet::reliable_ordered(destination, bytes, Some(3));

@@ -149,7 +149,7 @@ fn run_server(server_config: ServerConfiguration) -> Result<()> {
 fn run_client(config: ClientConfiguration) -> Result<()> {
     let socket = Socket::bind(config.listen_host)?;
 
-    // See which test we want to run
+    // see which test we want to run
     match config.test_name.as_str() {
         "steady-stream" => {
             test_steady_stream(config, socket);

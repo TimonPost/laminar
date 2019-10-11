@@ -8,15 +8,15 @@ const DEFAULT_SEND_PACKETS_SIZE: usize = 256;
 
 /// Responsible for handling the acknowledgment of packets.
 pub struct AcknowledgmentHandler {
-    // Local sequence number which we'll bump each time we send a new packet over the network
+    // Local sequence number which we'll bump each time we send a new packet over the network.
     sequence_number: SequenceNumber,
     // The last acked sequence number of the packets we've sent to the remote host.
     remote_ack_sequence_num: SequenceNumber,
-    // Using a Hashmap to track every packet we send out so we can ensure that we can resend when
+    // Using a `Hashmap` to track every packet we send out so we can ensure that we can resend when
     // dropped.
     sent_packets: HashMap<u16, SentPacket>,
-    // However, we can only reasonably ack up to REDUNDANT_PACKET_ACKS_SIZE + 1 packets on each
-    // message we send so this should be that large
+    // However, we can only reasonably ack up to `REDUNDANT_PACKET_ACKS_SIZE` + 1 packets on each
+    // message we send so this should be that large.
     received_packets: SequenceBuffer<ReceivedPacket>,
 }
 
@@ -31,7 +31,7 @@ impl AcknowledgmentHandler {
         }
     }
 
-    /// Get the current number of not yet acknowledged packets
+    /// Returns the current number of not yet acknowledged packets
     pub fn packets_in_flight(&self) -> u16 {
         self.sent_packets.len() as u16
     }
@@ -53,7 +53,7 @@ impl AcknowledgmentHandler {
         let mut ack_bitfield: u32 = 0;
         let mut mask: u32 = 1;
 
-        // Iterate the past REDUNDANT_PACKET_ACKS_SIZE received packets and set the corresponding
+        // iterate the past REDUNDANT_PACKET_ACKS_SIZE received packets and set the corresponding
         // bit for each packet which exists in the buffer.
         for i in 1..=REDUNDANT_PACKET_ACKS_SIZE {
             let sequence = most_recent_remote_seq_num.wrapping_sub(i);
@@ -76,7 +76,7 @@ impl AcknowledgmentHandler {
         remote_ack_seq: u16,
         mut remote_ack_field: u32,
     ) {
-        // We must ensure that self.remote_ack_sequence_num is always increasing (with wrapping)
+        // ensure that `self.remote_ack_sequence_num` is always increasing (with wrapping)
         if sequence_greater_than(remote_ack_seq, self.remote_ack_sequence_num) {
             self.remote_ack_sequence_num = remote_ack_seq;
         }
@@ -84,7 +84,7 @@ impl AcknowledgmentHandler {
         self.received_packets
             .insert(remote_seq_num, ReceivedPacket {});
 
-        // The current remote_ack_seq was (clearly) received so we should remove it.
+        // the current remote_ack_seq was (clearly) received so we should remove it
         self.sent_packets.remove(&remote_ack_seq);
 
         // The remote_ack_field is going to include whether or not the past 32 packets have been
@@ -98,7 +98,7 @@ impl AcknowledgmentHandler {
         }
     }
 
-    /// Enqueue the outgoing packet for acknowledgment.
+    /// Enqueues the outgoing packet for acknowledgment.
     pub fn process_outgoing(
         &mut self,
         packet_type: PacketType,
@@ -116,7 +116,7 @@ impl AcknowledgmentHandler {
             },
         );
 
-        // Bump the local sequence number for the next outgoing packet.
+        // bump the local sequence number for the next outgoing packet.
         self.sequence_number = self.sequence_number.wrapping_add(1);
     }
 

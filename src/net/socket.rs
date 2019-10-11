@@ -162,7 +162,7 @@ impl Socket {
     /// Run the polling loop with a specified sleep duration. This should run in a spawned thread
     /// since calls to `poll.poll` are blocking.
     pub fn start_polling_with_duration(&mut self, sleep_duration: Option<Duration>) {
-        // Nothing should break out of this loop!
+        // nothing should break out of this loop!
         loop {
             self.handler.manual_poll(Instant::now());
             match sleep_duration {

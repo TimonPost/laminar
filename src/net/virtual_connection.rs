@@ -60,15 +60,15 @@ impl VirtualConnection {
 
     /// Returns a [Duration] representing the interval since we last heard from the client
     pub fn last_heard(&self, time: Instant) -> Duration {
-        // TODO: Replace with saturating_duration_since once it becomes stable.
-        // This function panics if the user supplies a time instant earlier than last_heard.
+        // TODO: Replace with `saturating_duration_since` once it becomes stable.
+        // this function panics if the user supplies a time instant earlier than last_heard
         time.duration_since(self.last_heard)
     }
 
     /// Returns a [Duration] representing the interval since we last sent to the client
     pub fn last_sent(&self, time: Instant) -> Duration {
-        // TODO: Replace with saturating_duration_since once it becomes stable.
-        // This function panics if the user supplies a time instant earlier than last_heard.
+        // TODO: Replace with `saturating_duration_since` once it becomes stable.
+        // this function panics if the user supplies a time instant earlier than last_heard
         time.duration_since(self.last_sent)
     }
 
@@ -84,7 +84,6 @@ impl VirtualConnection {
             DeliveryGuarantee::Unreliable => {
                 if packet.payload.len() <= self.config.receive_buffer_max_size {
                     if packet.packet_type == PacketType::Heartbeat {
-                        // TODO (bug?) is this really required here?
                         self.congestion_handler
                             .process_outgoing(self.acknowledge_handler.local_sequence_num(), time);
                     }
@@ -235,8 +234,8 @@ impl VirtualConnection {
         }
 
         if header.is_heartbeat() {
-            // Heartbeat packets are unreliable, unordered and empty packets.
-            // We already updated our `self.last_heard` time, nothing else to be done.
+            // heartbeat packets are unreliable, unordered and empty packets.
+            // we already updated our `self.last_heard` time, nothing else to be done.
             return Ok(IncomingPackets::zero());
         }
 

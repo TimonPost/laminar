@@ -73,9 +73,7 @@ pub struct ConnectionManager<TSocket: DatagramSocket, TConnection: Connection> {
     receive_buffer: Vec<u8>,
     user_event_receiver: Receiver<TConnection::SendEvent>,
     messenger: SocketEventSenderAndConfig<TSocket, TConnection::ReceiveEvent>,
-    // Stores event receiver, so that user can clone it.
     event_receiver: Receiver<TConnection::ReceiveEvent>,
-    // Stores event sender, so that user can clone it.
     user_event_sender: Sender<TConnection::SendEvent>,
 }
 
@@ -99,7 +97,7 @@ impl<TSocket: DatagramSocket, TConnection: Connection> ConnectionManager<TSocket
     /// Removes dropped connections from active connections list.
     pub fn manual_poll(&mut self, time: Instant) {
         let messenger = &mut self.messenger;
-        // First we pull all newly arrived packets and handle them
+        // first we pull all newly arrived packets and handle them
         loop {
             match messenger
                 .socket
@@ -109,7 +107,7 @@ impl<TSocket: DatagramSocket, TConnection: Connection> ConnectionManager<TSocket
                     if let Some(conn) = self.connections.get_mut(&address) {
                         conn.process_packet(messenger, payload, time);
                     } else {
-                        // Create connection, but do not add to active connections list
+                        // create connection, but do not add to active connections list
                         let mut conn =
                             TConnection::create_connection(messenger, address, time, Some(payload));
                         conn.process_packet(messenger, payload, time);
@@ -122,13 +120,13 @@ impl<TSocket: DatagramSocket, TConnection: Connection> ConnectionManager<TSocket
                     break;
                 }
             }
-            // To prevent from blocking, break after receiving first packet
+            // prevent from blocking, break after receiving first packet
             if messenger.socket.is_blocking_mode() {
                 break;
             }
         }
 
-        // Now grab all the waiting packets and send them
+        // now grab all the waiting packets and send them
         while let Ok(event) = self.user_event_receiver.try_recv() {
             // get or create connection
             let conn = self.connections.entry(event.address()).or_insert_with(|| {
@@ -137,12 +135,12 @@ impl<TSocket: DatagramSocket, TConnection: Connection> ConnectionManager<TSocket
             conn.process_event(messenger, event, time);
         }
 
-        // Update all connections
+        // update all connections
         for conn in self.connections.values_mut() {
             conn.update(messenger, time);
         }
 
-        // Iterate through all connections and remove those that should be dropped
+        // iterate through all connections and remove those that should be dropped
         self.connections
             .retain(|_, conn| !conn.should_drop(messenger, time));
     }
@@ -249,7 +247,7 @@ mod tests {
         let (mut server, mut client, network) = create_server_client_network();
         let time = Instant::now();
 
-        // Send a packet that the server ignores/drops
+        // send a packet that the server ignores/drops
         client
             .send(Packet::reliable_unordered(
                 server_address(),
@@ -258,10 +256,10 @@ mod tests {
             .unwrap();
         client.manual_poll(time);
 
-        // Drop the inbound packet, this simulates a network error
+        // drop the inbound packet, this simulates a network error
         network.clear_packets(server_address());
 
-        // Send a packet that the server receives
+        // send a packet that the server receives
         for id in 0..u8::max_value() {
             client
                 .send(Packet::reliable_unordered(server_address(), vec![id]))
@@ -288,7 +286,7 @@ mod tests {
     #[test]
     fn receiving_does_not_allow_denial_of_service() {
         let (mut server, mut client, _) = create_server_client_network();
-        // Send a bunch of packets to a server
+        // send a bunch of packets to a server
         for _ in 0..3 {
             client
                 .send(Packet::unreliable(
@@ -308,7 +306,7 @@ mod tests {
         }
         assert![server.recv().is_none()];
 
-        // The server shall not have any connection in its connection table even though it received
+        // the server shall not have any connection in its connection table even though it received
         // packets
         assert_eq![0, server.connection_count()];
 
@@ -318,7 +316,7 @@ mod tests {
 
         server.manual_poll(time);
 
-        // The server only adds to its table after having sent explicitly
+        // the server only adds to its table after having sent explicitly
         assert_eq![1, server.connection_count()];
     }
 
@@ -327,7 +325,7 @@ mod tests {
         let (mut server, mut client, network) = create_server_client_network();
         let time = Instant::now();
 
-        // Send a packet that the server ignores/drops
+        // send a packet that the server ignores/drops
         client
             .send(Packet::reliable_sequenced(
                 server_address(),
@@ -337,10 +335,10 @@ mod tests {
             .unwrap();
         client.manual_poll(time);
 
-        // Drop the inbound packet, this simulates a network error
+        // drop the inbound packet, this simulates a network error
         network.clear_packets(server_address());
 
-        // Send a packet that the server receives
+        // send a packet that the server receives
         for id in 0..36 {
             client
                 .send(Packet::reliable_sequenced(server_address(), vec![id], None))
@@ -367,7 +365,7 @@ mod tests {
         let (mut server, mut client, network) = create_server_client_network();
         let time = Instant::now();
 
-        // Send a packet that the server ignores/drops
+        // send a packet that the server ignores/drops
         client
             .send(Packet::reliable_ordered(
                 server_address(),
@@ -377,10 +375,10 @@ mod tests {
             .unwrap();
         client.manual_poll(time);
 
-        // Drop the inbound packet, this simulates a network error
+        // drop the inbound packet, this simulates a network error
         network.clear_packets(server_address());
 
-        // Send a packet that the server receives
+        // send a packet that the server receives
         for id in 0..35 {
             client
                 .send(Packet::reliable_ordered(server_address(), vec![id], None))
@@ -439,7 +437,7 @@ mod tests {
     #[test]
     fn more_than_65536_sequenced_packets() {
         let (mut server, mut client, _) = create_server_client_network();
-        // Acknowledge the client
+        // acknowledge the client
         server
             .send(Packet::unreliable(client_address(), vec![0]))
             .unwrap();
@@ -592,7 +590,7 @@ mod tests {
             SocketEvent::Packet(Packet::unreliable(client_address(), vec![0, 1, 2]))
         );
 
-        // Acknowledge the client
+        // acknowledge the client
         server
             .send(Packet::unreliable(client_address(), vec![]))
             .unwrap();
@@ -600,20 +598,20 @@ mod tests {
         server.manual_poll(now);
         client.manual_poll(now);
 
-        // Make sure the connection was successful on the client side
+        // make sure the connection was successful on the client side
         assert_eq!(
             client.recv().unwrap(),
             SocketEvent::Packet(Packet::unreliable(server_address(), vec![]))
         );
 
-        // Give just enough time for no timeout events to occur (yet)
+        // give just enough time for no timeout events to occur (yet)
         server.manual_poll(now + config.idle_connection_timeout - Duration::from_millis(1));
         client.manual_poll(now + config.idle_connection_timeout - Duration::from_millis(1));
 
         assert_eq!(server.recv(), None);
         assert_eq!(client.recv(), None);
 
-        // Give enough time for timeouts to be detected
+        // give enough time for timeouts to be detected
         server.manual_poll(now + config.idle_connection_timeout);
         client.manual_poll(now + config.idle_connection_timeout);
 
@@ -633,7 +631,7 @@ mod tests {
         config.idle_connection_timeout = Duration::from_millis(10);
         config.heartbeat_interval = Some(Duration::from_millis(4));
         let (mut server, mut client) = create_server_client(config.clone());
-        // Initiate a connection
+        // initiate a connection
         client
             .send(Packet::unreliable(server_address(), vec![0, 1, 2]))
             .unwrap();
@@ -642,7 +640,7 @@ mod tests {
         client.manual_poll(now);
         server.manual_poll(now);
 
-        // Make sure the connection was successful on the server side
+        // make sure the connection was successful on the server side
         assert_eq!(
             server.recv().unwrap(),
             SocketEvent::Connect(client_address())
@@ -652,8 +650,8 @@ mod tests {
             SocketEvent::Packet(Packet::unreliable(client_address(), vec![0, 1, 2]))
         );
 
-        // Acknowledge the client
-        // This way, the server also knows about the connection and sends heartbeats
+        // acknowledge the client
+        // this way, the server also knows about the connection and sends heartbeats
         server
             .send(Packet::unreliable(client_address(), vec![]))
             .unwrap();
@@ -661,21 +659,21 @@ mod tests {
         server.manual_poll(now);
         client.manual_poll(now);
 
-        // Make sure the connection was successful on the client side
+        // make sure the connection was successful on the client side
         assert_eq!(
             client.recv().unwrap(),
             SocketEvent::Packet(Packet::unreliable(server_address(), vec![]))
         );
 
-        // Give time to send heartbeats
+        // give time to send heartbeats
         client.manual_poll(now + config.heartbeat_interval.unwrap());
         server.manual_poll(now + config.heartbeat_interval.unwrap());
 
-        // Give time for timeouts to occur if no heartbeats were sent
+        // give time for timeouts to occur if no heartbeats were sent
         client.manual_poll(now + config.idle_connection_timeout);
         server.manual_poll(now + config.idle_connection_timeout);
 
-        // Assert that no disconnection events occurred
+        // assert that no disconnection events occurred
         assert_eq!(client.recv(), None);
         assert_eq!(server.recv(), None);
     }
@@ -686,7 +684,7 @@ mod tests {
 
         let now = Instant::now();
 
-        // Send enough packets to ensure that we must have dropped packets.
+        // send enough packets to ensure that we must have dropped packets.
         for i in 0..35 {
             client
                 .send(Packet::unreliable(server_address(), vec![i]))
@@ -705,18 +703,18 @@ mod tests {
             }
         }
 
-        // Ensure that we get the correct number of events to the server.
+        // ensure that we get the correct number of events to the server.
         // 35 connect events plus the 35 messages
         assert_eq!(events.len(), 70);
 
-        // Finally the server decides to send us a message back. This necessarily will include
+        // finally the server decides to send us a message back. This necessarily will include
         // the ack information for 33 of the sent 35 packets.
         server
             .send(Packet::unreliable(client_address(), vec![0]))
             .unwrap();
         server.manual_poll(now);
 
-        // Loop to ensure that the client gets the server message before moving on.
+        // loop to ensure that the client gets the server message before moving on
         loop {
             client.manual_poll(now);
             if client.recv().is_some() {
@@ -724,7 +722,7 @@ mod tests {
             }
         }
 
-        // This next sent message should end up sending the 2 unacked messages plus the new messages
+        // this next sent message should end up sending the 2 unacked messages plus the new messages
         // with payload 35
         events.clear();
         client
@@ -756,7 +754,7 @@ mod tests {
 
         let time = Instant::now();
 
-        // We give both the server and the client a really bad bidirectional link
+        // we give both the server and the client a really bad bidirectional link
         let link_conditioner = {
             let mut lc = LinkConditioner::new();
             lc.set_packet_loss(0.9);
@@ -768,7 +766,7 @@ mod tests {
 
         let mut set = HashSet::new();
 
-        // We chat 100 packets between the client and server, which will re-send any non-acked
+        // we chat 100 packets between the client and server, which will re-send any non-acked
         // packets
         let mut send_many_packets = |dummy: Option<u8>| {
             for id in 0..100 {
@@ -803,7 +801,7 @@ mod tests {
             set.len()
         };
 
-        // The first chatting sequence sends packets 0..100 from the client to the server. After
+        // the first chatting sequence sends packets 0..100 from the client to the server. After
         // this we just chat with a value of 255 so we don't accidentally overlap those chatting
         // packets with the packets we want to ack.
         send_many_packets(None);
@@ -882,7 +880,7 @@ mod tests {
                 .unwrap();
             server.manual_poll(time);
             assert![client.recv().is_some()];
-            // If the last iteration returns None here, it indicates we just received a re-sent
+            // If the last iteration returns `None` here, it indicates we just received a re-sent
             // fragment, because `manual_poll` only processes a single incoming UDP packet per
             // `manual_poll` if and only if the socket is in blocking mode.
             //

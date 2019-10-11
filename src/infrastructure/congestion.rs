@@ -6,7 +6,7 @@ use crate::{
     Config,
 };
 
-/// Type that is responsible for keeping track of congestion information.
+/// Keeps track of congestion information.
 pub struct CongestionHandler {
     rtt_measurer: RttMeasurer,
     congestion_data: SequenceBuffer<CongestionData>,
@@ -23,7 +23,7 @@ impl CongestionHandler {
         }
     }
 
-    /// Process incoming sequence number.
+    /// Processes incoming sequence number.
     ///
     /// This will calculate the RTT-time and smooth down the RTT-value to prevent uge RTT-spikes.
     pub fn process_incoming(&mut self, incoming_seq: u16) {
@@ -31,7 +31,7 @@ impl CongestionHandler {
         self.rtt_measurer.calculate_rrt(congestion_data);
     }
 
-    /// Process outgoing sequence number.
+    /// Processes outgoing sequence number.
     ///
     /// This will insert an entry which is used for keeping track of the sending time.
     /// Once we process incoming sequence numbers we can calculate the `RTT` time.

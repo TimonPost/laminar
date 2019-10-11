@@ -43,7 +43,7 @@ impl<T> ArrangingSystem for SequencingSystem<T> {
         self.streams.len()
     }
 
-    /// Try to get an [`SequencingStream`](./struct.SequencingStream.html) by `stream_id`.
+    /// Tries to get an [`SequencingStream`](./struct.SequencingStream.html) by `stream_id`.
     /// When the stream does not exist, it will be inserted by the given `stream_id` and returned.
     fn get_or_create_stream(&mut self, stream_id: u8) -> &mut Self::Stream {
         self.streams
@@ -73,7 +73,7 @@ pub struct SequencingStream<T> {
     _stream_id: u8,
     // the highest seen item index.
     top_index: u16,
-    // I need `PhantomData`, otherwise, I can't use a generic in the `Arranging` implementation because `T` is not constrained.
+    // Needs `PhantomData`, otherwise, it can't use a generic in the `Arranging` implementation because `T` is not constrained.
     phantom: PhantomData<T>,
     // unique identifier which should be used for ordering on an other stream e.g. the remote endpoint.
     unique_item_identifier: u16,
@@ -107,7 +107,7 @@ impl<T> SequencingStream<T> {
 }
 
 fn is_u16_within_half_window_from_start(start: u16, incoming: u16) -> bool {
-    // Check (with wrapping) if the incoming value lies within the next u16::max_value()/2 from
+    // check (with wrapping) if the incoming value lies within the next u16::max_value()/2 from
     // start.
     incoming.wrapping_sub(start) <= u16::max_value() / 2 + 1
 }
@@ -115,7 +115,7 @@ fn is_u16_within_half_window_from_start(start: u16, incoming: u16) -> bool {
 impl<T> Arranging for SequencingStream<T> {
     type ArrangingItem = T;
 
-    /// Will arrange the given item based on a sequencing algorithm.
+    /// Arranges the given item based on a sequencing algorithm.
     ///
     /// With every sequencing operation an `top_index` is given.
     ///

@@ -220,7 +220,7 @@ impl<T> OrderingStream<T> {
 }
 
 fn is_u16_within_half_window_from_start(start: u16, incoming: u16) -> bool {
-    // Check (with wrapping) if the incoming value lies within the next u16::max_value()/2 from
+    // check (with wrapping) if the incoming value lies within the next u16::max_value()/2 from
     // start.
     incoming.wrapping_sub(start) <= u16::max_value() / 2 + 1
 }
@@ -228,7 +228,7 @@ fn is_u16_within_half_window_from_start(start: u16, incoming: u16) -> bool {
 impl<T> Arranging for OrderingStream<T> {
     type ArrangingItem = T;
 
-    /// Will order the given item based on the ordering algorithm.
+    /// Orders the given item based on the ordering algorithm.
     ///
     /// With every ordering operation an `incoming_index` is given. We also keep a local record of the `expected_index`.
     ///

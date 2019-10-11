@@ -103,25 +103,25 @@ _Send packets_
 ```rust
 use laminar::{Socket, Packet};
 
-// create the socket
+// Creates the socket
 let mut socket = Socket::bind("127.0.0.1:12345")?;
 let packet_sender = socket.get_packet_sender();
-// this will start the socket, which will start a poll mechanism to receive and send messages.
+// Starts the socket, which will start a poll mechanism to receive and send messages.
 let _thread = thread::spawn(move || socket.start_polling());
 
-// our data
+// Bytes to sent
 let bytes = vec![...];
 
-// You can create packets with different reliabilities
+// Creates packets with different reliabilities
 let unreliable = Packet::unreliable(destination, bytes);
 let reliable = Packet::reliable_unordered(destination, bytes);
 
-// We can specify on which stream and how to order our packets, checkout our book and documentation for more information
+// Specifies on which stream and how to order our packets, checkout our book and documentation for more information
 let unreliable = Packet::unreliable_sequenced(destination, bytes, Some(1));
 let reliable_sequenced = Packet::reliable_sequenced(destination, bytes, Some(2));
 let reliable_ordered = Packet::reliable_ordered(destination, bytes, Some(3));
 
-// send the created packets
+// Sends the created packets
 packet_sender.send(unreliable_sequenced).unwrap();
 packet_sender.send(reliable).unwrap();
 packet_sender.send(unreliable_sequenced).unwrap();
@@ -133,13 +133,13 @@ _Receive Packets_
 ```rust
 use laminar::{SocketEvent, Socket};
 
-// create the socket
+// Creates the socket
 let socket = Socket::bind("127.0.0.1:12346")?;
 let event_receiver = socket.get_event_receiver();
-// this will start the socket, which will start a poll mechanism to receive and send messages.
+// Starts the socket, which will start a poll mechanism to receive and send messages.
 let _thread = thread::spawn(move || socket.start_polling());
 
-// wait until a socket event occurs
+// Waits until a socket event occurs
 let result = event_receiver.recv();
 
 match result {

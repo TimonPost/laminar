@@ -46,7 +46,7 @@ impl Connection for VirtualConnection {
         time: Instant,
         initial_data: Option<&[u8]>,
     ) -> VirtualConnection {
-        // Emit connect event if this is initiated by the remote host.
+        // emit connect event if this is initiated by the remote host.
         if initial_data.is_some() {
             messenger.send_event(&address, SocketEvent::Connect(address));
         }
@@ -125,15 +125,15 @@ impl Connection for VirtualConnection {
         messenger: &mut impl ConnectionMessenger<Self::ReceiveEvent>,
         time: Instant,
     ) {
-        // Resend dropped packets
+        // resend dropped packets
         for dropped in self.gather_dropped_packets() {
             let packets = self.process_outgoing(
                 PacketInfo {
                     packet_type: dropped.packet_type,
                     payload: &dropped.payload,
-                    // Because a delivery guarantee is only sent with reliable packets
+                    // because a delivery guarantee is only sent with reliable packets
                     delivery: DeliveryGuarantee::Reliable,
-                    // This is stored with the dropped packet because they could be mixed
+                    // this is stored with the dropped packet because they could be mixed
                     ordering: dropped.ordering_guarantee,
                 },
                 dropped.item_identifier,
@@ -142,7 +142,7 @@ impl Connection for VirtualConnection {
             send_packets(messenger, &self.remote_address, packets, "dropped packets");
         }
 
-        // Send heartbeat packets if required
+        // send heartbeat packets if required
         if let Some(heartbeat_interval) = messenger.config().heartbeat_interval {
             let addr = self.remote_address;
             if self.last_sent(time) >= heartbeat_interval {
@@ -157,7 +157,7 @@ impl Connection for VirtualConnection {
     }
 }
 
-// Sends multiple outgoing packets.
+// sends multiple outgoing packets.
 fn send_packets(
     ctx: &mut impl ConnectionMessenger<SocketEvent>,
     address: &SocketAddr,
