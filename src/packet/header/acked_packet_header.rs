@@ -1,8 +1,11 @@
-use super::{HeaderReader, HeaderWriter};
+use std::io::Cursor;
+
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+
 use crate::error::Result;
 use crate::net::constants::ACKED_PACKET_HEADER;
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use std::io::Cursor;
+
+use super::{HeaderReader, HeaderWriter};
 
 #[derive(Copy, Clone, Debug)]
 /// This header providing reliability information.
@@ -77,9 +80,10 @@ impl HeaderReader for AckedPacketHeader {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+
     use crate::net::constants::ACKED_PACKET_HEADER;
     use crate::packet::header::{AckedPacketHeader, HeaderReader, HeaderWriter};
-    use std::io::Cursor;
 
     #[test]
     fn serialize() {

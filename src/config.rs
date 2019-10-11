@@ -1,5 +1,6 @@
-use crate::net::constants::{DEFAULT_MTU, FRAGMENT_SIZE_DEFAULT, MAX_FRAGMENTS_DEFAULT};
 use std::{default::Default, time::Duration};
+
+use crate::net::constants::{DEFAULT_MTU, FRAGMENT_SIZE_DEFAULT, MAX_FRAGMENTS_DEFAULT};
 
 #[derive(Clone, Debug)]
 /// Contains the configuration options to configure laminar for special use-cases.

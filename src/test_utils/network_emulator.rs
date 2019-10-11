@@ -1,13 +1,13 @@
-use crate::net::{DatagramSocket, LinkConditioner};
-
 use std::{
     cell::RefCell,
-    collections::hash_map::Entry,
     collections::{HashMap, VecDeque},
+    collections::hash_map::Entry,
     io::Result,
     net::SocketAddr,
     rc::Rc,
 };
+
+use crate::net::{DatagramSocket, LinkConditioner};
 
 /// This type allows to share global state between all sockets, created from the same instance of `NetworkEmulator`.
 type GlobalBindings = Rc<RefCell<HashMap<SocketAddr, VecDeque<(SocketAddr, Vec<u8>)>>>>;

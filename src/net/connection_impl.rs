@@ -1,13 +1,14 @@
-use super::{
-    events::SocketEvent, Connection, ConnectionEventAddress, ConnectionMessenger, VirtualConnection,
-};
-use crate::error::{ErrorKind, Result};
-use crate::packet::{DeliveryGuarantee, OutgoingPackets, Packet, PacketInfo};
-
 use std::net::SocketAddr;
 use std::time::Instant;
 
 use log::error;
+
+use crate::error::{ErrorKind, Result};
+use crate::packet::{DeliveryGuarantee, OutgoingPackets, Packet, PacketInfo};
+
+use super::{
+    Connection, ConnectionEventAddress, ConnectionMessenger, events::SocketEvent, VirtualConnection,
+};
 
 /// Required by `ConnectionManager` to properly handle connection event.
 impl ConnectionEventAddress for SocketEvent {

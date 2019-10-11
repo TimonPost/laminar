@@ -1,9 +1,11 @@
+use std::{self, collections::HashMap, fmt::Debug, io::Result, net::SocketAddr, time::Instant};
+
+use crossbeam_channel::{self, Receiver, Sender, unbounded};
+use log::error;
+
 use crate::{
     config::Config, net::Connection, net::ConnectionEventAddress, net::ConnectionMessenger,
 };
-use crossbeam_channel::{self, unbounded, Receiver, Sender};
-use log::error;
-use std::{self, collections::HashMap, fmt::Debug, io::Result, net::SocketAddr, time::Instant};
 
 // TODO: maybe we can make a breaking change and use this instead of `ConnectionEventAddress` trait?
 // #[derive(Debug)]
@@ -179,15 +181,15 @@ impl<TSocket: DatagramSocket, TConnection: Connection> ConnectionManager<TSocket
 
 #[cfg(test)]
 mod tests {
-    use crate::net::LinkConditioner;
-    use crate::test_utils::*;
-    use crate::{Config, Packet, SocketEvent};
-
     use std::{
         collections::HashSet,
         net::SocketAddr,
         time::{Duration, Instant},
     };
+
+    use crate::{Config, Packet, SocketEvent};
+    use crate::net::LinkConditioner;
+    use crate::test_utils::*;
 
     /// The socket address of where the server is located.
     const SERVER_ADDR: &str = "127.0.0.1:10001";

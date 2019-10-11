@@ -2,11 +2,13 @@
 //! 1. setting up server to receive data.
 //! 2. setting up client to send data.
 //! 3. serialize data to send and deserialize when received.
-use bincode::{deserialize, serialize};
-use laminar::{Packet, Socket, SocketEvent};
-use serde_derive::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::time::Instant;
+
+use bincode::{deserialize, serialize};
+use serde_derive::{Deserialize, Serialize};
+
+use laminar::{Packet, Socket, SocketEvent};
 
 /// The socket address of where the server is located.
 const SERVER_ADDR: &'static str = "127.0.0.1:12345";

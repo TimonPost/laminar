@@ -1,7 +1,7 @@
+use std::time::Duration;
+
 use crate::config::Config;
 use crate::sequence_buffer::CongestionData;
-
-use std::time::Duration;
 
 /// Represents the quality of a network.
 #[allow(dead_code)]
@@ -78,11 +78,13 @@ impl RttMeasurer {
 
 #[cfg(test)]
 mod test {
-    use super::RttMeasurer;
-    use crate::config::Config;
-    use crate::net::VirtualConnection;
     use std::net::ToSocketAddrs;
     use std::time::{Duration, Instant};
+
+    use crate::config::Config;
+    use crate::net::VirtualConnection;
+
+    use super::RttMeasurer;
 
     static TEST_HOST_IP: &str = "127.0.0.1";
     static TEST_PORT: &str = "20000";

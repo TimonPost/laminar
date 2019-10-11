@@ -1,9 +1,10 @@
-use crate::net::{ConnectionManager, LinkConditioner, VirtualConnection};
-use crate::test_utils::*;
-use crate::{error::Result, Config, Packet, SocketEvent};
+use std::{net::SocketAddr, time::Instant};
+
 use crossbeam_channel::{Receiver, Sender};
 
-use std::{net::SocketAddr, time::Instant};
+use crate::{Config, error::Result, Packet, SocketEvent};
+use crate::net::{ConnectionManager, LinkConditioner, VirtualConnection};
+use crate::test_utils::*;
 
 /// Provides a similar to the real a `Socket`, but with emulated socket implementation.
 pub struct FakeSocket {

@@ -1,5 +1,6 @@
-use crate::packet::SequenceNumber;
 use std::time::Instant;
+
+use crate::packet::SequenceNumber;
 
 #[derive(Clone)]
 /// This contains the information required to reassemble fragments.

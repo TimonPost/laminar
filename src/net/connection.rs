@@ -1,6 +1,6 @@
-use crate::config::Config;
-
 use std::{self, fmt::Debug, net::SocketAddr, time::Instant};
+
+use crate::config::Config;
 
 /// Allows connection to send packet, send event and get global configuration.
 pub trait ConnectionMessenger<ReceiveEvent: Debug> {

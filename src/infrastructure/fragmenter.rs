@@ -1,3 +1,5 @@
+use std::io::Write;
+
 use crate::{
     config::Config,
     error::{FragmentErrorKind, Result},
@@ -5,8 +7,6 @@ use crate::{
     packet::header::{AckedPacketHeader, FragmentHeader},
     sequence_buffer::{ReassemblyData, SequenceBuffer},
 };
-
-use std::io::Write;
 
 /// Type that will manage fragmentation of packets.
 pub struct Fragmentation {

@@ -1,10 +1,11 @@
-use crossbeam_channel::{Receiver, Sender, TryIter};
-use laminar::{Packet, Socket, SocketEvent, ThroughputMonitoring};
-
-use log::error;
 use std::net::SocketAddr;
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
+
+use crossbeam_channel::{Receiver, Sender, TryIter};
+use log::error;
+
+use laminar::{Packet, Socket, SocketEvent, ThroughputMonitoring};
 
 /// Enum with commands you can send to the server.
 #[derive(Debug)]

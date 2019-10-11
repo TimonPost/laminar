@@ -1,18 +1,19 @@
-use crate::{
-    config::Config,
-    error::Result,
-    net::{
-        events::SocketEvent, ConnectionManager, DatagramSocket, LinkConditioner, VirtualConnection,
-    },
-    packet::Packet,
-};
-
-use crossbeam_channel::{self, Receiver, Sender, TryRecvError};
 use std::{
     self,
     net::{Ipv4Addr, SocketAddr, SocketAddrV4, ToSocketAddrs, UdpSocket},
     thread::{sleep, yield_now},
     time::{Duration, Instant},
+};
+
+use crossbeam_channel::{self, Receiver, Sender, TryRecvError};
+
+use crate::{
+    config::Config,
+    error::Result,
+    net::{
+        ConnectionManager, DatagramSocket, events::SocketEvent, LinkConditioner, VirtualConnection,
+    },
+    packet::Packet,
 };
 
 // Wrap `LinkConditioner` and `UdpSocket` together. LinkConditioner is enabled when building with a "tester" feature.

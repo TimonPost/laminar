@@ -1,10 +1,10 @@
+use std::io::Cursor;
+
+use crate::{ErrorKind, Result};
 use crate::net::constants::STANDARD_HEADER_SIZE;
 use crate::packet::header::{
     AckedPacketHeader, ArrangingHeader, FragmentHeader, HeaderReader, StandardHeader,
 };
-use crate::{ErrorKind, Result};
-
-use std::io::Cursor;
 
 /// Can be used to read the packet contents of laminar.
 ///
@@ -113,8 +113,8 @@ impl<'s> PacketReader<'s> {
 
 #[cfg(test)]
 mod tests {
-    use crate::packet::header::{AckedPacketHeader, HeaderReader, StandardHeader};
     use crate::packet::{DeliveryGuarantee, OrderingGuarantee, PacketReader, PacketType};
+    use crate::packet::header::{AckedPacketHeader, HeaderReader, StandardHeader};
 
     #[test]
     fn can_read_bytes() {

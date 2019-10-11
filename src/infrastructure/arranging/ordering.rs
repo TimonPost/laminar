@@ -71,9 +71,11 @@
 //! # Remarks
 //! - See [super-module](../index.html) description for more details.
 
-use super::{Arranging, ArrangingSystem};
-use crate::packet::SequenceNumber;
 use std::collections::HashMap;
+
+use crate::packet::SequenceNumber;
+
+use super::{Arranging, ArrangingSystem};
 
 /// An ordering system that can arrange items in order on different streams.
 ///
@@ -299,7 +301,7 @@ impl<'a, T> Iterator for IterMut<'a, T> {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_u16_within_half_window_from_start, Arranging, ArrangingSystem, OrderingSystem};
+    use super::{Arranging, ArrangingSystem, is_u16_within_half_window_from_start, OrderingSystem};
 
     #[derive(Debug, PartialEq, Clone)]
     struct Packet {

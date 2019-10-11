@@ -1,5 +1,6 @@
-use crate::packet::Packet;
 use std::net::SocketAddr;
+
+use crate::packet::Packet;
 
 /// Events that can occur in `laminar` and that will be pushed through the `event_receiver` returned by `Socket::bind`.
 #[derive(Debug, PartialEq)]

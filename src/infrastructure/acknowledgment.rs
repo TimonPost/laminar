@@ -1,6 +1,7 @@
+use std::collections::HashMap;
+
 use crate::packet::{OrderingGuarantee, PacketType, SequenceNumber};
 use crate::sequence_buffer::{sequence_greater_than, sequence_less_than, SequenceBuffer};
-use std::collections::HashMap;
 
 const REDUNDANT_PACKET_ACKS_SIZE: u16 = 32;
 const DEFAULT_SEND_PACKETS_SIZE: usize = 256;
@@ -154,10 +155,11 @@ pub struct ReceivedPacket;
 
 #[cfg(test)]
 mod test {
-    use crate::infrastructure::acknowledgment::ReceivedPacket;
-    use crate::infrastructure::{AcknowledgmentHandler, SentPacket};
-    use crate::packet::{OrderingGuarantee, PacketType};
     use log::debug;
+
+    use crate::infrastructure::{AcknowledgmentHandler, SentPacket};
+    use crate::infrastructure::acknowledgment::ReceivedPacket;
+    use crate::packet::{OrderingGuarantee, PacketType};
 
     #[test]
     fn increment_local_seq_num_on_process_outgoing() {

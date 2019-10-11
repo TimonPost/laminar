@@ -1,7 +1,7 @@
+use std::collections::VecDeque;
+
 use crate::either::Either;
 use crate::packet::{OutgoingPacket, Packet, PacketType};
-
-use std::collections::VecDeque;
 
 /// Struct that implements `Iterator`, and is used to return incoming (from bytes to packets) or outgoing (from packet to bytes) packets.
 /// It is used as optimization in cases, where most of the time there is only one element to iterate, and we don't want to create a vector for it.
