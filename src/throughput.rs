@@ -9,7 +9,7 @@ struct ThroughputEntry {
 }
 
 impl ThroughputEntry {
-    /// Construct a new throughput entry.
+    /// Constructs a new throughput entry.
     pub fn new(measured_throughput: u32, time: Instant) -> ThroughputEntry {
         ThroughputEntry {
             measured_throughput,
@@ -32,7 +32,7 @@ pub struct ThroughputMonitoring {
 }
 
 impl ThroughputMonitoring {
-    /// Construct a new instance of `ThroughputMonitoring`
+    /// Constructs a new instance of `ThroughputMonitoring`.
     pub fn new(throughput_duration: Duration) -> ThroughputMonitoring {
         ThroughputMonitoring {
             throughput_duration,
@@ -42,7 +42,7 @@ impl ThroughputMonitoring {
         }
     }
 
-    /// This will increase the throughput by one, when the `throughput_duration` has elapsed since the last call, then an throughput entry will be created.
+    /// Increases the throughput by one, when the `throughput_duration` has elapsed since the last call, then an throughput entry will be created.
     pub fn tick(&mut self) -> bool {
         if self.timer.elapsed() >= self.throughput_duration {
             self.measured_throughput

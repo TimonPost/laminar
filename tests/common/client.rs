@@ -24,7 +24,7 @@ impl Client {
         }
     }
 
-    /// This will run a specific instance of the client running at the given socket address.
+    This will run a specific instance of the client running at the given socket address.
     /// This function takes in a closure who constructs a packet which will be sent out to the client.
     pub fn run_instance<F>(&self, create_packet: F, endpoint: SocketAddr) -> ClientHandle
     where

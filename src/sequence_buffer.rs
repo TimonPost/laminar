@@ -17,7 +17,7 @@ pub struct SequenceBuffer<T: Clone + Default> {
 }
 
 impl<T: Clone + Default> SequenceBuffer<T> {
-    /// Create a SequenceBuffer with a desired capacity.
+    /// Creates a SequenceBuffer with a desired capacity.
     pub fn with_capacity(size: u16) -> Self {
         Self {
             sequence_num: 0,
@@ -40,7 +40,7 @@ impl<T: Clone + Default> SequenceBuffer<T> {
         None
     }
 
-    /// Insert the entry data into the sequence buffer. If the requested sequence number is "too
+    /// Inserts the entry data into the sequence buffer. If the requested sequence number is "too
     /// old", the entry will not be inserted and no reference will be returned.
     pub fn insert(&mut self, sequence_num: SequenceNumber, entry: T) -> Option<&mut T> {
         // Sequence number is too old to insert into the buffer

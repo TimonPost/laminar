@@ -12,7 +12,7 @@ use super::{
 
 /// Required by `ConnectionManager` to properly handle connection event.
 impl ConnectionEventAddress for SocketEvent {
-    /// Returns event address
+    /// Returns event address.
     fn address(&self) -> SocketAddr {
         match self {
             SocketEvent::Packet(packet) => packet.addr(),
@@ -24,7 +24,7 @@ impl ConnectionEventAddress for SocketEvent {
 
 /// Required by `ConnectionManager` to properly handle user event.
 impl ConnectionEventAddress for Packet {
-    /// Returns event address
+    /// Returns event address.
     fn address(&self) -> SocketAddr {
         self.addr()
     }

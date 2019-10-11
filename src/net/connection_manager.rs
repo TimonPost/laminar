@@ -94,9 +94,9 @@ impl<TSocket: DatagramSocket, TConnection: Connection> ConnectionManager<TSocket
         }
     }
 
-    /// Process any inbound/outbound packets and events.
-    /// Process connection specific logic for active connections.
-    /// Remove dropped connections from active connections list.
+    /// Processes any inbound/outbound packets and events.
+    /// Processes connection specific logic for active connections.
+    /// Removes dropped connections from active connections list.
     pub fn manual_poll(&mut self, time: Instant) {
         let messenger = &mut self.messenger;
         // First we pull all newly arrived packets and handle them
