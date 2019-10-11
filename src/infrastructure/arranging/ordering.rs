@@ -130,12 +130,12 @@ impl<'a, T> ArrangingSystem for OrderingSystem<T> {
 /// # Remarks
 /// - See [super-module](../index.html) for more information about streams.
 pub struct OrderingStream<T> {
-    // the id of this stream.
+    // The id of this stream.
     _stream_id: u8,
-    // the storage for items that are waiting for older items to arrive.
-    // the items will be stored by key and value where the key is the incoming index and the value is the item value.
+    // Storage with items that are waiting for older items to arrive.
+    // Items are stored by key and value where the key is the incoming index and the value is the item value.
     storage: HashMap<u16, T>,
-    // the next expected item index.
+    // Next expected item index.
     expected_index: u16,
     // unique identifier which should be used for ordering on a different stream e.g. the remote endpoint.
     unique_item_identifier: u16,
@@ -220,8 +220,7 @@ impl<T> OrderingStream<T> {
 }
 
 fn is_u16_within_half_window_from_start(start: u16, incoming: u16) -> bool {
-    // check (with wrapping) if the incoming value lies within the next u16::max_value()/2 from
-    // start.
+    // check (with wrapping) if the incoming value lies within the `next u16::max_value()/2` from start
     incoming.wrapping_sub(start) <= u16::max_value() / 2 + 1
 }
 

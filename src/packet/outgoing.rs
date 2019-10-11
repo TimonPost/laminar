@@ -23,7 +23,7 @@ impl<'p> OutgoingPacketBuilder<'p> {
         }
     }
 
-    /// This will add the `FragmentHeader` to the header.
+    /// Adds the `FragmentHeader` to the header.
     pub fn with_fragment_header(mut self, packet_seq: u16, id: u8, num_fragments: u8) -> Self {
         let header = FragmentHeader::new(packet_seq, id, num_fragments);
 
@@ -34,7 +34,7 @@ impl<'p> OutgoingPacketBuilder<'p> {
         self
     }
 
-    /// This will add the [`StandardHeader`](./headers/standard_header) to the header.
+    /// Adds the [`StandardHeader`](./headers/standard_header) to the header.
     pub fn with_default_header(
         mut self,
         packet_type: PacketType,
@@ -49,7 +49,7 @@ impl<'p> OutgoingPacketBuilder<'p> {
         self
     }
 
-    /// This will add the [`AckedPacketHeader`](./headers/acked_packet_header) to the header.
+    /// Adds the [`AckedPacketHeader`](./headers/acked_packet_header) to the header.
     pub fn with_acknowledgment_header(
         mut self,
         seq_num: u16,
@@ -64,7 +64,7 @@ impl<'p> OutgoingPacketBuilder<'p> {
         self
     }
 
-    /// This will add the [`ArrangingHeader`](./headers/arranging_header) if needed.
+    /// Adds the [`ArrangingHeader`](./headers/arranging_header) if needed.
     ///
     /// - `arranging_id` = identifier for this packet that needs to be sequenced.
     /// - `stream_id` = stream on which this packet will be sequenced. If `None` than the a default stream will be used.
@@ -79,7 +79,7 @@ impl<'p> OutgoingPacketBuilder<'p> {
         self
     }
 
-    /// This will add the [`ArrangingHeader`](./headers/arranging_header) if needed.
+    /// Adds the [`ArrangingHeader`](./headers/arranging_header) if needed.
     ///
     /// - `arranging_id` = identifier for this packet that needs to be ordered.
     /// - `stream_id` = stream on which this packet will be ordered. If `None` than the a default stream will be used.
@@ -94,7 +94,7 @@ impl<'p> OutgoingPacketBuilder<'p> {
         self
     }
 
-    /// This will construct a `OutgoingPacket` from the contents constructed with this builder.
+    /// Constructs an `OutgoingPacket` from the contents constructed with this builder.
     pub fn build(self) -> OutgoingPacket<'p> {
         OutgoingPacket {
             header: self.header,
@@ -111,7 +111,7 @@ pub struct OutgoingPacket<'p> {
 }
 
 impl<'p> OutgoingPacket<'p> {
-    /// This will return the contents of this packet; the content includes the header and payload bytes.
+    /// Return the contents of this packet; the content includes the header and payload bytes.
     ///
     /// # Remark
     /// - Until here we could use a reference to the outgoing data but here we need to do a hard copy.

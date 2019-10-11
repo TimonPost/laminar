@@ -157,7 +157,7 @@ impl Connection for VirtualConnection {
     }
 }
 
-// sends multiple outgoing packets.
+// Sends multiple outgoing packets.
 fn send_packets(
     ctx: &mut impl ConnectionMessenger<SocketEvent>,
     address: &SocketAddr,

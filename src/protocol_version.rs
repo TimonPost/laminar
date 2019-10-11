@@ -13,7 +13,7 @@ lazy_static! {
 pub struct ProtocolVersion;
 
 impl ProtocolVersion {
-    /// Get the current protocol version.
+    /// Returns the current protocol version.
     #[inline]
     #[cfg(test)]
     pub fn get_version() -> &'static str {

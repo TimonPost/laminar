@@ -72,7 +72,7 @@ impl VirtualConnection {
         time.duration_since(self.last_sent)
     }
 
-    /// This will pre-process the given buffer to be sent over the network.
+    /// Pre-processes the given buffer to be sent over the network.
     pub fn process_outgoing<'a>(
         &mut self,
         packet: PacketInfo<'a>,
@@ -217,7 +217,7 @@ impl VirtualConnection {
         }
     }
 
-    /// This processes the incoming data and returns a packet if the data is complete.
+    /// Processes the incoming data and returns a packet once the data is complete.
     pub fn process_incoming(
         &mut self,
         received_data: &[u8],
@@ -398,7 +398,7 @@ impl VirtualConnection {
         Ok(IncomingPackets::zero())
     }
 
-    /// This will gather dropped packets from the acknowledgment handler.
+    /// Gathers dropped packets from the acknowledgment handler.
     ///
     /// Note that after requesting dropped packets the dropped packets will be removed from this client.
     pub fn gather_dropped_packets(&mut self) -> Vec<SentPacket> {

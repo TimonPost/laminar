@@ -16,7 +16,7 @@ use crate::{
     packet::Packet,
 };
 
-// Wrap `LinkConditioner` and `UdpSocket` together. LinkConditioner is enabled when building with a "tester" feature.
+// Wraps `LinkConditioner` and `UdpSocket` together. LinkConditioner is enabled when building with a "tester" feature.
 #[derive(Debug)]
 struct SocketWithConditioner {
     is_blocking_mode: bool,
@@ -42,7 +42,7 @@ impl SocketWithConditioner {
 
 /// Provides a `DatagramSocket` implementation for `SocketWithConditioner`
 impl DatagramSocket for SocketWithConditioner {
-    // When `LinkConditioner` is enabled, it will determine whether packet will be sent or not.
+    // Determinate whether packet will be sent or not based on `LinkConditioner` if enabled.
     fn send_packet(&mut self, addr: &SocketAddr, payload: &[u8]) -> std::io::Result<usize> {
         if cfg!(feature = "tester") {
             if let Some(ref mut link) = &mut self.link_conditioner {
@@ -54,7 +54,7 @@ impl DatagramSocket for SocketWithConditioner {
         self.socket.send_to(payload, addr)
     }
 
-    /// Receive a single packet from UDP socket.
+    /// Receives a single packet from UDP socket.
     fn receive_packet<'a>(
         &mut self,
         buffer: &'a mut [u8],
@@ -69,7 +69,7 @@ impl DatagramSocket for SocketWithConditioner {
         self.socket.local_addr()
     }
 
-    /// Returns whether socket operates in blocking or nonblocking mode.
+    /// Returns whether socket operates in blocking or non-blocking mode.
     fn is_blocking_mode(&self) -> bool {
         self.is_blocking_mode
     }
@@ -89,12 +89,12 @@ impl Socket {
         Self::bind_with_config(addresses, Config::default())
     }
 
-    /// Bind to any local port on the system, if available
+    /// Binds to any local port on the system, if available
     pub fn bind_any() -> Result<Self> {
         Self::bind_any_with_config(Config::default())
     }
 
-    /// Bind to any local port on the system, if available, with a given config
+    /// Binds to any local port on the system, if available, with a given config
     pub fn bind_any_with_config(config: Config) -> Result<Self> {
         let loopback = Ipv4Addr::new(127, 0, 0, 1);
         let address = SocketAddrV4::new(loopback, 0);
@@ -135,7 +135,7 @@ impl Socket {
         self.handler.event_receiver().clone()
     }
 
-    /// Send a packet
+    /// Sends a single packet
     pub fn send(&mut self, packet: Packet) -> Result<()> {
         self.handler
             .event_sender()
@@ -144,7 +144,7 @@ impl Socket {
         Ok(())
     }
 
-    /// Receive a packet
+    /// Receives a single packet
     pub fn recv(&mut self) -> Option<SocketEvent> {
         match self.handler.event_receiver().try_recv() {
             Ok(pkt) => Some(pkt),
@@ -153,18 +153,18 @@ impl Socket {
         }
     }
 
-    /// Entry point to the run loop. This should run in a spawned thread since calls to `poll.poll`
-    /// are blocking. We will default this to sleeping for 1ms.
+    /// Runs the polling loop with the default '1ms' sleep duration. This should run in a spawned thread
+    /// since calls to `poll.poll` are blocking.
     pub fn start_polling(&mut self) {
         self.start_polling_with_duration(Some(Duration::from_millis(1)))
     }
 
-    /// Run the polling loop with a specified sleep duration. This should run in a spawned thread
+    /// Runs the polling loop with a specified sleep duration. This should run in a spawned thread
     /// since calls to `poll.poll` are blocking.
     pub fn start_polling_with_duration(&mut self, sleep_duration: Option<Duration>) {
         // nothing should break out of this loop!
         loop {
-            self.handler.manual_poll(Instant::now());
+            self.manual_poll(Instant::now());
             match sleep_duration {
                 None => yield_now(),
                 Some(duration) => sleep(duration),
@@ -172,7 +172,7 @@ impl Socket {
         }
     }
 
-    /// Process any inbound/outbound packets and handle idle clients
+    /// Processes any inbound/outbound packets and handle idle clients
     pub fn manual_poll(&mut self, time: Instant) {
         self.handler.manual_poll(time);
     }
@@ -182,7 +182,7 @@ impl Socket {
         Ok(self.handler.socket().local_addr()?)
     }
 
-    /// Set the link conditioner for this socket. See [LinkConditioner] for further details.
+    /// Sets the link conditioner for this socket. See [LinkConditioner] for further details.
     #[cfg(feature = "tester")]
     pub fn set_link_conditioner(&mut self, link_conditioner: Option<LinkConditioner>) {
         self.handler

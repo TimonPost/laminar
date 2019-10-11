@@ -16,7 +16,7 @@ pub struct FragmentHeader {
 }
 
 impl FragmentHeader {
-    /// Create new fragment with the given packet header
+    /// Create new fragment with the given packet header.
     pub fn new(seq: u16, id: u8, num_fragments: u8) -> Self {
         FragmentHeader {
             id,
@@ -25,17 +25,17 @@ impl FragmentHeader {
         }
     }
 
-    /// Get the id of this fragment.
+    /// Returns the id of this fragment.
     pub fn id(&self) -> u8 {
         self.id
     }
 
-    /// Get the sequence number from this packet.
+    /// Returns the sequence number of this fragment.
     pub fn sequence(&self) -> u16 {
         self.sequence
     }
 
-    /// Get the total number of fragments in the packet this fragment is part of.
+    /// Returns the total number of fragments in the packet this fragment is part of.
     pub fn fragment_count(&self) -> u8 {
         self.num_fragments
     }
@@ -70,7 +70,7 @@ impl HeaderReader for FragmentHeader {
         Ok(header)
     }
 
-    /// Get the size of this header.
+    /// Returns the size of this header.
     fn size() -> u8 {
         FRAGMENT_HEADER_SIZE
     }

@@ -16,7 +16,7 @@ pub struct ArrangingHeader {
 }
 
 impl ArrangingHeader {
-    /// Create new fragment with the given packet header
+    /// Creates new fragment with the given packet header
     pub fn new(arranging_id: SequenceNumber, stream_id: u8) -> Self {
         ArrangingHeader {
             arranging_id,
@@ -24,12 +24,12 @@ impl ArrangingHeader {
         }
     }
 
-    /// Get the sequence number from this packet.
+    /// Returns the sequence number from this packet.
     pub fn arranging_id(&self) -> SequenceNumber {
         self.arranging_id
     }
 
-    /// Get the sequence number from this packet.
+    /// Returns the sequence number from this packet.
     pub fn stream_id(&self) -> u8 {
         self.stream_id
     }
@@ -61,7 +61,7 @@ impl HeaderReader for ArrangingHeader {
         Ok(header)
     }
 
-    /// Get the size of this header.
+    /// Returns the size of this header.
     fn size() -> u8 {
         ARRANGING_PACKET_HEADER
     }

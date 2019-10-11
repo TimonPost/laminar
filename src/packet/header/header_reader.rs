@@ -5,9 +5,9 @@ pub trait HeaderReader {
     /// Associated type for the HeaderReader, since it reads it from a Header
     type Header;
 
-    /// Read the specified header from the given Cursor.
+    /// Reads the specified header from the given Cursor.
     fn read(rdr: &mut Cursor<&[u8]>) -> Self::Header;
 
-    /// This will get the size of the header.
+    /// Returns the size of the header.
     fn size() -> u8;
 }

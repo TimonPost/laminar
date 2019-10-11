@@ -22,7 +22,7 @@ pub trait DatagramSocket: Debug {
     /// Returns the socket address that this socket was created from.
     fn local_addr(&self) -> Result<SocketAddr>;
 
-    /// Returns whether socket operates in blocking or nonblocking mode.
+    /// Returns whether socket operates in blocking or non-blocking mode.
     fn is_blocking_mode(&self) -> bool;
 }
 

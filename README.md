@@ -15,8 +15,8 @@
 [s6]: https://tokei.rs/b1/github/amethyst/laminar?category=code
 [s7]: https://codecov.io/gh/amethyst/laminar/branch/master/graphs/badge.svg
 
-Laminar is a semi-reliable UDP-based protocol for multiplayer games. This library implements wrappers around the UDP-protocol,
-and provides a lightweight, message-based interface which provides certain guarantees like reliability and ordering.
+Laminar is an application-level transport protocol that provides configurable reliability and ordering guarantees build on top of UDP. 
+It is focused on fast-paced fps-games and provides a lightweight, message-based interface.
 
 Laminar was designed to be used within the [Amethyst][amethyst] game engine but is usable without it.
 

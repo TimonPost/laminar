@@ -20,7 +20,7 @@ pub struct StandardHeader {
 }
 
 impl StandardHeader {
-    /// Create new header.
+    /// Creates new header.
     pub fn new(
         delivery_guarantee: DeliveryGuarantee,
         ordering_guarantee: OrderingGuarantee,
@@ -112,7 +112,7 @@ impl HeaderReader for StandardHeader {
         Ok(header)
     }
 
-    /// Get the size of this header.
+    /// Returns the size of this header.
     fn size() -> u8 {
         STANDARD_HEADER_SIZE
     }
