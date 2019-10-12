@@ -1,8 +1,9 @@
+use std::convert::TryFrom;
+
 use crate::{
     error::{DecodingErrorKind, ErrorKind},
     packet::EnumConverter,
 };
-use std::convert::TryFrom;
 
 /// Enum to specify how a packet should be delivered.
 #[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Eq)]
@@ -114,11 +115,12 @@ impl TryFrom<u8> for PacketType {
 
 #[cfg(test)]
 mod tests {
+    use std::convert::TryFrom;
+
     use crate::packet::{
         enums::{DeliveryGuarantee, OrderingGuarantee, PacketType},
         EnumConverter,
     };
-    use std::convert::TryFrom;
 
     #[test]
     fn assure_parsing_ordering_guarantee() {

@@ -2,9 +2,9 @@
 //! 1. sending data
 //! 2. receiving data
 //! 3. constructing the packet for sending.
-use laminar::{Packet, Result, Socket, SocketEvent};
-
 use std::net::SocketAddr;
+
+use laminar::{Packet, Result, Socket, SocketEvent};
 
 /// The socket address of where the server is located.
 const SERVER_ADDR: &'static str = "127.0.0.1:12345";

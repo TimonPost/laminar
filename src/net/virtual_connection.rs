@@ -1,3 +1,7 @@
+use std::fmt;
+use std::net::SocketAddr;
+use std::time::{Duration, Instant};
+
 use crate::{
     config::Config,
     error::{ErrorKind, PacketErrorKind, Result},
@@ -14,10 +18,6 @@ use crate::{
         OutgoingPackets, Packet, PacketInfo, PacketReader, PacketType, SequenceNumber,
     },
 };
-
-use std::fmt;
-use std::net::SocketAddr;
-use std::time::{Duration, Instant};
 
 /// Contains the information about a certain 'virtual connection' over udp.
 /// This connections also keeps track of network quality, processing packets, buffering data related to connection etc.
@@ -420,15 +420,18 @@ impl fmt::Debug for VirtualConnection {
 
 #[cfg(test)]
 mod tests {
-    use super::VirtualConnection;
+    use std::io::Write;
+    use std::time::{Duration, Instant};
+
+    use byteorder::{BigEndian, WriteBytesExt};
+
     use crate::config::Config;
     use crate::net::constants;
     use crate::packet::header::{AckedPacketHeader, ArrangingHeader, HeaderWriter, StandardHeader};
     use crate::packet::{DeliveryGuarantee, OrderingGuarantee, Packet, PacketInfo, PacketType};
     use crate::protocol_version::ProtocolVersion;
-    use byteorder::{BigEndian, WriteBytesExt};
-    use std::io::Write;
-    use std::time::{Duration, Instant};
+
+    use super::VirtualConnection;
 
     const PAYLOAD: [u8; 4] = [1, 2, 3, 4];
 

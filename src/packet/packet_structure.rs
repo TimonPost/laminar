@@ -1,5 +1,6 @@
-use crate::packet::{DeliveryGuarantee, OrderingGuarantee, PacketType};
 use std::net::SocketAddr;
+
+use crate::packet::{DeliveryGuarantee, OrderingGuarantee, PacketType};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 /// This is a user friendly packet containing the payload, endpoint, and reliability guarantees.
@@ -217,8 +218,9 @@ impl<'a> PacketInfo<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::packet::{DeliveryGuarantee, OrderingGuarantee, Packet};
     use std::net::SocketAddr;
+
+    use crate::packet::{DeliveryGuarantee, OrderingGuarantee, Packet};
 
     #[test]
     fn assure_creation_unreliable_packet() {

@@ -1,11 +1,12 @@
-mod congestion_data;
-mod reassembly_data;
+use std::clone::Clone;
+
+use crate::packet::SequenceNumber;
 
 pub use self::congestion_data::CongestionData;
 pub use self::reassembly_data::ReassemblyData;
 
-use crate::packet::SequenceNumber;
-use std::clone::Clone;
+mod congestion_data;
+mod reassembly_data;
 
 /// Collection to store data of any kind.
 #[derive(Debug)]
@@ -121,10 +122,11 @@ pub fn sequence_less_than(s1: u16, s2: u16) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::SequenceBuffer;
     use crate::packet::SequenceNumber;
     use crate::sequence_buffer::sequence_greater_than;
     use crate::sequence_buffer::sequence_less_than;
+
+    use super::SequenceBuffer;
 
     #[derive(Clone, Default)]
     struct DataStub;

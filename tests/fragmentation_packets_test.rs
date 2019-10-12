@@ -1,15 +1,18 @@
 #[cfg(feature = "tester")]
-mod common;
+use std::net::SocketAddr;
+#[cfg(feature = "tester")]
+use std::{thread, time::Duration};
+
+#[cfg(feature = "tester")]
+use log::debug;
+
 #[cfg(feature = "tester")]
 use common::{client_addr, Client, Server, ServerEvent};
 #[cfg(feature = "tester")]
 use laminar::{DeliveryGuarantee, OrderingGuarantee, Packet};
+
 #[cfg(feature = "tester")]
-use log::debug;
-#[cfg(feature = "tester")]
-use std::net::SocketAddr;
-#[cfg(feature = "tester")]
-use std::{thread, time::Duration};
+mod common;
 
 #[test]
 #[cfg(feature = "tester")]

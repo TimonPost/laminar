@@ -1,11 +1,14 @@
-use super::{HeaderReader, HeaderWriter};
+use std::convert::TryFrom;
+use std::io::Cursor;
+
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+
 use crate::error::Result;
 use crate::net::constants::STANDARD_HEADER_SIZE;
 use crate::packet::{DeliveryGuarantee, EnumConverter, OrderingGuarantee, PacketType};
 use crate::protocol_version::ProtocolVersion;
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use std::convert::TryFrom;
-use std::io::Cursor;
+
+use super::{HeaderReader, HeaderWriter};
 
 #[derive(Copy, Clone, Debug)]
 /// This header will be included in each packet, and contains some basic information.
@@ -117,10 +120,11 @@ impl HeaderReader for StandardHeader {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+
     use crate::net::constants::STANDARD_HEADER_SIZE;
     use crate::packet::header::{HeaderReader, HeaderWriter, StandardHeader};
     use crate::packet::{DeliveryGuarantee, EnumConverter, OrderingGuarantee, PacketType};
-    use std::io::Cursor;
 
     #[test]
     fn serialize() {
