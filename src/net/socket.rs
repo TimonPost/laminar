@@ -154,13 +154,13 @@ impl Socket {
     }
 
     /// Runs the polling loop with the default '1ms' sleep duration. This should run in a spawned thread
-    /// since calls to `poll.poll` are blocking.
+    /// since calls to `self.manual_poll` are blocking.
     pub fn start_polling(&mut self) {
         self.start_polling_with_duration(Some(Duration::from_millis(1)))
     }
 
     /// Runs the polling loop with a specified sleep duration. This should run in a spawned thread
-    /// since calls to `poll.poll` are blocking.
+    /// since calls to `self.manual_poll` are blocking.
     pub fn start_polling_with_duration(&mut self, sleep_duration: Option<Duration>) {
         // nothing should break out of this loop!
         loop {
