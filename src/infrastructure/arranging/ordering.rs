@@ -71,9 +71,11 @@
 //! # Remarks
 //! - See [super-module](../index.html) description for more details.
 
-use super::{Arranging, ArrangingSystem};
-use crate::packet::SequenceNumber;
 use std::collections::HashMap;
+
+use crate::packet::SequenceNumber;
+
+use super::{Arranging, ArrangingSystem};
 
 /// An ordering system that can arrange items in order on different streams.
 ///

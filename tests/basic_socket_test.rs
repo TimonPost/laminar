@@ -1,8 +1,8 @@
+use std::{collections::HashSet, net::SocketAddr, time::Instant};
+
 #[cfg(feature = "tester")]
 use laminar::LinkConditioner;
 use laminar::{Config, Packet, Socket, SocketEvent};
-
-use std::{collections::HashSet, net::SocketAddr, time::Instant};
 
 #[test]
 fn binding_to_any() {

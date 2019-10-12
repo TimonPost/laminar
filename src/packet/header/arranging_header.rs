@@ -1,9 +1,12 @@
-use super::{HeaderReader, HeaderWriter};
+use std::io::Cursor;
+
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+
 use crate::error::Result;
 use crate::net::constants::ARRANGING_PACKET_HEADER;
 use crate::packet::SequenceNumber;
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use std::io::Cursor;
+
+use super::{HeaderReader, HeaderWriter};
 
 #[derive(Copy, Clone, Debug)]
 /// This header represents a fragmented packet header.
@@ -66,9 +69,10 @@ impl HeaderReader for ArrangingHeader {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+
     use crate::net::constants::ARRANGING_PACKET_HEADER;
     use crate::packet::header::{ArrangingHeader, HeaderReader, HeaderWriter};
-    use std::io::Cursor;
 
     #[test]
     fn serialize() {

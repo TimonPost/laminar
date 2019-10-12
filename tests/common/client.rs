@@ -1,9 +1,11 @@
-use laminar::{Packet, Socket};
-use log::info;
 use std::net::SocketAddr;
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 use std::time::Instant;
+
+use log::info;
+
+use laminar::{Packet, Socket};
 
 /// Represents a client to some endpoint.
 pub struct Client {

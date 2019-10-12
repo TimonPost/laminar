@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use criterion::{criterion_group, criterion_main, Criterion};
 
 use laminar::{Config, DeliveryMethod, ProtocolVersion, VirtualConnection};
-
-use criterion::{criterion_group, criterion_main, Criterion};
 
 const SERVER_ADDR: &str = "127.0.0.1:12345";
 const CLIENT_ADDR: &str = "127.0.0.1:12346";

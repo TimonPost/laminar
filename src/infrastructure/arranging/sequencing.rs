@@ -9,9 +9,11 @@
 //! # Remarks
 //! - See [super-module](../index.html) description for more details.
 
-use super::{Arranging, ArrangingSystem};
-use crate::packet::SequenceNumber;
 use std::{collections::HashMap, marker::PhantomData};
+
+use crate::packet::SequenceNumber;
+
+use super::{Arranging, ArrangingSystem};
 
 /// A sequencing system that can arrange items in sequence across different streams.
 ///

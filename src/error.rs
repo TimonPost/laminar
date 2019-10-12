@@ -1,12 +1,14 @@
 //! This module contains the laminar error handling logic.
 
-use crate::SocketEvent;
-use crossbeam_channel::SendError;
 use std::{
     error::Error,
     fmt::{self, Display, Formatter},
     io, result,
 };
+
+use crossbeam_channel::SendError;
+
+use crate::SocketEvent;
 
 /// Wrapped result type for Laminar errors.
 pub type Result<T> = result::Result<T, ErrorKind>;

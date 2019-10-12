@@ -1,8 +1,11 @@
-use super::{HeaderReader, HeaderWriter};
+use std::io::Cursor;
+
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+
 use crate::error::Result;
 use crate::net::constants::FRAGMENT_HEADER_SIZE;
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use std::io::Cursor;
+
+use super::{HeaderReader, HeaderWriter};
 
 #[derive(Copy, Clone, Debug)]
 /// This header represents a fragmented packet header.
@@ -75,9 +78,10 @@ impl HeaderReader for FragmentHeader {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+
     use crate::net::constants::FRAGMENT_HEADER_SIZE;
     use crate::packet::header::{FragmentHeader, HeaderReader, HeaderWriter};
-    use std::io::Cursor;
 
     #[test]
     fn serialize() {

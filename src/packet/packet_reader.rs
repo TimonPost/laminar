@@ -1,10 +1,10 @@
+use std::io::Cursor;
+
 use crate::net::constants::STANDARD_HEADER_SIZE;
 use crate::packet::header::{
     AckedPacketHeader, ArrangingHeader, FragmentHeader, HeaderReader, StandardHeader,
 };
 use crate::{ErrorKind, Result};
-
-use std::io::Cursor;
 
 /// Can be used to read the packet contents of laminar.
 ///

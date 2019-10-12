@@ -7,8 +7,9 @@ use std::{
 };
 
 use clap::{load_yaml, App, AppSettings};
-use laminar::{Packet, Result, Socket, SocketEvent, ThroughputMonitoring};
 use log::{debug, error, info};
+
+use laminar::{Packet, Result, Socket, SocketEvent, ThroughputMonitoring};
 
 fn main() {
     env_logger::init();
