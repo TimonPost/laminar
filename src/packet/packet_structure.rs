@@ -16,18 +16,18 @@ use crate::packet::{DeliveryGuarantee, OrderingGuarantee, PacketType};
 ///
 /// You are able to send packets with the above reliability types.
 pub struct Packet {
-    /// the endpoint from where it came
+    /// The endpoint from where it came.
     addr: SocketAddr,
-    /// the raw payload of the packet
+    /// The raw payload of the packet.
     payload: Box<[u8]>,
-    /// defines on how the packet will be delivered.
+    /// Defines on how the packet will be delivered.
     delivery: DeliveryGuarantee,
-    /// defines on how the packet will be ordered.
+    /// Defines on how the packet will be ordered.
     ordering: OrderingGuarantee,
 }
 
 impl Packet {
-    /// Create a new packet by passing the receiver, data, and guarantees on how this packet should be delivered.
+    /// Creates a new packet by passing the receiver, data, and guarantees on how this packet should be delivered.
     pub(crate) fn new(
         addr: SocketAddr,
         payload: Box<[u8]>,
@@ -42,7 +42,7 @@ impl Packet {
         }
     }
 
-    /// Create a new unreliable packet by passing the receiver, data.
+    /// Creates a new unreliable packet by passing the receiver, data.
     ///
     /// Unreliable: Packets can be dropped, duplicated or arrive without order.
     ///
@@ -62,7 +62,7 @@ impl Packet {
         }
     }
 
-    /// Create a new unreliable sequenced packet by passing the receiver, data.
+    /// Creates a new unreliable sequenced packet by passing the receiver, data.
     ///
     /// Unreliable Sequenced; Packets can be dropped, but could not be duplicated and arrive in sequence.
     ///
@@ -86,7 +86,7 @@ impl Packet {
         }
     }
 
-    /// Create a new packet by passing the receiver, data.
+    /// Creates a new packet by passing the receiver, data.
     /// Reliable; All packets will be sent and received, but without order.
     ///
     /// *Details*
@@ -105,7 +105,7 @@ impl Packet {
         }
     }
 
-    /// Create a new packet by passing the receiver, data and a optional stream on which the ordering will be done.
+    /// Creates a new packet by passing the receiver, data and a optional stream on which the ordering will be done.
     ///
     /// Reliable; All packets will be sent and received, with order.
     ///
@@ -128,7 +128,7 @@ impl Packet {
         }
     }
 
-    /// Create a new packet by passing the receiver, data and a optional stream on which the sequencing will be done.
+    /// Creates a new packet by passing the receiver, data and a optional stream on which the sequencing will be done.
     ///
     /// Reliable; All packets will be sent and received, but arranged in sequence.
     /// Which means that only the newest packets will be let through, older packets will be received but they won't get to the user.
@@ -180,13 +180,13 @@ impl Packet {
 /// This packet type has similar properties to `Packet` except that it doesn't own anything, and additionally has `PacketType`.
 #[derive(Debug)]
 pub struct PacketInfo<'a> {
-    /// defines a type of the packet
+    /// Defines a type of the packet.
     pub(crate) packet_type: PacketType,
-    /// the raw payload of the packet
+    /// The raw payload of the packet.
     pub(crate) payload: &'a [u8],
-    /// defines how the packet will be delivered.
+    /// Defines how the packet will be delivered.
     pub(crate) delivery: DeliveryGuarantee,
-    /// defines how the packet will be ordered.
+    /// Defines how the packet will be ordered.
     pub(crate) ordering: OrderingGuarantee,
 }
 

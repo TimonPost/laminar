@@ -6,9 +6,9 @@ use crate::sequence_buffer::CongestionData;
 /// Represents the quality of a network.
 #[allow(dead_code)]
 pub enum NetworkQuality {
-    /// Connection is generally good, minimal packet loss or latency
+    /// Connection is generally good, minimal packet loss or latency.
     Good,
-    /// Connection is generally bad, having an impact on game performance
+    /// Connection is generally bad, having an impact on game performance.
     Bad,
 }
 
@@ -20,7 +20,7 @@ pub struct RttMeasurer {
 }
 
 impl RttMeasurer {
-    /// Creates and returns a new RttMeasurer
+    /// Creates and returns a new RttMeasurer.
     pub fn new(config: &Config) -> RttMeasurer {
         RttMeasurer {
             config: config.clone(),
@@ -28,8 +28,8 @@ impl RttMeasurer {
         }
     }
 
-    /// This will calculate the round trip time (rtt) from the given acknowledgment.
-    /// Where after it updates the rtt from the given connection.
+    /// Calculates the round trip time (rtt) from the given acknowledgment.
+    /// Whereafter it updates the rtt from the given connection.
     pub fn calculate_rrt(&mut self, congestion_data: Option<&mut CongestionData>) {
         self.rtt = self.get_smoothed_rtt(congestion_data);
     }
@@ -62,7 +62,7 @@ impl RttMeasurer {
         (1000 * 1000 * 1000 * duration.as_secs() + nanos) / (1000 * 1000)
     }
 
-    /// Smooth out round trip time (rtt) value by the specified smoothing factor.
+    /// Smooths out round trip time (rtt) value by the specified smoothing factor.
     ///
     /// First we subtract the max allowed rtt.
     /// This way we can see by how many we are off from the max allowed rtt.

@@ -24,7 +24,7 @@ impl Client {
         }
     }
 
-    /// This will run a specific instance of the client running at the given socket address.
+    /// Runs a specific instance of the client running at the given socket address.
     /// This function takes in a closure who constructs a packet which will be sent out to the client.
     pub fn run_instance<F>(&self, create_packet: F, endpoint: SocketAddr) -> ClientHandle
     where
@@ -74,7 +74,7 @@ impl ClientHandle {
         }
     }
 
-    /// Wait until the client has sent all of its packets.
+    /// Waits until the client has sent all of its packets.
     pub fn wait_until_finished(self) {
         self.thread_handle.join().unwrap();
     }

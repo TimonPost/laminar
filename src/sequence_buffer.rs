@@ -17,7 +17,7 @@ pub struct SequenceBuffer<T: Clone + Default> {
 }
 
 impl<T: Clone + Default> SequenceBuffer<T> {
-    /// Create a SequenceBuffer with a desired capacity.
+    /// Creates a SequenceBuffer with a desired capacity.
     pub fn with_capacity(size: u16) -> Self {
         Self {
             sequence_num: 0,
@@ -40,10 +40,10 @@ impl<T: Clone + Default> SequenceBuffer<T> {
         None
     }
 
-    /// Insert the entry data into the sequence buffer. If the requested sequence number is "too
+    /// Inserts the entry data into the sequence buffer. If the requested sequence number is "too
     /// old", the entry will not be inserted and no reference will be returned.
     pub fn insert(&mut self, sequence_num: SequenceNumber, entry: T) -> Option<&mut T> {
-        // Sequence number is too old to insert into the buffer
+        // sequence number is too old to insert into the buffer
         if sequence_less_than(
             sequence_num,
             self.sequence_num
@@ -136,11 +136,11 @@ mod tests {
         assert!(sequence_greater_than(1, 0));
         assert!(sequence_less_than(0, 1));
 
-        // Right around the halfway point is where we cut over.
+        // right around the halfway point is where we cut over.
         assert!(sequence_greater_than(32768, 0));
         assert!(sequence_less_than(32769, 0));
 
-        // In this case, 0 is greater than u16 max because we're likely at the wrapping case
+        // in this case, 0 is greater than u16 max because we're likely at the wrapping case
         assert!(sequence_greater_than(0, u16::max_value()));
     }
 
@@ -184,16 +184,16 @@ mod tests {
     fn insert_into_buffer_old_entry_test() {
         let mut buffer = SequenceBuffer::with_capacity(8);
         buffer.insert(8, DataStub);
-        // This entry would overlap with sequence 8 based on the buffer size so we must ensure that
+        // this entry would overlap with sequence 8 based on the buffer size so we must ensure that
         // it does not.
         buffer.insert(0, DataStub);
         assert!(!buffer.exists(0));
 
-        // However, this one is more recent so it should definitely exist.
+        // however, this one is more recent so it should definitely exist.
         buffer.insert(16, DataStub);
         assert!(buffer.exists(16));
 
-        // Since we are pretty far ahead at this point, there should only be 1 valid entry in here.
+        // since we are pretty far ahead at this point, there should only be 1 valid entry in here.
         assert_eq!(count_entries(&buffer), 1);
     }
 
@@ -217,11 +217,11 @@ mod tests {
 
         assert_eq!(buffer.sequence_num(), 11);
 
-        // Inserting "older" should fail to insert
+        // inserting 'older' should fail to insert
         buffer.insert(2, DataStub);
         assert!(!buffer.exists(2));
 
-        // Insert respects boundary wrap. Both of these would be earlier than 11
+        // insert respects boundary wrap. Both of these would be earlier than 11
         buffer.insert(u16::max_value(), DataStub);
         buffer.insert(0, DataStub);
         assert!(!buffer.exists(u16::max_value()));

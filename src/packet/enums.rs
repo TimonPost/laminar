@@ -17,7 +17,7 @@ pub enum DeliveryGuarantee {
 impl EnumConverter for DeliveryGuarantee {
     type Enum = DeliveryGuarantee;
 
-    /// Get integer value from `DeliveryGuarantee` enum.
+    /// Returns an integer value from `DeliveryGuarantee` enum.
     fn to_u8(&self) -> u8 {
         *self as u8
     }
@@ -25,7 +25,7 @@ impl EnumConverter for DeliveryGuarantee {
 
 impl TryFrom<u8> for DeliveryGuarantee {
     type Error = ErrorKind;
-    /// Get `DeliveryGuarantee` enum instance from integer value.
+    /// Gets the `DeliveryGuarantee` enum instance from integer value.
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             0 => Ok(DeliveryGuarantee::Unreliable),
@@ -57,7 +57,7 @@ impl Default for OrderingGuarantee {
 impl EnumConverter for OrderingGuarantee {
     type Enum = OrderingGuarantee;
 
-    /// Get integer value from `OrderingGuarantee` enum.
+    /// Returns the integer value from `OrderingGuarantee` enum.
     fn to_u8(&self) -> u8 {
         match self {
             OrderingGuarantee::None => 0,
@@ -69,7 +69,7 @@ impl EnumConverter for OrderingGuarantee {
 
 impl TryFrom<u8> for OrderingGuarantee {
     type Error = ErrorKind;
-    /// Get `OrderingGuarantee` enum instance from integer value.
+    /// Returns the `OrderingGuarantee` enum instance from integer value.
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             0 => Ok(OrderingGuarantee::None),

@@ -8,13 +8,13 @@ use crate::net::constants::ACKED_PACKET_HEADER;
 use super::{HeaderReader, HeaderWriter};
 
 #[derive(Copy, Clone, Debug)]
-/// This header providing reliability information.
+/// This header provides reliability information.
 pub struct AckedPacketHeader {
-    /// this is the sequence number so that we can know where in the sequence of packages this packet belongs.
+    /// This is the sequence number so that we can know where in the sequence of packages this packet belongs.
     pub seq: u16,
-    // this is the last acknowledged sequence number.
+    // This is the last acknowledged sequence number.
     ack_seq: u16,
-    // this is an bitfield of all last 32 acknowledged packages
+    // This is an bitfield of all last 32 acknowledged packages
     ack_field: u32,
 }
 
@@ -30,18 +30,18 @@ impl AckedPacketHeader {
         }
     }
 
-    /// Get the sequence number from this packet.
+    /// Returns the sequence number from this packet.
     #[allow(dead_code)]
     pub fn sequence(&self) -> u16 {
         self.seq
     }
 
-    /// Get bit field of all last 32 acknowledged packages
+    /// Returns bit field of all last 32 acknowledged packages.
     pub fn ack_field(&self) -> u32 {
         self.ack_field
     }
 
-    /// Get last acknowledged sequence number.
+    /// Returns last acknowledged sequence number.
     pub fn ack_seq(&self) -> u16 {
         self.ack_seq
     }

@@ -8,7 +8,7 @@ use crate::{
     sequence_buffer::{ReassemblyData, SequenceBuffer},
 };
 
-/// Type that will manage fragmentation of packets.
+/// Manages fragmentation of packets.
 pub struct Fragmentation {
     fragments: SequenceBuffer<ReassemblyData>,
     config: Config,
@@ -23,7 +23,7 @@ impl Fragmentation {
         }
     }
 
-    /// This functions checks how many times a number fits into another number and will round up.
+    /// Checks how many times a number fits into another number and will round up.
     ///
     /// For example we have two numbers:
     /// - number 1 = 4000;
@@ -61,7 +61,7 @@ impl Fragmentation {
         ((payload_length / fragment_size) + remainder)
     }
 
-    /// Split the given payload into fragments and write those fragments to the passed packet data.
+    /// Splits the given payload into fragments and write those fragments to the passed packet data.
     pub fn spit_into_fragments<'a>(payload: &'a [u8], config: &Config) -> Result<Vec<&'a [u8]>> {
         let mut fragments = Vec::new();
 
@@ -93,7 +93,7 @@ impl Fragmentation {
         Ok(fragments)
     }
 
-    /// This will read fragment data and return the complete packet when all fragments are received.
+    /// Reads fragment data and return the complete packet when all fragments are received.
     pub fn handle_fragment(
         &mut self,
         fragment_header: FragmentHeader,
@@ -116,7 +116,7 @@ impl Fragmentation {
                 None => return Err(FragmentErrorKind::CouldNotFindFragmentById.into()),
             };
 
-            // Got the data
+            // got the data
             if reassembly_data.num_fragments_total != fragment_header.fragment_count() {
                 return Err(FragmentErrorKind::FragmentWithUnevenNumberOfFragments.into());
             }
@@ -129,7 +129,7 @@ impl Fragmentation {
                 return Err(FragmentErrorKind::AlreadyProcessedFragment.into());
             }
 
-            // increase number of received fragments and set the specific fragment to received.
+            // increase number of received fragments and set the specific fragment to received
             reassembly_data.num_fragments_received += 1;
             reassembly_data.fragments_received[usize::from(fragment_header.id())] = true;
 

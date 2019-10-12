@@ -7,14 +7,14 @@ use crate::net::constants::{DEFAULT_MTU, FRAGMENT_SIZE_DEFAULT, MAX_FRAGMENTS_DE
 pub struct Config {
     /// Make the underlying UDP socket block when true, otherwise non-blocking.
     pub blocking_mode: bool,
-    /// Value which can specify the amount of time that can pass without hearing from a client before considering them disconnected
+    /// Value which can specify the amount of time that can pass without hearing from a client before considering them disconnected.
     pub idle_connection_timeout: Duration,
     /// Value which specifies at which interval (if at all) a heartbeat should be sent, if no other packet was sent in the meantime.
     /// If None, no heartbeats will be sent (the default).
     pub heartbeat_interval: Option<Duration>,
     /// Value which can specify the maximum size a packet can be in bytes. This value is inclusive of fragmenting; if a packet is fragmented, the total size of the fragments cannot exceed this value.
     ///
-    /// Recommended value: 16384
+    /// Recommended value: 16384.
     pub max_packet_size: usize,
     /// Value which can specify the maximal allowed fragments.
     ///
@@ -28,7 +28,7 @@ pub struct Config {
     ///
     /// This is the maximum size of each fragment. It defaults to `1450` bytes, due to the default MTU on most network devices being `1500`.
     pub fragment_size: u16,
-    /// Value which can specify the size of the buffer that queues up fragments ready to be reassembled once all fragments have arrived.```
+    /// Value which can specify the size of the buffer that queues up fragments ready to be reassembled once all fragments have arrived.
     pub fragment_reassembly_buffer_size: u16,
     /// Value that specifies the size of the buffer the UDP data will be read into. Defaults to `1450` bytes.
     pub receive_buffer_max_size: usize,
@@ -53,7 +53,7 @@ pub struct Config {
     /// connection.
     ///
     /// When we send a reliable packet, it is stored locally until an acknowledgement comes back to
-    /// us, if that store grows to a size
+    /// us, if that store grows to a size.
     pub max_packets_in_flight: u16,
 }
 

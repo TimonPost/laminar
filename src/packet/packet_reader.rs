@@ -25,7 +25,7 @@ impl<'s> PacketReader<'s> {
         }
     }
 
-    /// Read the `StandardHeader` from the underlying buffer.
+    /// Reads the `StandardHeader` from the underlying buffer.
     ///
     /// # Remark
     /// - Will change the position to the location of `StandardHeader`
@@ -39,7 +39,7 @@ impl<'s> PacketReader<'s> {
         }
     }
 
-    /// Read the `StandardHeader` from the underlying buffer.
+    /// Reads the `StandardHeader` from the underlying buffer.
     ///
     /// # Remark
     /// - Will change the position to the location of `StandardHeader`
@@ -53,7 +53,7 @@ impl<'s> PacketReader<'s> {
         }
     }
 
-    /// Read the `AckedPacketHeader` from the underlying buffer.
+    /// Reads the `AckedPacketHeader` from the underlying buffer.
     ///
     /// # Remark
     /// - Will change the position to the location of `AckedPacketHeader`
@@ -70,7 +70,7 @@ impl<'s> PacketReader<'s> {
         }
     }
 
-    /// Read the `FragmentHeader` and optionally the `AckedPacketHeader` from the underlying buffer.
+    /// Reads the `FragmentHeader` and optionally the `AckedPacketHeader` from the underlying buffer.
     ///
     /// # Remark
     /// - Notice that this will continue on the position of last read header;
@@ -93,7 +93,7 @@ impl<'s> PacketReader<'s> {
         }
     }
 
-    /// Read the payload` from the underlying buffer.
+    /// Reads the payload` from the underlying buffer.
     ///
     /// # Remark
     /// - Notice that this will continue on the position of last read header;
@@ -105,7 +105,7 @@ impl<'s> PacketReader<'s> {
             .into_boxed_slice()
     }
 
-    // checks if a given length of bytes could be read with the buffer.
+    // Checks if a given length of bytes could be read with the buffer.
     fn can_read(&self, length: u8) -> bool {
         (self.buffer.len() - self.cursor.position() as usize) >= length as usize
     }
