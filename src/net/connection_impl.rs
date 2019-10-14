@@ -1,87 +1,72 @@
+use crate::{
+    error::{ErrorKind, Result},
+    net::{Connection, ConnectionMessenger, VirtualConnection},
+    packet::{DeliveryGuarantee, OutgoingPackets, Packet, PacketInfo},
+};
+
+use super::events::SocketEvent;
+
 use std::net::SocketAddr;
 use std::time::Instant;
 
 use log::error;
 
-use crate::error::{ErrorKind, Result};
-use crate::packet::{DeliveryGuarantee, OutgoingPackets, Packet, PacketInfo};
+pub struct ConnectionImpl {
+    pub non_accepted_timeout: Option<Instant>,
+    pub conn: VirtualConnection,
+}
 
-use super::{
-    events::SocketEvent, Connection, ConnectionEventAddress, ConnectionMessenger, VirtualConnection,
-};
-
-/// Required by `ConnectionManager` to properly handle connection event.
-impl ConnectionEventAddress for SocketEvent {
-    /// Returns event address.
-    fn address(&self) -> SocketAddr {
-        match self {
-            SocketEvent::Packet(packet) => packet.addr(),
-            SocketEvent::Connect(addr) => *addr,
-            SocketEvent::Timeout(addr) => *addr,
-        }
+impl std::fmt::Debug for ConnectionImpl {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{}:{}",
+            self.conn.remote_address.ip(),
+            self.conn.remote_address.port()
+        )
     }
 }
 
-/// Required by `ConnectionManager` to properly handle user event.
-impl ConnectionEventAddress for Packet {
-    /// Returns event address.
-    fn address(&self) -> SocketAddr {
-        self.addr()
-    }
-}
-
-impl Connection for VirtualConnection {
+impl Connection for ConnectionImpl {
     /// Defines a user event type.
-    type SendEvent = Packet;
+    type UserEvent = Packet;
     /// Defines a connection event type.
-    type ReceiveEvent = SocketEvent;
+    type ConnectionEvent = SocketEvent;
 
-    /// Creates new connection and initialize it by sending an connection event to the user.
-    /// * address - defines a address that connection is associated with.
-    /// * time - creation time, used by connection, so that it doesn't get dropped immediately or send heartbeat packet.
-    /// * initial_data - if initiated by remote host, this will hold that a packet data.
-    fn create_connection(
-        messenger: &mut impl ConnectionMessenger<Self::ReceiveEvent>,
-        address: SocketAddr,
-        time: Instant,
-        initial_data: Option<&[u8]>,
-    ) -> VirtualConnection {
-        // emit connect event if this is initiated by the remote host.
-        if initial_data.is_some() {
-            messenger.send_event(&address, SocketEvent::Connect(address));
-        }
-        VirtualConnection::new(address, messenger.config(), time)
-    }
-
-    /// Determines if the given `Connection` should be dropped due to its state.
-    fn should_drop(
+    /// Initial call with a payload, when connection is created by accepting remote packet.
+    fn after_remote_accepted(
         &mut self,
-        messenger: &mut impl ConnectionMessenger<Self::ReceiveEvent>,
         time: Instant,
-    ) -> bool {
-        let should_drop = self.packets_in_flight() > messenger.config().max_packets_in_flight
-            || self.last_heard(time) >= messenger.config().idle_connection_timeout;
-        if should_drop {
-            messenger.send_event(
-                &self.remote_address,
-                SocketEvent::Timeout(self.remote_address),
-            );
-        }
-        should_drop
+        messenger: &mut impl ConnectionMessenger<Self::ConnectionEvent>,
+        payload: &[u8],
+    ) {
+        // emit connect event, for remote connection
+        messenger.send_event(SocketEvent::Connect(self.conn.remote_address));
+        self.process_packet(time, messenger, payload);
     }
 
-    /// Processes a received packet: parse it and emit an event.
+    /// Initial call with a event, when connection is created by accepting user event.
+    fn after_local_accepted(
+        &mut self,
+        time: Instant,
+        messenger: &mut impl ConnectionMessenger<Self::ConnectionEvent>,
+        event: Self::UserEvent,
+    ) {
+        self.process_event(time, messenger, event);
+    }
+
+    /// Processes a received packet: parse it and emit an connection event.
     fn process_packet(
         &mut self,
-        messenger: &mut impl ConnectionMessenger<Self::ReceiveEvent>,
-        payload: &[u8],
         time: Instant,
+        messenger: &mut impl ConnectionMessenger<Self::ConnectionEvent>,
+        payload: &[u8],
     ) {
         if !payload.is_empty() {
-            match self.process_incoming(payload, time) {
+            match self.conn.process_incoming(payload, time) {
                 Ok(packets) => {
                     for incoming in packets {
-                        messenger.send_event(&self.remote_address, SocketEvent::Packet(incoming.0));
+                        messenger.send_event(SocketEvent::Packet(incoming.0));
                     }
                 }
                 Err(err) => error!("Error occured processing incomming packet: {:?}", err),
@@ -94,18 +79,19 @@ impl Connection for VirtualConnection {
         }
     }
 
-    /// Processes a received event and send a packet.
+    /// Processes an user event and send a packet.
     fn process_event(
         &mut self,
-        messenger: &mut impl ConnectionMessenger<Self::ReceiveEvent>,
-        event: Self::SendEvent,
         time: Instant,
+        messenger: &mut impl ConnectionMessenger<Self::ConnectionEvent>,
+        event: Self::UserEvent,
     ) {
-        let addr = self.remote_address;
+        self.non_accepted_timeout = None;
+        let addr = self.conn.remote_address;
         send_packets(
             messenger,
             &addr,
-            self.process_outgoing(
+            self.conn.process_outgoing(
                 PacketInfo::user_packet(
                     event.payload(),
                     event.delivery_guarantee(),
@@ -119,15 +105,15 @@ impl Connection for VirtualConnection {
     }
 
     /// Processes various connection-related tasks: resend dropped packets, send heartbeat packet, etc...
-    /// This function gets called very frequently.
+    /// This function gets called frequently.
     fn update(
         &mut self,
-        messenger: &mut impl ConnectionMessenger<Self::ReceiveEvent>,
         time: Instant,
+        messenger: &mut impl ConnectionMessenger<Self::ConnectionEvent>,
     ) {
         // resend dropped packets
-        for dropped in self.gather_dropped_packets() {
-            let packets = self.process_outgoing(
+        for dropped in self.conn.gather_dropped_packets() {
+            let packets = self.conn.process_outgoing(
                 PacketInfo {
                     packet_type: dropped.packet_type,
                     payload: &dropped.payload,
@@ -139,21 +125,36 @@ impl Connection for VirtualConnection {
                 dropped.item_identifier,
                 time,
             );
-            send_packets(messenger, &self.remote_address, packets, "dropped packets");
+            send_packets(
+                messenger,
+                &self.conn.remote_address,
+                packets,
+                "dropped packets",
+            );
         }
 
         // send heartbeat packets if required
         if let Some(heartbeat_interval) = messenger.config().heartbeat_interval {
-            let addr = self.remote_address;
-            if self.last_sent(time) >= heartbeat_interval {
+            let addr = self.conn.remote_address;
+            if self.conn.last_sent(time) >= heartbeat_interval {
                 send_packets(
                     messenger,
                     &addr,
-                    self.process_outgoing(PacketInfo::heartbeat_packet(&[]), None, time),
+                    self.conn
+                        .process_outgoing(PacketInfo::heartbeat_packet(&[]), None, time),
                     "heatbeat packet",
                 );
             }
         }
+    }
+
+    /// Last call before connection is destroyed.
+    fn before_discarded(
+        &mut self,
+        _time: Instant,
+        messenger: &mut impl ConnectionMessenger<Self::ConnectionEvent>,
+    ) {
+        messenger.send_event(SocketEvent::Timeout(self.conn.remote_address));
     }
 }
 

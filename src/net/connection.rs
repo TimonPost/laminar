@@ -1,73 +1,113 @@
-use std::{self, fmt::Debug, net::SocketAddr, time::Instant};
-
 use crate::config::Config;
 
+use std::{self, collections::HashMap, fmt::Debug, net::SocketAddr, time::Instant};
+
 /// Allows connection to send packet, send event and get global configuration.
-pub trait ConnectionMessenger<ReceiveEvent: Debug> {
+pub trait ConnectionMessenger<ConnectionEvent: Debug> {
     /// Returns global configuration.
     fn config(&self) -> &Config;
-
     /// Sends a connection event.
-    fn send_event(&mut self, address: &SocketAddr, event: ReceiveEvent);
+    fn send_event(&mut self, event: ConnectionEvent);
     /// Sends a packet.
     fn send_packet(&mut self, address: &SocketAddr, payload: &[u8]);
 }
 
-/// Returns an address of an event.
-/// This is used by a `ConnectionManager`, because it doesn't know anything about connection events.
-pub trait ConnectionEventAddress {
-    /// Returns event address
-    fn address(&self) -> SocketAddr;
-}
-
 /// Allows to implement actual connection.
-/// Defines a type of `Send` and `Receive` events, that will be used by a connection.
+/// Defines types of user and connection events that will be used by a connection.
 pub trait Connection: Debug {
     /// Defines a user event type.
-    type SendEvent: Debug + ConnectionEventAddress;
+    type UserEvent: Debug;
     /// Defines a connection event type.
-    type ReceiveEvent: Debug + ConnectionEventAddress;
+    type ConnectionEvent: Debug;
 
-    /// Creates new connection and initialize it by sending an connection event to the user.
-    /// * messenger - allows to send packets and events, also provides a config.
-    /// * address - defines a address that connection is associated with.
-    /// * time - creation time, used by connection, so that it doesn't get dropped immediately or send heartbeat packet.
-    /// * initial_data - if initiated by remote host, this will hold that a packet data.
-    fn create_connection(
-        messenger: &mut impl ConnectionMessenger<Self::ReceiveEvent>,
-        address: SocketAddr,
-        time: Instant,
-        initial_data: Option<&[u8]>,
-    ) -> Self;
-
-    /// Determines if the connection should be dropped due to its state.
-    fn should_drop(
+    /// Initial call with a payload, when connection is created by accepting remote packet.
+    fn after_remote_accepted(
         &mut self,
-        messenger: &mut impl ConnectionMessenger<Self::ReceiveEvent>,
         time: Instant,
-    ) -> bool;
+        messenger: &mut impl ConnectionMessenger<Self::ConnectionEvent>,
+        payload: &[u8],
+    );
+
+    /// Initial call with a event, when connection is created by accepting user event.
+    fn after_local_accepted(
+        &mut self,
+        time: Instant,
+        messenger: &mut impl ConnectionMessenger<Self::ConnectionEvent>,
+        event: Self::UserEvent,
+    );
 
     /// Processes a received packet: parse it and emit an event.
     fn process_packet(
         &mut self,
-        messenger: &mut impl ConnectionMessenger<Self::ReceiveEvent>,
-        payload: &[u8],
         time: Instant,
+        messenger: &mut impl ConnectionMessenger<Self::ConnectionEvent>,
+        payload: &[u8],
     );
 
     /// Processes a received event and send a packet.
     fn process_event(
         &mut self,
-        messenger: &mut impl ConnectionMessenger<Self::ReceiveEvent>,
-        event: Self::SendEvent,
         time: Instant,
+        messenger: &mut impl ConnectionMessenger<Self::ConnectionEvent>,
+        event: Self::UserEvent,
     );
 
     /// Processes various connection-related tasks: resend dropped packets, send heartbeat packet, etc...
     /// This function gets called frequently.
     fn update(
         &mut self,
-        messenger: &mut impl ConnectionMessenger<Self::ReceiveEvent>,
         time: Instant,
+        messenger: &mut impl ConnectionMessenger<Self::ConnectionEvent>,
     );
+
+    /// Last call before connection is destroyed.
+    fn before_discarded(
+        &mut self,
+        time: Instant,
+        messenger: &mut impl ConnectionMessenger<Self::ConnectionEvent>,
+    );
+}
+
+/// Decides when to create and destroy connections, and provides a way for `ConnectionManager` to get connection from an user event.
+pub trait ConnectionFactory: Debug {
+    /// An actual connection type that is created by a factory.
+    type Connection: Connection;
+
+    /// Provides a mapping from user event to an actual physical address.
+    /// If `None` is returned, event is ignored. If address doesn't exists in the active connections list, then `should_accept_local` will be invoked.
+    /// Being factory method, it supports connections that are not necessary identified by `SocketAddr`.
+    /// E.g. QUIC use ConnectionId to identify the connection.
+    fn address_from_user_event<'s, 'a>(
+        &'s self,
+        event: &'a <Self::Connection as Connection>::UserEvent,
+    ) -> Option<&'a SocketAddr>
+    where
+        's: 'a;
+
+    /// Determines if remote connection can be accepted.
+    /// If connection is accepted, then `after_remote_accepted` will be invoked on it.
+    fn should_accept_remote(
+        &mut self,
+        time: Instant,
+        address: SocketAddr,
+        data: &[u8],
+    ) -> Option<Self::Connection>;
+
+    /// Determines if local connection can be accepted.
+    /// If connection is accepted, then `after_remote_accepted` will be invoked on it.
+    fn should_accept_local(
+        &mut self,
+        time: Instant,
+        address: SocketAddr,
+        event: &<Self::Connection as Connection>::UserEvent,
+    ) -> Option<Self::Connection>;
+
+    /// This allows to implement all sorts of things, a few examples include:
+    /// * Banning a connection.
+    /// * Disconnect a connection, if there are too many connections in "connecting" state.
+    fn update(&mut self, time: Instant, connections: &mut HashMap<SocketAddr, Self::Connection>);
+
+    /// Determines if connection should be discarded.
+    /// If connection is discarded, then `before_discarded` will be invoked on it.
+    fn should_discard(&mut self, time: Instant, connection: &Self::Connection) -> bool;
 }

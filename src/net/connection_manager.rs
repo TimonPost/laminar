@@ -1,15 +1,10 @@
-use std::{self, collections::HashMap, fmt::Debug, io::Result, net::SocketAddr, time::Instant};
-
+use crate::{
+    config::Config,
+    net::{Connection, ConnectionFactory, ConnectionMessenger},
+};
 use crossbeam_channel::{self, unbounded, Receiver, Sender};
 use log::error;
-
-use crate::{
-    config::Config, net::Connection, net::ConnectionEventAddress, net::ConnectionMessenger,
-};
-
-// TODO: maybe we can make a breaking change and use this instead of `ConnectionEventAddress` trait?
-// #[derive(Debug)]
-// pub struct ConnectionEvent<Event: Debug>(pub SocketAddr, pub Event);
+use std::{self, collections::HashMap, fmt::Debug, io::Result, net::SocketAddr, time::Instant};
 
 /// A datagram socket is a type of network socket which provides a connectionless point for sending or receiving data packets.
 pub trait DatagramSocket: Debug {
@@ -28,16 +23,16 @@ pub trait DatagramSocket: Debug {
 
 // This will be used by a `Connection`.
 #[derive(Debug)]
-struct SocketEventSenderAndConfig<TSocket: DatagramSocket, ReceiveEvent: Debug> {
+struct SocketEventSenderAndConfig<TSocket: DatagramSocket, ConnectionEvent: Debug> {
     config: Config,
     socket: TSocket,
-    event_sender: Sender<ReceiveEvent>,
+    event_sender: Sender<ConnectionEvent>,
 }
 
-impl<TSocket: DatagramSocket, ReceiveEvent: Debug>
-    SocketEventSenderAndConfig<TSocket, ReceiveEvent>
+impl<TSocket: DatagramSocket, ConnectionEvent: Debug>
+    SocketEventSenderAndConfig<TSocket, ConnectionEvent>
 {
-    fn new(config: Config, socket: TSocket, event_sender: Sender<ReceiveEvent>) -> Self {
+    fn new(config: Config, socket: TSocket, event_sender: Sender<ConnectionEvent>) -> Self {
         Self {
             config,
             socket,
@@ -46,14 +41,14 @@ impl<TSocket: DatagramSocket, ReceiveEvent: Debug>
     }
 }
 
-impl<TSocket: DatagramSocket, ReceiveEvent: Debug> ConnectionMessenger<ReceiveEvent>
-    for SocketEventSenderAndConfig<TSocket, ReceiveEvent>
+impl<TSocket: DatagramSocket, ConnectionEvent: Debug> ConnectionMessenger<ConnectionEvent>
+    for SocketEventSenderAndConfig<TSocket, ConnectionEvent>
 {
     fn config(&self) -> &Config {
         &self.config
     }
 
-    fn send_event(&mut self, _address: &SocketAddr, event: ReceiveEvent) {
+    fn send_event(&mut self, event: ConnectionEvent) {
         self.event_sender.send(event).expect("Receiver must exists");
     }
 
@@ -68,27 +63,35 @@ impl<TSocket: DatagramSocket, ReceiveEvent: Debug> ConnectionMessenger<ReceiveEv
 /// Connection capabilities depends on what is an actual `Connection` type.
 /// Connection type also defines a type of sending and receiving events.
 #[derive(Debug)]
-pub struct ConnectionManager<TSocket: DatagramSocket, TConnection: Connection> {
-    connections: HashMap<SocketAddr, TConnection>,
+pub struct ConnectionManager<TSocket: DatagramSocket, TConnectionFactory: ConnectionFactory> {
+    factory: TConnectionFactory,
+    connections: HashMap<SocketAddr, TConnectionFactory::Connection>,
     receive_buffer: Vec<u8>,
-    user_event_receiver: Receiver<TConnection::SendEvent>,
-    messenger: SocketEventSenderAndConfig<TSocket, TConnection::ReceiveEvent>,
-    event_receiver: Receiver<TConnection::ReceiveEvent>,
-    user_event_sender: Sender<TConnection::SendEvent>,
+    user_event_receiver: Receiver<<TConnectionFactory::Connection as Connection>::UserEvent>,
+    messenger: SocketEventSenderAndConfig<
+        TSocket,
+        <TConnectionFactory::Connection as Connection>::ConnectionEvent,
+    >,
+    connection_event_receiver:
+        Receiver<<TConnectionFactory::Connection as Connection>::ConnectionEvent>,
+    user_event_sender: Sender<<TConnectionFactory::Connection as Connection>::UserEvent>,
 }
 
-impl<TSocket: DatagramSocket, TConnection: Connection> ConnectionManager<TSocket, TConnection> {
+impl<TSocket: DatagramSocket, TConnectionFactory: ConnectionFactory>
+    ConnectionManager<TSocket, TConnectionFactory>
+{
     /// Creates an instance of `ConnectionManager` by passing a socket and config.
-    pub fn new(socket: TSocket, config: Config) -> Self {
-        let (event_sender, event_receiver) = unbounded();
+    pub fn new(socket: TSocket, factory: TConnectionFactory, config: Config) -> Self {
+        let (connection_event_sender, connection_event_receiver) = unbounded();
         let (user_event_sender, user_event_receiver) = unbounded();
         ConnectionManager {
+            factory,
             receive_buffer: vec![0; config.receive_buffer_max_size],
             connections: Default::default(),
             user_event_receiver,
-            messenger: SocketEventSenderAndConfig::new(config, socket, event_sender),
+            messenger: SocketEventSenderAndConfig::new(config, socket, connection_event_sender),
             user_event_sender,
-            event_receiver,
+            connection_event_receiver,
         }
     }
 
@@ -97,6 +100,7 @@ impl<TSocket: DatagramSocket, TConnection: Connection> ConnectionManager<TSocket
     /// Removes dropped connections from active connections list.
     pub fn manual_poll(&mut self, time: Instant) {
         let messenger = &mut self.messenger;
+        let factory = &mut self.factory;
         // first we pull all newly arrived packets and handle them
         loop {
             match messenger
@@ -105,12 +109,12 @@ impl<TSocket: DatagramSocket, TConnection: Connection> ConnectionManager<TSocket
             {
                 Ok((payload, address)) => {
                     if let Some(conn) = self.connections.get_mut(&address) {
-                        conn.process_packet(messenger, payload, time);
-                    } else {
-                        // create connection, but do not add to active connections list
-                        let mut conn =
-                            TConnection::create_connection(messenger, address, time, Some(payload));
-                        conn.process_packet(messenger, payload, time);
+                        conn.process_packet(time, messenger, payload);
+                    } else if let Some(mut conn) =
+                        factory.should_accept_remote(time, address, payload)
+                    {
+                        conn.after_remote_accepted(time, messenger, payload);
+                        self.connections.insert(address, conn);
                     }
                 }
                 Err(e) => {
@@ -129,45 +133,76 @@ impl<TSocket: DatagramSocket, TConnection: Connection> ConnectionManager<TSocket
         // now grab all the waiting packets and send them
         while let Ok(event) = self.user_event_receiver.try_recv() {
             // get or create connection
-            let conn = self.connections.entry(event.address()).or_insert_with(|| {
-                TConnection::create_connection(messenger, event.address(), time, None)
-            });
-            conn.process_event(messenger, event, time);
+            if let Some(address) = factory.address_from_user_event(&event) {
+                if let Some(conn) = self.connections.get_mut(address) {
+                    conn.process_event(time, messenger, event);
+                } else {
+                    let address = *address;
+                    if let Some(mut conn) = factory.should_accept_local(time, address, &event) {
+                        conn.after_local_accepted(time, messenger, event);
+                        self.connections.insert(address, conn);
+                    }
+                }
+            }
         }
 
         // update all connections
         for conn in self.connections.values_mut() {
-            conn.update(messenger, time);
+            conn.update(time, messenger);
         }
 
-        // iterate through all connections and remove those that should be dropped
-        self.connections
-            .retain(|_, conn| !conn.should_drop(messenger, time));
+        // update a factory
+        factory.update(time, &mut self.connections);
+
+        // iterate through all connections and remove those that should be discarded
+        self.connections.retain(|_, conn| {
+            let discard = factory.should_discard(time, conn);
+            if discard {
+                conn.before_discarded(time, messenger);
+            }
+            !discard
+        });
     }
 
     /// Returns a handle to the event sender which provides a thread-safe way to enqueue user events
     /// to be processed. This should be used when the socket is busy running its polling loop in a
     /// separate thread.
-    pub fn event_sender(&self) -> &Sender<TConnection::SendEvent> {
+    pub fn event_sender(
+        &self,
+    ) -> &Sender<<TConnectionFactory::Connection as Connection>::UserEvent> {
         &self.user_event_sender
     }
 
     /// Returns a handle to the event receiver which provides a thread-safe way to retrieve events
     /// from the connections. This should be used when the socket is busy running its polling loop in
     /// a separate thread.
-    pub fn event_receiver(&self) -> &Receiver<TConnection::ReceiveEvent> {
-        &self.event_receiver
+    pub fn event_receiver(
+        &self,
+    ) -> &Receiver<<TConnectionFactory::Connection as Connection>::ConnectionEvent> {
+        &self.connection_event_receiver
     }
 
-    /// Returns socket reference.
+    /// Returns a socket reference.
     pub fn socket(&self) -> &TSocket {
         &self.messenger.socket
     }
 
-    /// Returns socket mutable reference.
+    /// Returns a mutable socket reference.
     #[allow(dead_code)]
     pub fn socket_mut(&mut self) -> &mut TSocket {
         &mut self.messenger.socket
+    }
+
+    /// Returns a connection factory reference.
+    #[allow(dead_code)]
+    pub fn factory(&self) -> &TConnectionFactory {
+        &self.factory
+    }
+
+    /// Returns a mutable connection factory reference.
+    #[allow(dead_code)]
+    pub fn factory_mut(&mut self) -> &mut TConnectionFactory {
+        &mut self.factory
     }
 
     /// Returns a number of active connections.
@@ -281,43 +316,6 @@ mod tests {
         }
 
         panic!["Did not receive the ignored packet"];
-    }
-
-    #[test]
-    fn receiving_does_not_allow_denial_of_service() {
-        let (mut server, mut client, _) = create_server_client_network();
-        // send a bunch of packets to a server
-        for _ in 0..3 {
-            client
-                .send(Packet::unreliable(
-                    server_address(),
-                    vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
-                ))
-                .unwrap();
-        }
-
-        let time = Instant::now();
-
-        client.manual_poll(time);
-        server.manual_poll(time);
-
-        for _ in 0..6 {
-            assert![server.recv().is_some()];
-        }
-        assert![server.recv().is_none()];
-
-        // the server shall not have any connection in its connection table even though it received
-        // packets
-        assert_eq![0, server.connection_count()];
-
-        server
-            .send(Packet::unreliable(client_address(), vec![1]))
-            .unwrap();
-
-        server.manual_poll(time);
-
-        // the server only adds to its table after having sent explicitly
-        assert_eq![1, server.connection_count()];
     }
 
     #[test]
@@ -704,8 +702,8 @@ mod tests {
         }
 
         // ensure that we get the correct number of events to the server.
-        // 35 connect events plus the 35 messages
-        assert_eq!(events.len(), 70);
+        // 35 connect events plus the 1 connect message
+        assert_eq!(events.len(), 36);
 
         // finally the server decides to send us a message back. This necessarily will include
         // the ack information for 33 of the sent 35 packets.

@@ -404,6 +404,12 @@ impl VirtualConnection {
     pub fn gather_dropped_packets(&mut self) -> Vec<SentPacket> {
         self.acknowledge_handler.dropped_packets()
     }
+
+    /// Determines if the connection should be dropped due to its state.
+    pub fn should_drop(&self, time: Instant) -> bool {
+        self.packets_in_flight() > self.config.max_packets_in_flight
+            || self.last_heard(time) >= self.config.idle_connection_timeout
+    }
 }
 
 impl fmt::Debug for VirtualConnection {

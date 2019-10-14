@@ -40,14 +40,13 @@ pub fn receive_data() {
         if let Some(result) = socket.recv() {
             match result {
                 SocketEvent::Packet(packet) => {
-                    let endpoint: SocketAddr = packet.addr();
                     let received_data: &[u8] = packet.payload();
 
                     // you can here deserialize your bytes into the data you have passed it when sending.
 
                     println!(
                         "Received packet from: {:?} with length {}",
-                        endpoint,
+                        packet.addr(),
                         received_data.len()
                     );
                 }

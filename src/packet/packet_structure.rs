@@ -17,7 +17,7 @@ use crate::packet::{DeliveryGuarantee, OrderingGuarantee, PacketType};
 /// You are able to send packets with the above reliability types.
 pub struct Packet {
     /// The endpoint from where it came.
-    addr: SocketAddr,
+    pub(crate) addr: SocketAddr,
     /// The raw payload of the packet.
     payload: Box<[u8]>,
     /// Defines on how the packet will be delivered.
