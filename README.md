@@ -58,7 +58,6 @@ These are the features this crate provides:
 * [x] Reliable unordered packets
 * [x] Reliable ordered packets
 * [x] Reliable sequenced packets
-* [x] Fragmentation
 * [x] Rtt estimations
 * [x] Protocol version monitoring
 * [x] Basic connection management
