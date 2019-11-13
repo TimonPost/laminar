@@ -28,7 +28,7 @@ fn server_address() -> SocketAddr {
 pub fn main() {
     let mut server = Socket::bind(server_address()).unwrap();
 
-    /*  setup or `Client` and send some test data. */
+    /*  setup our `Client` and send some test data. */
     let mut client = Socket::bind(client_address()).unwrap();
 
     client.send(Packet::unreliable(

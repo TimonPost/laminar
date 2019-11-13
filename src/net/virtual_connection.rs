@@ -110,7 +110,7 @@ impl VirtualConnection {
 
                 let mut item_identifier_value = None;
                 let outgoing = {
-                    // spit the packet if the payload length is greater than the allowed fragment size.
+                    // split the packet if the payload length is greater than the allowed fragment size.
                     if payload_length <= self.config.fragment_size {
                         let mut builder = OutgoingPacketBuilder::new(packet.payload)
                             .with_default_header(
