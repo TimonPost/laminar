@@ -75,7 +75,7 @@ These are the features this crate provides:
 * [ ] Cryptography
 * [ ] Congestion Control
 
-## Getting Stated
+## Getting Started
 Add the laminar package to your `Cargo.toml` file.
 
 ```toml
