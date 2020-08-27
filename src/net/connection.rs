@@ -32,13 +32,14 @@ pub trait Connection: Debug {
     /// * messenger - allows to send packets and events, also provides a config.
     /// * address - defines a address that connection is associated with.
     /// * time - creation time, used by connection, so that it doesn't get dropped immediately or send heartbeat packet.
-    /// * initial_data - if initiated by remote host, this will hold that a packet data.
     fn create_connection(
         messenger: &mut impl ConnectionMessenger<Self::ReceiveEvent>,
         address: SocketAddr,
         time: Instant,
-        initial_data: Option<&[u8]>,
     ) -> Self;
+
+    /// Connections are considered established once they have both had both a send and a receive.
+    fn is_established(&self) -> bool;
 
     /// Determines if the connection should be dropped due to its state.
     fn should_drop(

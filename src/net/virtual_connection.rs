@@ -29,6 +29,9 @@ pub struct VirtualConnection {
     /// The address of the remote endpoint
     pub remote_address: SocketAddr,
 
+    ever_sent: bool,
+    ever_recv: bool,
+
     ordering_system: OrderingSystem<(Box<[u8]>, PacketType)>,
     sequencing_system: SequencingSystem<Box<[u8]>>,
     acknowledge_handler: AcknowledgmentHandler,
@@ -45,6 +48,8 @@ impl VirtualConnection {
             last_heard: time,
             last_sent: time,
             remote_address: addr,
+            ever_sent: false,
+            ever_recv: false,
             ordering_system: OrderingSystem::new(),
             sequencing_system: SequencingSystem::new(),
             acknowledge_handler: AcknowledgmentHandler::new(),
@@ -52,6 +57,28 @@ impl VirtualConnection {
             fragmentation: Fragmentation::new(config),
             config: config.to_owned(),
         }
+    }
+
+    /// Record that this connection has sent a packet. Returns whether the connection has
+    /// become acknowledged because of this send.
+    pub fn record_send(&mut self) -> bool {
+        let was_est = self.is_established();
+        self.ever_sent = true;
+
+        !was_est && self.is_established()
+    }
+
+    /// Record that this connection has sent a packet. Returns whether the connection has
+    /// become acknowledged because of this send.
+    pub fn record_recv(&mut self) -> bool {
+        let was_est = self.is_established();
+        self.ever_recv = true;
+
+        !was_est && self.is_established()
+    }
+
+    pub fn is_established(&self) -> bool {
+        self.ever_sent && self.ever_recv
     }
 
     pub fn packets_in_flight(&self) -> u16 {

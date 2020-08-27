@@ -13,4 +13,6 @@ pub enum SocketEvent {
     /// The client has been idling for a configurable amount of time.
     /// You can control the timeout in the config.
     Timeout(SocketAddr),
+    /// The client has timed out and was previously connected.
+    Disconnect(SocketAddr),
 }
