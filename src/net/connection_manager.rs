@@ -111,6 +111,7 @@ impl<TSocket: DatagramSocket, TConnection: Connection> ConnectionManager<TSocket
                         let mut conn =
                             TConnection::create_connection(messenger, address, time, Some(payload));
                         conn.process_packet(messenger, payload, time);
+                        self.connections.insert(address, conn);
                     }
                 }
                 Err(e) => {
