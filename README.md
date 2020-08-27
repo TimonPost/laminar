@@ -165,7 +165,7 @@ match result {
 - [Timon Post](https://github.com/TimonPost)
 - [Justin LeFebvre](https://github.com/jstnlef) 
 
-## Note
+## Notice
 
 This library is not fully stable yet, and there may be breaking changes to the API.
 For more advanced examples of using laminar, you can check out the [Amethyst-Network](https://github.com/amethyst/amethyst/tree/master/amethyst_network) crate.
