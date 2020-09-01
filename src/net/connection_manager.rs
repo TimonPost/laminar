@@ -316,7 +316,6 @@ mod tests {
 
     #[test]
     fn receiving_does_not_allow_denial_of_service() {
-        // let (mut server, mut client, _) = create_server_client_network();
         let time = Instant::now();
         let network = NetworkEmulator::default();
         let mut server = FakeSocket::bind(
@@ -328,7 +327,6 @@ mod tests {
             },
         )
         .unwrap();
-        // let client = FakeSocket::bind(&network, client_address(), Config::default()).unwrap();
         // send a bunch of packets to a server
         for i in 0..3 {
             let mut client =
