@@ -49,7 +49,7 @@ impl Connection for VirtualConnection {
         VirtualConnection::new(address, messenger.config(), time)
     }
 
-    /// Connections are considered established once they have both had both a send and a receive.
+    ///  Connections are considered established once they both have had a send and a receive.
     fn is_established(&self) -> bool {
         self.is_established()
     }

@@ -59,7 +59,7 @@ impl VirtualConnection {
         }
     }
 
-    /// Record that this connection has sent a packet. Returns whether the connection has
+    /// Records that this connection has sent a packet. Returns whether the connection has
     /// become acknowledged because of this send.
     pub fn record_send(&mut self) -> bool {
         let was_est = self.is_established();
@@ -68,7 +68,7 @@ impl VirtualConnection {
         !was_est && self.is_established()
     }
 
-    /// Record that this connection has sent a packet. Returns whether the connection has
+    /// Records that this connection has sent a packet. Returns whether the connection has
     /// become acknowledged because of this send.
     pub fn record_recv(&mut self) -> bool {
         let was_est = self.is_established();
