@@ -46,7 +46,6 @@ fn blocking_sender_and_receiver() {
     client.manual_poll(time);
     server.manual_poll(time);
 
-    assert_eq![SocketEvent::Connect(client_addr), server.recv().unwrap()];
     if let SocketEvent::Packet(packet) = server.recv().unwrap() {
         assert_eq![b"Hello world!", packet.payload()];
     } else {

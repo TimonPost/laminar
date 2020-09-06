@@ -75,6 +75,7 @@ pub struct ConnectionManager<TSocket: DatagramSocket, TConnection: Connection> {
     messenger: SocketEventSenderAndConfig<TSocket, TConnection::ReceiveEvent>,
     event_receiver: Receiver<TConnection::ReceiveEvent>,
     user_event_sender: Sender<TConnection::SendEvent>,
+    max_unestablished_connections: u16,
 }
 
 impl<TSocket: DatagramSocket, TConnection: Connection> ConnectionManager<TSocket, TConnection> {
@@ -82,6 +83,8 @@ impl<TSocket: DatagramSocket, TConnection: Connection> ConnectionManager<TSocket
     pub fn new(socket: TSocket, config: Config) -> Self {
         let (event_sender, event_receiver) = unbounded();
         let (user_event_sender, user_event_receiver) = unbounded();
+        let max_unestablished_connections = config.max_unestablished_connections;
+
         ConnectionManager {
             receive_buffer: vec![0; config.receive_buffer_max_size],
             connections: Default::default(),
@@ -89,6 +92,7 @@ impl<TSocket: DatagramSocket, TConnection: Connection> ConnectionManager<TSocket
             messenger: SocketEventSenderAndConfig::new(config, socket, event_sender),
             user_event_sender,
             event_receiver,
+            max_unestablished_connections,
         }
     }
 
@@ -96,7 +100,10 @@ impl<TSocket: DatagramSocket, TConnection: Connection> ConnectionManager<TSocket
     /// Processes connection specific logic for active connections.
     /// Removes dropped connections from active connections list.
     pub fn manual_poll(&mut self, time: Instant) {
+        let mut unestablished_connections = self.unestablished_connection_count();
+
         let messenger = &mut self.messenger;
+
         // first we pull all newly arrived packets and handle them
         loop {
             match messenger
@@ -105,12 +112,21 @@ impl<TSocket: DatagramSocket, TConnection: Connection> ConnectionManager<TSocket
             {
                 Ok((payload, address)) => {
                     if let Some(conn) = self.connections.get_mut(&address) {
+                        let was_est = conn.is_established();
                         conn.process_packet(messenger, payload, time);
+                        if !was_est && conn.is_established() {
+                            unestablished_connections -= 1;
+                        }
                     } else {
-                        // create connection, but do not add to active connections list
-                        let mut conn =
-                            TConnection::create_connection(messenger, address, time, Some(payload));
+                        let mut conn = TConnection::create_connection(messenger, address, time);
                         conn.process_packet(messenger, payload, time);
+
+                        // We only allow a maximum amount number of unestablished connections to bet created
+                        // from inbound packets to prevent packet flooding from allocating unbounded memory.
+                        if unestablished_connections < self.max_unestablished_connections as usize {
+                            self.connections.insert(address, conn);
+                            unestablished_connections += 1;
+                        }
                     }
                 }
                 Err(e) => {
@@ -130,9 +146,14 @@ impl<TSocket: DatagramSocket, TConnection: Connection> ConnectionManager<TSocket
         while let Ok(event) = self.user_event_receiver.try_recv() {
             // get or create connection
             let conn = self.connections.entry(event.address()).or_insert_with(|| {
-                TConnection::create_connection(messenger, event.address(), time, None)
+                TConnection::create_connection(messenger, event.address(), time)
             });
+
+            let was_est = conn.is_established();
             conn.process_event(messenger, event, time);
+            if !was_est && conn.is_established() {
+                unestablished_connections -= 1;
+            }
         }
 
         // update all connections
@@ -164,6 +185,13 @@ impl<TSocket: DatagramSocket, TConnection: Connection> ConnectionManager<TSocket
         &self.messenger.socket
     }
 
+    fn unestablished_connection_count(&self) -> usize {
+        self.connections
+            .iter()
+            .filter(|c| !c.1.is_established())
+            .count()
+    }
+
     /// Returns socket mutable reference.
     #[allow(dead_code)]
     pub fn socket_mut(&mut self) -> &mut TSocket {
@@ -181,7 +209,7 @@ impl<TSocket: DatagramSocket, TConnection: Connection> ConnectionManager<TSocket
 mod tests {
     use std::{
         collections::HashSet,
-        net::SocketAddr,
+        net::{Ipv4Addr, SocketAddr, SocketAddrV4},
         time::{Duration, Instant},
     };
 
@@ -196,6 +224,10 @@ mod tests {
 
     fn client_address() -> SocketAddr {
         CLIENT_ADDR.parse().unwrap()
+    }
+
+    fn client_address_n(n: u16) -> SocketAddr {
+        SocketAddr::V4(SocketAddrV4::new("127.0.0.1".parse().unwrap(), 10002 + n))
     }
 
     fn server_address() -> SocketAddr {
@@ -234,7 +266,6 @@ mod tests {
         client.manual_poll(time);
         server.manual_poll(time);
 
-        assert_eq![Ok(SocketEvent::Connect(client_address())), receiver.recv()];
         if let SocketEvent::Packet(packet) = receiver.recv().unwrap() {
             assert_eq![b"Hello world!", packet.payload()];
         } else {
@@ -285,30 +316,42 @@ mod tests {
 
     #[test]
     fn receiving_does_not_allow_denial_of_service() {
-        let (mut server, mut client, _) = create_server_client_network();
+        let time = Instant::now();
+        let network = NetworkEmulator::default();
+        let mut server = FakeSocket::bind(
+            &network,
+            server_address(),
+            Config {
+                max_unestablished_connections: 2,
+                ..Default::default()
+            },
+        )
+        .unwrap();
         // send a bunch of packets to a server
-        for _ in 0..3 {
+        for i in 0..3 {
+            let mut client =
+                FakeSocket::bind(&network, client_address_n(i), Config::default()).unwrap();
+
             client
                 .send(Packet::unreliable(
                     server_address(),
                     vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
                 ))
                 .unwrap();
+
+            client.manual_poll(time);
         }
 
-        let time = Instant::now();
-
-        client.manual_poll(time);
         server.manual_poll(time);
 
-        for _ in 0..6 {
+        for _ in 0..3 {
             assert![server.recv().is_some()];
         }
         assert![server.recv().is_none()];
 
-        // the server shall not have any connection in its connection table even though it received
-        // packets
-        assert_eq![0, server.connection_count()];
+        // the server shall not have at most the configured `max_unestablished_connections` in
+        // its connection table even though it packets from 3 clients
+        assert_eq![2, server.connection_count()];
 
         server
             .send(Packet::unreliable(client_address(), vec![1]))
@@ -317,7 +360,7 @@ mod tests {
         server.manual_poll(time);
 
         // the server only adds to its table after having sent explicitly
-        assert_eq![1, server.connection_count()];
+        assert_eq![2, server.connection_count()];
     }
 
     #[test]
@@ -425,7 +468,7 @@ mod tests {
                     assert![!seen.contains(&byte)];
                     seen.insert(byte);
                 }
-                SocketEvent::Timeout(_) => {
+                SocketEvent::Timeout(_) | SocketEvent::Disconnect(_) => {
                     panic!["This should not happen, as we've not advanced time"];
                 }
             }
@@ -463,7 +506,7 @@ mod tests {
                 SocketEvent::Packet(_) => {
                     cnt += 1;
                 }
-                SocketEvent::Timeout(_) => {
+                SocketEvent::Timeout(_) | SocketEvent::Disconnect(_) => {
                     panic!["This should not happen, as we've not advanced time"];
                 }
             }
@@ -557,10 +600,15 @@ mod tests {
             .send(Packet::unreliable(server_address(), vec![0, 1, 2]))
             .unwrap();
 
+        server
+            .send(Packet::unreliable(client_address(), vec![2, 1, 0]))
+            .unwrap();
+
         let now = Instant::now();
         client.manual_poll(now);
         server.manual_poll(now);
 
+        assert!(matches!(server.recv().unwrap(), SocketEvent::Packet(_)));
         assert_eq!(
             server.recv().unwrap(),
             SocketEvent::Connect(client_address())
@@ -583,10 +631,6 @@ mod tests {
 
         assert_eq!(
             server.recv().unwrap(),
-            SocketEvent::Connect(client_address())
-        );
-        assert_eq!(
-            server.recv().unwrap(),
             SocketEvent::Packet(Packet::unreliable(client_address(), vec![0, 1, 2]))
         );
 
@@ -598,7 +642,16 @@ mod tests {
         server.manual_poll(now);
         client.manual_poll(now);
 
+        assert_eq!(
+            server.recv().unwrap(),
+            SocketEvent::Connect(client_address())
+        );
+
         // make sure the connection was successful on the client side
+        assert_eq!(
+            client.recv().unwrap(),
+            SocketEvent::Connect(server_address())
+        );
         assert_eq!(
             client.recv().unwrap(),
             SocketEvent::Packet(Packet::unreliable(server_address(), vec![]))
@@ -620,8 +673,16 @@ mod tests {
             SocketEvent::Timeout(client_address())
         );
         assert_eq!(
+            server.recv().unwrap(),
+            SocketEvent::Disconnect(client_address())
+        );
+        assert_eq!(
             client.recv().unwrap(),
             SocketEvent::Timeout(server_address())
+        );
+        assert_eq!(
+            client.recv().unwrap(),
+            SocketEvent::Disconnect(server_address())
         );
     }
 
@@ -640,11 +701,6 @@ mod tests {
         client.manual_poll(now);
         server.manual_poll(now);
 
-        // make sure the connection was successful on the server side
-        assert_eq!(
-            server.recv().unwrap(),
-            SocketEvent::Connect(client_address())
-        );
         assert_eq!(
             server.recv().unwrap(),
             SocketEvent::Packet(Packet::unreliable(client_address(), vec![0, 1, 2]))
@@ -658,6 +714,18 @@ mod tests {
 
         server.manual_poll(now);
         client.manual_poll(now);
+
+        // make sure the connection was successful on the server side
+        assert_eq!(
+            server.recv().unwrap(),
+            SocketEvent::Connect(client_address())
+        );
+
+        // make sure the connection was successful on the server side
+        assert_eq!(
+            client.recv().unwrap(),
+            SocketEvent::Connect(server_address())
+        );
 
         // make sure the connection was successful on the client side
         assert_eq!(
@@ -704,8 +772,8 @@ mod tests {
         }
 
         // ensure that we get the correct number of events to the server.
-        // 35 connect events plus the 35 messages
-        assert_eq!(events.len(), 70);
+        // 0 connect events plus the 35 messages
+        assert_eq!(events.len(), 35);
 
         // finally the server decides to send us a message back. This necessarily will include
         // the ack information for 33 of the sent 35 packets.
@@ -713,6 +781,12 @@ mod tests {
             .send(Packet::unreliable(client_address(), vec![0]))
             .unwrap();
         server.manual_poll(now);
+
+        // make sure the connection was successful on the server side
+        assert_eq!(
+            server.recv().unwrap(),
+            SocketEvent::Connect(client_address())
+        );
 
         // loop to ensure that the client gets the server message before moving on
         loop {
@@ -790,7 +864,7 @@ mod tests {
                         SocketEvent::Packet(pkt) => {
                             set.insert(pkt.payload()[0]);
                         }
-                        SocketEvent::Timeout(_) => {
+                        SocketEvent::Timeout(_) | SocketEvent::Disconnect(_) => {
                             panic!["Unable to time out, time has not advanced"]
                         }
                         SocketEvent::Connect(_) => {}

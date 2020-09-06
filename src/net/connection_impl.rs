@@ -18,6 +18,7 @@ impl ConnectionEventAddress for SocketEvent {
             SocketEvent::Packet(packet) => packet.addr(),
             SocketEvent::Connect(addr) => *addr,
             SocketEvent::Timeout(addr) => *addr,
+            SocketEvent::Disconnect(addr) => *addr,
         }
     }
 }
@@ -44,13 +45,13 @@ impl Connection for VirtualConnection {
         messenger: &mut impl ConnectionMessenger<Self::ReceiveEvent>,
         address: SocketAddr,
         time: Instant,
-        initial_data: Option<&[u8]>,
     ) -> VirtualConnection {
-        // emit connect event if this is initiated by the remote host.
-        if initial_data.is_some() {
-            messenger.send_event(&address, SocketEvent::Connect(address));
-        }
         VirtualConnection::new(address, messenger.config(), time)
+    }
+
+    ///  Connections are considered established once they both have had a send and a receive.
+    fn is_established(&self) -> bool {
+        self.is_established()
     }
 
     /// Determines if the given `Connection` should be dropped due to its state.
@@ -66,6 +67,12 @@ impl Connection for VirtualConnection {
                 &self.remote_address,
                 SocketEvent::Timeout(self.remote_address),
             );
+            if self.is_established() {
+                messenger.send_event(
+                    &self.remote_address,
+                    SocketEvent::Disconnect(self.remote_address),
+                );
+            }
         }
         should_drop
     }
@@ -80,6 +87,13 @@ impl Connection for VirtualConnection {
         if !payload.is_empty() {
             match self.process_incoming(payload, time) {
                 Ok(packets) => {
+                    if self.record_recv() {
+                        messenger.send_event(
+                            &self.remote_address,
+                            SocketEvent::Connect(self.remote_address),
+                        );
+                    }
+
                     for incoming in packets {
                         messenger.send_event(&self.remote_address, SocketEvent::Packet(incoming.0));
                     }
@@ -102,6 +116,10 @@ impl Connection for VirtualConnection {
         time: Instant,
     ) {
         let addr = self.remote_address;
+        if self.record_send() {
+            messenger.send_event(&addr, SocketEvent::Connect(addr));
+        }
+
         send_packets(
             messenger,
             &addr,
@@ -143,15 +161,17 @@ impl Connection for VirtualConnection {
         }
 
         // send heartbeat packets if required
-        if let Some(heartbeat_interval) = messenger.config().heartbeat_interval {
-            let addr = self.remote_address;
-            if self.last_sent(time) >= heartbeat_interval {
-                send_packets(
-                    messenger,
-                    &addr,
-                    self.process_outgoing(PacketInfo::heartbeat_packet(&[]), None, time),
-                    "heatbeat packet",
-                );
+        if self.is_established() {
+            if let Some(heartbeat_interval) = messenger.config().heartbeat_interval {
+                let addr = self.remote_address;
+                if self.last_sent(time) >= heartbeat_interval {
+                    send_packets(
+                        messenger,
+                        &addr,
+                        self.process_outgoing(PacketInfo::heartbeat_packet(&[]), None, time),
+                        "heatbeat packet",
+                    );
+                }
             }
         }
     }

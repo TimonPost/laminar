@@ -55,6 +55,10 @@ pub struct Config {
     /// When we send a reliable packet, it is stored locally until an acknowledgement comes back to
     /// us, if that store grows to a size.
     pub max_packets_in_flight: u16,
+
+    /// The maximum number of unestablished connections that laminar will track internally. This is
+    /// used to prevent malicious packet flooding from consuming an unbounded amount of memory.
+    pub max_unestablished_connections: u16,
 }
 
 impl Default for Config {
@@ -73,6 +77,7 @@ impl Default for Config {
             socket_event_buffer_size: 1024,
             socket_polling_timeout: Some(Duration::from_millis(1)),
             max_packets_in_flight: 512,
+            max_unestablished_connections: 50,
         }
     }
 }
