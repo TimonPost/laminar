@@ -1,6 +1,19 @@
 # Change Log
 This document contains information about the releases of this crate.
 
+## [0.4.0] - 2019-09-24
+- Better interface separation with clear functionality boundaries.
+- Separated unit tests and integration tests.
+- Removed `set_link_conditioner` from `Socket`
+- Make `last_sent` sent with unreliable packets.
+- Change allocations to iterators. 
+- Canonicalizes an "established connection" as requiring both a send and a receive from a given endpoint.
+- Change `SocketEvent::Connect` to only fire when a connection has been established.
+- Add `SocketEvent::Disconnect` to fire when a Timeout fires from an endpoint with an established connection.
+- Change `SocketEvent::Timeout` to fire when a Timeout fires from an endpoint with an unestablished connection.
+- Change heartbeats to only send after a connection has been established.
+- Add a `max_unestablished_connections` config option to prevent connection memory overflow attack
+
 ## [0.3.2] - 2019-09-24
 - Acknowledgement is sent after all fragments arrived
 - Don't read out-of-bounds on malformed headers 
