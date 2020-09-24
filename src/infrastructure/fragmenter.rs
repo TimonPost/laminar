@@ -58,7 +58,7 @@ impl Fragmentation {
         } else {
             0
         };
-        ((payload_length / fragment_size) + remainder)
+        (payload_length / fragment_size) + remainder
     }
 
     /// Splits the given payload into fragments and write those fragments to the passed packet data.
