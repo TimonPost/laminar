@@ -24,7 +24,7 @@ We used some inspiration from other similar projects.
 
 - [NetCode IO, C++ with Go, Rust, C# bindings](https://github.com/networkprotocol/netcode.io)
 - [RakNet, C++](https://github.com/SLikeSoft/SLikeNet)
-- [Steam Network Socket, , C++](https://github.com/ValveSoftware/GameNetworkingSockets)
+- [Steam Network Socket, C++](https://github.com/ValveSoftware/GameNetworkingSockets)
 - [LiteNetLib, C#](https://github.com/RevenantX/LiteNetLib)
 - [ENet, C](http://enet.bespin.org/)
 
