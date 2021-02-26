@@ -24,7 +24,10 @@
 
 pub use self::config::Config;
 pub use self::error::{ErrorKind, Result};
-pub use self::net::{LinkConditioner, Socket, SocketEvent};
+pub use self::net::{
+    Connection, ConnectionManager, ConnectionMessenger, DatagramSocket, LinkConditioner, Socket,
+    SocketEvent, VirtualConnection,
+};
 pub use self::packet::{DeliveryGuarantee, OrderingGuarantee, Packet};
 #[cfg(feature = "tester")]
 pub use self::throughput::ThroughputMonitoring;
