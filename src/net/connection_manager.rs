@@ -209,7 +209,7 @@ impl<TSocket: DatagramSocket, TConnection: Connection> ConnectionManager<TSocket
 mod tests {
     use std::{
         collections::HashSet,
-        net::{Ipv4Addr, SocketAddr, SocketAddrV4},
+        net::{SocketAddr, SocketAddrV4},
         time::{Duration, Instant},
     };
 
@@ -308,7 +308,7 @@ mod tests {
                     return;
                 }
             }
-            while let Some(_) = client.recv() {}
+            while client.recv().is_some() {}
         }
 
         panic!["Did not receive the ignored packet"];
@@ -399,7 +399,7 @@ mod tests {
                     panic!["Sequenced packet arrived while it should not"];
                 }
             }
-            while let Some(_) = client.recv() {}
+            while client.recv().is_some() {}
         }
     }
 
@@ -439,7 +439,7 @@ mod tests {
                     return;
                 }
             }
-            while let Some(_) = client.recv() {}
+            while client.recv().is_some() {}
         }
 
         panic!["Did not receive the ignored packet"];
@@ -516,9 +516,11 @@ mod tests {
 
     #[test]
     fn sequenced_packets_pathological_case() {
-        let mut config = Config::default();
-        config.max_packets_in_flight = 100;
-        let (_, mut client) = create_server_client(config.clone());
+        let config = Config {
+            max_packets_in_flight: 100,
+            ..Default::default()
+        };
+        let (_, mut client) = create_server_client(config);
 
         let time = Instant::now();
 
@@ -617,8 +619,10 @@ mod tests {
 
     #[test]
     fn disconnect_event_occurs() {
-        let mut config = Config::default();
-        config.idle_connection_timeout = Duration::from_millis(1);
+        let config = Config {
+            idle_connection_timeout: Duration::from_millis(1),
+            ..Default::default()
+        };
         let (mut server, mut client) = create_server_client(config.clone());
 
         client
@@ -688,9 +692,11 @@ mod tests {
 
     #[test]
     fn heartbeats_work() {
-        let mut config = Config::default();
-        config.idle_connection_timeout = Duration::from_millis(10);
-        config.heartbeat_interval = Some(Duration::from_millis(4));
+        let config = Config {
+            idle_connection_timeout: Duration::from_millis(10),
+            heartbeat_interval: Some(Duration::from_millis(4)),
+            ..Default::default()
+        };
         let (mut server, mut client) = create_server_client(config.clone());
         // initiate a connection
         client
@@ -858,7 +864,7 @@ mod tests {
                 client.manual_poll(time);
                 server.manual_poll(time);
 
-                while let Some(_) = client.recv() {}
+                while client.recv().is_some() {}
                 while let Some(event) = server.recv() {
                     match event {
                         SocketEvent::Packet(pkt) => {
@@ -889,9 +895,11 @@ mod tests {
 
     #[test]
     fn fragmented_ordered_gets_acked() {
-        let mut config = Config::default();
-        config.fragment_size = 10;
-        let (mut server, mut client) = create_server_client(config.clone());
+        let config = Config {
+            fragment_size: 10,
+            ..Default::default()
+        };
+        let (mut server, mut client) = create_server_client(config);
 
         let time = Instant::now();
         let dummy = vec![0];

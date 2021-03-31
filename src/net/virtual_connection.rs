@@ -77,10 +77,12 @@ impl VirtualConnection {
         !was_est && self.is_established()
     }
 
+    /// Returns if the connection has been established
     pub fn is_established(&self) -> bool {
         self.ever_sent && self.ever_recv
     }
 
+    /// Returns the current number of not yet acknowledged packets
     pub fn packets_in_flight(&self) -> u16 {
         self.acknowledge_handler.packets_in_flight()
     }

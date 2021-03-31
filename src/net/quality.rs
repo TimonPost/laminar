@@ -112,10 +112,12 @@ mod test {
 
     #[test]
     fn smooth_out_rtt() {
-        let mut config = Config::default();
         // for test purpose make sure we set smoothing factor to 10%.
-        config.rtt_smoothing_factor = 0.10;
-        config.rtt_max_value = 250;
+        let config = Config {
+            rtt_smoothing_factor: 0.10,
+            rtt_max_value: 250,
+            ..Default::default()
+        }; 
 
         let network_quality = RttMeasurer::new(&config);
         let smoothed_rtt = network_quality.smooth_out_rtt(300);
