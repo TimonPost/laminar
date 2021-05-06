@@ -35,7 +35,6 @@ fn blocking_sender_and_receiver() {
     .unwrap();
 
     let server_addr = server.local_addr().unwrap();
-    let client_addr = client.local_addr().unwrap();
 
     let time = Instant::now();
 

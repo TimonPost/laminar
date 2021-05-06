@@ -73,7 +73,7 @@ impl<T: Clone + Default> SequenceBuffer<T> {
     pub fn remove(&mut self, sequence_num: SequenceNumber) -> Option<T> {
         if self.exists(sequence_num) {
             let index = self.index(sequence_num);
-            let value = std::mem::replace(&mut self.entries[index], T::default());
+            let value = std::mem::take(&mut self.entries[index]);
             self.entry_sequences[index] = None;
             return Some(value);
         }

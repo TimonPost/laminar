@@ -45,7 +45,7 @@ impl LinkConditioner {
 
     /// Function that checks to see if a packet should be dropped or not
     pub fn should_send(&mut self) -> bool {
-        self.random.gen_range(0.0, 1.0) >= self.packet_loss
+        self.random.gen_range(0.0..1.0) >= self.packet_loss
     }
 }
 

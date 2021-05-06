@@ -123,7 +123,7 @@ impl AcknowledgmentHandler {
     /// Returns a `Vec` of packets we believe have been dropped.
     pub fn dropped_packets(&mut self) -> Vec<SentPacket> {
         let mut sent_sequences: Vec<SequenceNumber> = self.sent_packets.keys().cloned().collect();
-        sent_sequences.sort();
+        sent_sequences.sort_unstable();
 
         let remote_ack_sequence = self.remote_ack_sequence_num;
         sent_sequences
