@@ -42,7 +42,7 @@ For more information, read the projects [README.md][readme], [book][book], [docs
 ## Table of contents:
 - [Useful links](#useful-links)
 - [Features](#features)
-- [Getting Started](#getting-stated)
+- [Getting Started](#getting-started)
 - [Examples](#examples)
 - [Notice](#notice)
 - [Contributing](#contribution)
@@ -115,13 +115,13 @@ let bytes = vec![...];
 let unreliable = Packet::unreliable(destination, bytes);
 let reliable = Packet::reliable_unordered(destination, bytes);
 
-// Specifies on which stream and how to order our packets, checkout our book and documentation for more information
+// Specifies on which stream and how to order our packets, check out our book and documentation for more information
 let unreliable = Packet::unreliable_sequenced(destination, bytes, Some(1));
 let reliable_sequenced = Packet::reliable_sequenced(destination, bytes, Some(2));
 let reliable_ordered = Packet::reliable_ordered(destination, bytes, Some(3));
 
 // Sends the created packets
-packet_sender.send(unreliable_sequenced).unwrap();
+packet_sender.send(unreliable).unwrap();
 packet_sender.send(reliable).unwrap();
 packet_sender.send(unreliable_sequenced).unwrap();
 packet_sender.send(reliable_sequenced).unwrap();
@@ -133,7 +133,7 @@ _Receive Packets_
 use laminar::{SocketEvent, Socket};
 
 // Creates the socket
-let socket = Socket::bind("127.0.0.1:12346")?;
+let mut socket = Socket::bind("127.0.0.1:12346")?;
 let event_receiver = socket.get_event_receiver();
 // Starts the socket, which will start a poll mechanism to receive and send messages.
 let _thread = thread::spawn(move || socket.start_polling());
@@ -143,13 +143,14 @@ let result = event_receiver.recv();
 
 match result {
     Ok(socket_event) => {
-        match  socket_event {
+        match socket_event {
             SocketEvent::Packet(packet) => {
                 let endpoint: SocketAddr = packet.addr();
                 let received_data: &[u8] = packet.payload();
-            },
-            SocketEvent::Connect(connect_event) => { /* a client connected */ },
-            SocketEvent::Timeout(timeout_event) => { /* a client timed out */},
+            }
+            SocketEvent::Connect(connect_event) => { /* a client connected */ }
+            SocketEvent::Timeout(timeout_event) => { /* a client timed out */ }
+            SocketEvent::Disconnect(disconnect_event) => { /* a client disconnected */ }
         }
     }
     Err(e) => {
