@@ -1,6 +1,10 @@
 # Change Log
 This document contains information about the releases of this crate.
 
+## [0.5.0] - 2021-05-06
+- Expose ConnectionManager and VirtualConnection.
+- Dependency upgrade.
+
 ## [0.4.0] - 2019-09-24
 - Better interface separation with clear functionality boundaries.
 - Separated unit tests and integration tests.
