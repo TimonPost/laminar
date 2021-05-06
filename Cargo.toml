@@ -47,6 +47,7 @@ tester = [
 
 [[bench]]
 name = "packet_processing"
+path = "benches/packet_processing.rs"
 harness = false
 
 [[bin]]
