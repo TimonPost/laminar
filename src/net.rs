@@ -18,4 +18,5 @@ mod quality;
 mod socket;
 mod virtual_connection;
 
+pub mod aio;
 pub mod constants;
