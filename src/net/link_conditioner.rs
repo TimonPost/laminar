@@ -4,6 +4,7 @@
 //! becomes more sophisticated.
 
 use std::time::Duration;
+use std::convert::TryFrom;
 
 use rand::Rng;
 use rand_pcg::Pcg64Mcg as Random;
@@ -15,7 +16,7 @@ pub struct LinkConditioner {
     // Value between 0 and 1, representing the % change a packet will be dropped on sending
     packet_loss: f64,
     // Duration of the delay imposed between packets
-    latency: Duration,
+    max_additional_latency_millis: f64,
     // Random number generator
     random: Random,
 }
@@ -26,7 +27,7 @@ impl LinkConditioner {
     pub fn new() -> LinkConditioner {
         LinkConditioner {
             packet_loss: 0.0,
-            latency: Duration::default(),
+            max_additional_latency_millis: 0.0,
             random: Random::new(0),
         }
     }
@@ -37,15 +38,22 @@ impl LinkConditioner {
         self.packet_loss = rate;
     }
 
-    /// Sets the latency the link conditioner should apply to each packet
+    /// Sets the latency the link conditioner should apply to each packet.
     #[allow(dead_code)]
     pub fn set_latency(&mut self, latency: Duration) {
-        self.latency = latency
+        self.max_additional_latency_millis = f64::try_from(latency.as_millis() as u32).unwrap();
     }
 
     /// Function that checks to see if a packet should be dropped or not
     pub fn should_send(&mut self) -> bool {
         self.random.gen_range(0.0..1.0) >= self.packet_loss
+    }
+
+    /// Adds a fixed amount of latency
+    pub fn sample_latency(&mut self) -> Duration {
+        let wait_millis =
+            (self.random.gen_range(0.0..1.0) * self.max_additional_latency_millis) as u64;
+        Duration::from_millis(wait_millis)
     }
 }
 

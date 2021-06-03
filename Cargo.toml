@@ -22,6 +22,7 @@ edition = "2018"
 [dependencies]
 async-channel = "1.6"
 async-net = "1.6.0"
+futures-timer = "3.0"
 bevy_tasks = "0.5"
 tracing = "0.1"
 byteorder = "1.4.3"
