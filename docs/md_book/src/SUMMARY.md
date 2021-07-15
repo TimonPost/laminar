@@ -11,4 +11,4 @@
   - [Reliability](reliability/reliability.md)
   - [Ordering](reliability/ordering.md)
 - [Congestion Avoidance](congestion_avoidence/congestion_avoidance.md)
-  - [Whit RTT](congestion_avoidence/rtt.md)
+  - [With RTT](congestion_avoidence/rtt.md)
