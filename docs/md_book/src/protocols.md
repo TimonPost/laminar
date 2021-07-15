@@ -9,7 +9,7 @@ This protocol only passes packets across the network without any guarantee that 
 Sometimes IP passes along multiple copies of the same packet and these packets make their way to the destination via different paths, causing packets to arrive out of order and in duplicate.
 
 So to be able to communicate over the network we make use of existing protocols that provides some more certainty.
-We will first take a look at TCP where after we checkout UPD.
+We will first take a look at TCP where after we checkout UDP.
 
 ## TCP/IP
 
