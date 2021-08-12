@@ -493,7 +493,7 @@ mod tests {
             connection.last_heard.duration_since(curr_heard),
             Duration::from_secs(2)
         );
-        assert_eq!(in_packet.is_none(), true);
+        assert!(in_packet.is_none());
     }
 
     #[test]
@@ -985,7 +985,7 @@ mod tests {
             Instant::now(),
         );
 
-        assert_eq!(res.is_err(), true);
+        assert!(res.is_err());
     }
 
     #[test]
@@ -1011,7 +1011,7 @@ mod tests {
             packet.contents().len(),
             1024 + constants::STANDARD_HEADER_SIZE as usize
         );
-        assert_eq!(packets.next().is_none(), true);
+        assert!(packets.next().is_none());
     }
 
     #[test]

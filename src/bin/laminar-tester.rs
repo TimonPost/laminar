@@ -175,7 +175,7 @@ fn test_steady_stream(config: ClientConfiguration, mut socket: Socket) {
     loop {
         socket.send(test_packet.clone()).unwrap();
         socket.manual_poll(Instant::now());
-        while let Some(_) = socket.recv() {}
+        while socket.recv().is_some() {}
 
         packets_sent += 1;
 

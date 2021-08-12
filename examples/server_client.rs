@@ -99,7 +99,7 @@ fn main() -> Result<(), ErrorKind> {
     let mut s = String::new();
     stdin.read_line(&mut s)?;
 
-    if s.starts_with("s") {
+    if s.starts_with('s') {
         println!("Starting server..");
         server()
     } else {

@@ -117,12 +117,12 @@ mod test {
             rtt_smoothing_factor: 0.10,
             rtt_max_value: 250,
             ..Default::default()
-        }; 
+        };
 
         let network_quality = RttMeasurer::new(&config);
         let smoothed_rtt = network_quality.smooth_out_rtt(300);
 
         // 300ms has exceeded 50ms over the max allowed rtt. So we check if or smoothing factor is now 10% from 50.
-        assert_eq!((smoothed_rtt - 5.0f32).abs() < std::f32::EPSILON, true);
+        assert!((smoothed_rtt - 5.0f32).abs() < f32::EPSILON);
     }
 }

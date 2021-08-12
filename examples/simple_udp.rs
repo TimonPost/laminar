@@ -11,9 +11,9 @@ use serde_derive::{Deserialize, Serialize};
 use laminar::{Packet, Socket, SocketEvent};
 
 /// The socket address of where the server is located.
-const SERVER_ADDR: &'static str = "127.0.0.1:12345";
+const SERVER_ADDR: &str = "127.0.0.1:12345";
 // The client address from where the data is sent.
-const CLIENT_ADDR: &'static str = "127.0.0.1:12346";
+const CLIENT_ADDR: &str = "127.0.0.1:12346";
 
 fn client_address() -> SocketAddr {
     CLIENT_ADDR.parse().unwrap()

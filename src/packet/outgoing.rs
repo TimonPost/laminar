@@ -117,7 +117,7 @@ impl<'p> OutgoingPacket<'p> {
     /// - Until here we could use a reference to the outgoing data but here we need to do a hard copy.
     /// Because the header could vary in size but should be in front of the payload provided by the user.
     pub fn contents(&self) -> Box<[u8]> {
-        [self.header.as_slice(), &self.payload]
+        [self.header.as_slice(), self.payload]
             .concat()
             .into_boxed_slice()
     }
