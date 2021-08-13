@@ -288,7 +288,7 @@ impl<'a, T> Iterator for IterMut<'a, T> {
     /// Returns `Some` when there is an item in our cache matching the `expected_index`.
     /// Returns `None` if there are no times matching our `expected` index.
     fn next(&mut self) -> Option<<Self as Iterator>::Item> {
-        match self.items.remove(&self.expected_index) {
+        match self.items.remove(self.expected_index) {
             None => None,
             Some(e) => {
                 *self.expected_index = self.expected_index.wrapping_add(1);

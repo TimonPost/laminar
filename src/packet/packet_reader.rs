@@ -121,8 +121,8 @@ mod tests {
         let buffer = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
         let reader = PacketReader::new(buffer.as_slice());
-        assert_eq!(reader.can_read(buffer.len() as u8), true);
-        assert_eq!(reader.can_read((buffer.len() + 1) as u8), false);
+        assert!(reader.can_read(buffer.len() as u8));
+        assert!(!reader.can_read((buffer.len() + 1) as u8));
     }
 
     #[test]

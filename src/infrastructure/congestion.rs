@@ -54,19 +54,17 @@ mod test {
 
         congestion_handler.process_outgoing(1, Instant::now());
 
-        assert_eq!(congestion_handler.congestion_data.exists(1), true);
+        assert!(congestion_handler.congestion_data.exists(1));
     }
 
     #[test]
+    #[allow(clippy::float_cmp)]
     fn rtt_value_is_updated() {
         let mut congestion_handler = CongestionHandler::new(&Config::default());
 
-        assert_eq!(
-            congestion_handler.rtt_measurer.get_rtt().abs() < std::f32::EPSILON,
-            true
-        );
+        assert!(congestion_handler.rtt_measurer.get_rtt().abs() < f32::EPSILON);
         congestion_handler.process_outgoing(1, Instant::now());
         congestion_handler.process_incoming(1);
-        assert_eq!(congestion_handler.rtt_measurer.get_rtt() != 0., true);
+        assert_ne!(congestion_handler.rtt_measurer.get_rtt(), 0.);
     }
 }
