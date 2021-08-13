@@ -157,6 +157,11 @@ impl Packet {
         &self.payload
     }
 
+    /// Returns the payload of this packet.
+    pub fn into_payload(self) -> Box<[u8]> {
+        self.payload
+    }
+
     /// Returns the address of this packet.
     ///
     /// # Remark
