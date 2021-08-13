@@ -101,6 +101,8 @@ _Send packets_
 
 ```rust
 use laminar::{Socket, Packet};
+use std::thread;
+use std::time::Duration;
 
 // Creates the socket
 let mut socket = Socket::bind("127.0.0.1:12345")?;
@@ -109,15 +111,16 @@ let packet_sender = socket.get_packet_sender();
 let _thread = thread::spawn(move || socket.start_polling());
 
 // Bytes to sent
-let bytes = vec![...];
+let bytes = vec![1,2,3,4,5];
+let destination = "127.0.0.1:12346".parse()?;
 
 // Creates packets with different reliabilities
-let unreliable = Packet::unreliable(destination, bytes);
-let reliable = Packet::reliable_unordered(destination, bytes);
+let unreliable = Packet::unreliable(destination, bytes.clone());
+let reliable = Packet::reliable_unordered(destination, bytes.clone());
 
 // Specifies on which stream and how to order our packets, check out our book and documentation for more information
-let unreliable = Packet::unreliable_sequenced(destination, bytes, Some(1));
-let reliable_sequenced = Packet::reliable_sequenced(destination, bytes, Some(2));
+let unreliable_sequenced = Packet::unreliable_sequenced(destination, bytes.clone(), Some(1));
+let reliable_sequenced = Packet::reliable_sequenced(destination, bytes.clone(), Some(2));
 let reliable_ordered = Packet::reliable_ordered(destination, bytes, Some(3));
 
 // Sends the created packets
@@ -126,6 +129,7 @@ packet_sender.send(reliable).unwrap();
 packet_sender.send(unreliable_sequenced).unwrap();
 packet_sender.send(reliable_sequenced).unwrap();
 packet_sender.send(reliable_ordered).unwrap();
+thread::sleep(Duration::from_millis(5));
 ```
 
 _Receive Packets_
