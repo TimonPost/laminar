@@ -21,7 +21,7 @@ fn process_packet_before_send(
 }
 
 fn process_packet_when_received(connection: &mut VirtualConnection, data: &[u8]) {
-    connection.process_incoming(&data).unwrap().unwrap();
+    connection.process_incoming(&data).unwrap();
 }
 
 /// This is mimicking the `HeaderParser for StandardHeader` implementation which is no longer

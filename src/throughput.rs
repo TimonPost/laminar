@@ -94,7 +94,7 @@ impl ThroughputMonitoring {
 }
 
 impl Debug for ThroughputMonitoring {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         write!(
             f,
             "Current Throughput: {}, Elapsed Time: {:#?}, Average Throughput: {}",
@@ -106,7 +106,7 @@ impl Debug for ThroughputMonitoring {
 }
 
 impl Display for ThroughputMonitoring {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         write!(
             f,
             "Current Throughput: {}, Elapsed Time: {:#?}, Average Throughput: {}",

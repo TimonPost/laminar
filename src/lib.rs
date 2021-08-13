@@ -19,6 +19,13 @@
 //! [docs]: https://docs.rs/laminar/
 //! [examples]: https://github.com/amethyst/laminar/tree/master/examples
 
+#![deny(
+    rust_2018_compatibility,
+    rust_2018_idioms,
+    future_incompatible,
+    nonstandard_style,
+    unused
+)]
 #![warn(missing_docs)]
 #![allow(clippy::trivially_copy_pass_by_ref)]
 

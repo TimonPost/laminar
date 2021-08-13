@@ -122,7 +122,6 @@ pub fn sequence_less_than(s1: u16, s2: u16) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::packet::SequenceNumber;
     use crate::sequence_buffer::sequence_greater_than;
     use crate::sequence_buffer::sequence_less_than;
 
@@ -231,7 +230,7 @@ mod tests {
     }
 
     fn count_entries(buffer: &SequenceBuffer<DataStub>) -> usize {
-        let nums: Vec<&SequenceNumber> = buffer.entry_sequences.iter().flatten().collect();
-        nums.len()
+        let nums: usize = buffer.entry_sequences.iter().flatten().count();
+        nums
     }
 }

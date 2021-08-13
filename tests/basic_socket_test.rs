@@ -83,7 +83,7 @@ fn use_link_conditioner() {
     client.manual_poll(time);
     server.manual_poll(time);
 
-    assert_eq!(server.recv().is_none(), true);
+    assert!(server.recv().is_none());
 }
 
 #[test]

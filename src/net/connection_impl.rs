@@ -181,7 +181,7 @@ impl Connection for VirtualConnection {
 fn send_packets(
     ctx: &mut impl ConnectionMessenger<SocketEvent>,
     address: &SocketAddr,
-    packets: Result<OutgoingPackets>,
+    packets: Result<OutgoingPackets<'_>>,
     err_context: &str,
 ) {
     match packets {
