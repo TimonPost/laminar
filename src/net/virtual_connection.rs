@@ -436,7 +436,7 @@ impl VirtualConnection {
 }
 
 impl fmt::Debug for VirtualConnection {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "{}:{}",

@@ -211,7 +211,7 @@ impl<T> OrderingStream<T> {
     /// # Remarks
     /// - Iterator mutates the `expected_index`.
     /// - You can't use this iterator for iterating trough all cached values.
-    pub fn iter_mut(&mut self) -> IterMut<T> {
+    pub fn iter_mut(&mut self) -> IterMut<'_, T> {
         IterMut {
             items: &mut self.storage,
             expected_index: &mut self.expected_index,
