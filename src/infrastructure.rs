@@ -3,11 +3,9 @@
 
 pub use self::acknowledgment::AcknowledgmentHandler;
 pub use self::acknowledgment::SentPacket;
-pub use self::congestion::CongestionHandler;
 pub use self::fragmenter::Fragmentation;
 
 mod acknowledgment;
-mod congestion;
 mod fragmenter;
 
 pub mod arranging;

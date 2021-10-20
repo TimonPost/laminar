@@ -7,7 +7,7 @@ use crate::{
     error::{ErrorKind, PacketErrorKind, Result},
     infrastructure::{
         arranging::{Arranging, ArrangingSystem, OrderingSystem, SequencingSystem},
-        AcknowledgmentHandler, CongestionHandler, Fragmentation, SentPacket,
+        AcknowledgmentHandler, Fragmentation, SentPacket,
     },
     net::constants::{
         ACKED_PACKET_HEADER, DEFAULT_ORDERING_STREAM, DEFAULT_SEQUENCING_STREAM,
@@ -35,7 +35,6 @@ pub struct VirtualConnection {
     ordering_system: OrderingSystem<(Box<[u8]>, PacketType)>,
     sequencing_system: SequencingSystem<Box<[u8]>>,
     acknowledge_handler: AcknowledgmentHandler,
-    congestion_handler: CongestionHandler,
 
     config: Config,
     fragmentation: Fragmentation,
@@ -53,7 +52,6 @@ impl VirtualConnection {
             ordering_system: OrderingSystem::new(),
             sequencing_system: SequencingSystem::new(),
             acknowledge_handler: AcknowledgmentHandler::new(),
-            congestion_handler: CongestionHandler::new(config),
             fragmentation: Fragmentation::new(config),
             config: config.to_owned(),
         }
@@ -113,8 +111,9 @@ impl VirtualConnection {
             DeliveryGuarantee::Unreliable => {
                 if packet.payload.len() <= self.config.receive_buffer_max_size {
                     if packet.packet_type == PacketType::Heartbeat {
-                        self.congestion_handler
-                            .process_outgoing(self.acknowledge_handler.local_sequence_num(), time);
+                        // TODO: implement congestion control.
+                        // self.congestion_handler
+                        //     .process_outgoing(self.acknowledge_handler.local_sequence_num(), time);
                     }
 
                     let mut builder = OutgoingPacketBuilder::new(packet.payload)
@@ -232,8 +231,10 @@ impl VirtualConnection {
                     }
                 };
 
-                self.congestion_handler
-                    .process_outgoing(self.acknowledge_handler.local_sequence_num(), time);
+                // TODO: implement congestion control.
+                // self.congestion_handler
+                //     .process_outgoing(self.acknowledge_handler.local_sequence_num(), time);
+
                 self.acknowledge_handler.process_outgoing(
                     packet.packet_type,
                     packet.payload,
@@ -316,8 +317,10 @@ impl VirtualConnection {
                             acked_header,
                         ) {
                             Ok(Some((payload, acked_header))) => {
-                                self.congestion_handler
-                                    .process_incoming(acked_header.sequence());
+                                // TODO: implement congestion control.
+                                // self.congestion_handler
+                                //     .process_incoming(acked_header.sequence());
+
                                 self.acknowledge_handler.process_incoming(
                                     acked_header.sequence(),
                                     acked_header.ack_seq(),
@@ -341,8 +344,10 @@ impl VirtualConnection {
                 } else {
                     let acked_header = packet_reader.read_acknowledge_header()?;
 
-                    self.congestion_handler
-                        .process_incoming(acked_header.sequence());
+                    // TODO: implement congestion control.
+                    // self.congestion_handler
+                    //     .process_incoming(acked_header.sequence());
+
                     self.acknowledge_handler.process_incoming(
                         acked_header.sequence(),
                         acked_header.ack_seq(),
