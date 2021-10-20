@@ -2,10 +2,8 @@ use std::clone::Clone;
 
 use crate::packet::SequenceNumber;
 
-pub use self::congestion_data::CongestionData;
 pub use self::reassembly_data::ReassemblyData;
 
-mod congestion_data;
 mod reassembly_data;
 
 /// Collection to store data of any kind.
