@@ -161,10 +161,9 @@ match result {
 
 ## Authors
 
-- [Lucio Franco](https://github.com/LucioFranco)
-- [Fletcher Haynes](https://github.com/fhaynes)
 - [Timon Post](https://github.com/TimonPost)
 - [Justin LeFebvre](https://github.com/jstnlef) 
+- [Fletcher Haynes](https://github.com/fhaynes)
 
 ## Notice
 
