@@ -34,7 +34,7 @@ For more information, read the projects [README.md][readme], [book][book], [docs
 
 [gog]: https://gafferongames.com/
 [readme]: https://github.com/amethyst/laminar/blob/master/README.md
-[book]: https://amethyst.github.io/laminar/docs/index.html
+[book]: https://timonpost.github.io/laminar/
 [docs]: https://docs.rs/laminar/
 [examples]: https://github.com/amethyst/laminar/tree/master/examples
 [amethyst]: https://github.com/amethyst/amethyst
