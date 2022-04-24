@@ -80,7 +80,7 @@ Add the laminar package to your `Cargo.toml` file.
 
 ```toml
 [dependencies]
-laminar = "0.3"
+laminar = "0.5"
 ```
 
 ### Useful Links
