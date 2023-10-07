@@ -458,6 +458,7 @@ mod tests {
 
     use byteorder::{BigEndian, WriteBytesExt};
 
+    use crate::PROTOCOL_VERSION;
     use crate::config::Config;
     use crate::net::constants;
     use crate::packet::header::{AckedPacketHeader, ArrangingHeader, HeaderWriter, StandardHeader};

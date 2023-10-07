@@ -199,7 +199,7 @@ mod tests {
                 let stream = sequence_system.get_or_create_stream(1);
 
                 // get packets arranged in sequence.
-                let sequenced_packets: Vec<_> = std::array::IntoIter::new(before)
+                let sequenced_packets: Vec<_> = before.into_iter()
                     .filter_map(|seq| stream.arrange(seq, Packet::new(seq, $stream_id)) // filter sequenced packets
                         .map(|p| p.sequence))
                     .collect();
