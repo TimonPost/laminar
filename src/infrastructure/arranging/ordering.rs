@@ -58,7 +58,7 @@
 //!
 //! This could be done with an iterator which returns packets as long there are packets in our storage matching the `expected_index`.
 //!
-//! ```rust
+//! ```
 //! let stream = OrderingStream::new();
 //!
 //! let iter = stream.iter_mut();
