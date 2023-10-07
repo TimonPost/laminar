@@ -18,7 +18,6 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/amethyst/laminar"
 autobenches = false
 edition = "2021"
-doctest = false
 
 [dependencies]
 byteorder = "1.5.0"
@@ -53,3 +52,6 @@ harness = false
 [[bin]]
 name = "laminar-tester"
 required-features = ["tester"]
+
+[lib]
+doctest = false
