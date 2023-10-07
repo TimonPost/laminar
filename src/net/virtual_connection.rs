@@ -125,7 +125,7 @@ impl VirtualConnection {
                             .get_or_create_stream(stream_id.unwrap_or(DEFAULT_SEQUENCING_STREAM))
                             .new_item_identifier();
 
-                        builder = builder.with_sequencing_header(item_identifier as u16, stream_id);
+                        builder = builder.with_sequencing_header(item_identifier, stream_id);
                     };
 
                     Ok(OutgoingPackets::one(builder.build()))
@@ -462,7 +462,6 @@ mod tests {
     use crate::net::constants;
     use crate::packet::header::{AckedPacketHeader, ArrangingHeader, HeaderWriter, StandardHeader};
     use crate::packet::{DeliveryGuarantee, OrderingGuarantee, Packet, PacketInfo, PacketType};
-    use crate::protocol_version::ProtocolVersion;
 
     use super::VirtualConnection;
 
@@ -505,7 +504,7 @@ mod tests {
     fn assure_right_fragmentation() {
         let mut protocol_version = Vec::new();
         protocol_version
-            .write_u16::<BigEndian>(ProtocolVersion::get_crc16())
+            .write_u16::<BigEndian>(PROTOCOL_VERSION)
             .unwrap();
 
         let standard_header = [protocol_version, vec![1, 1, 2]].concat();
@@ -832,7 +831,7 @@ mod tests {
     fn ensure_input_header_data_does_not_access_out_of_bounds() {
         let mut protocol_version = Vec::new();
         protocol_version
-            .write_u16::<BigEndian>(ProtocolVersion::get_crc16())
+            .write_u16::<BigEndian>(PROTOCOL_VERSION)
             .unwrap();
 
         let standard_header = [protocol_version, vec![1, 1, 2]].concat();

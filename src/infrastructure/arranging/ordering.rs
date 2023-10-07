@@ -97,7 +97,7 @@ impl<T> OrderingSystem<T> {
     }
 }
 
-impl<'a, T> ArrangingSystem for OrderingSystem<T> {
+impl<T> ArrangingSystem for OrderingSystem<T> {
     type Stream = OrderingStream<T>;
 
     /// Returns the number of ordering streams currently active.
