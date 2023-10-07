@@ -38,20 +38,15 @@ impl TryFrom<u8> for DeliveryGuarantee {
 }
 
 /// Enum to specify how a packet should be arranged.
-#[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Eq, Default)]
 pub enum OrderingGuarantee {
     /// No arranging will be done.
+    #[default]
     None,
     /// Packets will be arranged in sequence.
     Sequenced(Option<u8>),
     /// Packets will be arranged in order.
     Ordered(Option<u8>),
-}
-
-impl Default for OrderingGuarantee {
-    fn default() -> Self {
-        OrderingGuarantee::None
-    }
 }
 
 impl EnumConverter for OrderingGuarantee {

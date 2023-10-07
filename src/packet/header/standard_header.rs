@@ -3,10 +3,10 @@ use std::io::Cursor;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
+use crate::PROTOCOL_VERSION;
 use crate::error::Result;
 use crate::net::constants::STANDARD_HEADER_SIZE;
 use crate::packet::{DeliveryGuarantee, EnumConverter, OrderingGuarantee, PacketType};
-use crate::protocol_version::ProtocolVersion;
 
 use super::{HeaderReader, HeaderWriter};
 
@@ -27,7 +27,7 @@ impl StandardHeader {
         packet_type: PacketType,
     ) -> Self {
         StandardHeader {
-            protocol_version: ProtocolVersion::get_crc16(),
+            protocol_version:PROTOCOL_VERSION,
             delivery_guarantee,
             ordering_guarantee,
             packet_type,
@@ -67,7 +67,7 @@ impl StandardHeader {
 
     /// Checks if the protocol version in the packet is a valid version
     pub fn is_current_protocol(&self) -> bool {
-        ProtocolVersion::valid_version(self.protocol_version)
+        PROTOCOL_VERSION == self.protocol_version
     }
 }
 

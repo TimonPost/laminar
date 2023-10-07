@@ -17,23 +17,22 @@ license = "MIT OR Apache-2.0"
 
 repository = "https://github.com/amethyst/laminar"
 autobenches = false
-edition = "2018"
+edition = "2021"
 
 [dependencies]
-byteorder = "1.4.3"
-crc = "1.8"
+byteorder = "1.5.0"
 crossbeam-channel = "0.5"
 lazy_static = "1.4"
 log = "0.4"
 rand = "0.8"
 rand_pcg = "0.3"
 
-clap = { version = "2.33", features = ["yaml"], optional = true }
-env_logger = { version = "0.9", optional = true }
+clap = { version = "4.4", optional = true }
+env_logger = { version = "0.10", optional = true }
 
 [dev-dependencies]
 bincode = "1.3.1"
-criterion = "0.3"
+criterion = "0.5"
 serde = "1.0"
 serde_derive = "1.0"
 quickcheck = "1.0"
@@ -53,3 +52,6 @@ harness = false
 [[bin]]
 name = "laminar-tester"
 required-features = ["tester"]
+
+[lib]
+doctest = false

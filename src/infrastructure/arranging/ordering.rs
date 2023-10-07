@@ -58,7 +58,7 @@
 //!
 //! This could be done with an iterator which returns packets as long there are packets in our storage matching the `expected_index`.
 //!
-//! ```no-run
+//! ```no_run
 //! let stream = OrderingStream::new();
 //!
 //! let iter = stream.iter_mut();
@@ -97,7 +97,7 @@ impl<T> OrderingSystem<T> {
     }
 }
 
-impl<'a, T> ArrangingSystem for OrderingSystem<T> {
+impl<T> ArrangingSystem for OrderingSystem<T> {
     type Stream = OrderingStream<T>;
 
     /// Returns the number of ordering streams currently active.
@@ -443,7 +443,7 @@ mod tests {
 
             // get stream '1' to order the packets on.
             let stream = ordering_system.get_or_create_stream(1);
-            let ordered_packets : Vec<_> = std::array::IntoIter::new(before)
+            let ordered_packets : Vec<_> = before.into_iter()
                 .filter_map(|seq| stream.arrange(seq, Packet::new(seq, $stream_id))
                     .map(|p| Some(p).into_iter() // if we get some packets, append packets from stream as well
                         .chain(stream.iter_mut())

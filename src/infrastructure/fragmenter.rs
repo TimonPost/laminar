@@ -134,7 +134,7 @@ impl Fragmentation {
             reassembly_data.fragments_received[usize::from(fragment_header.id())] = true;
 
             // add the payload from the fragment to the buffer whe have in cache
-            reassembly_data.buffer.write_all(&*fragment_payload)?;
+            reassembly_data.buffer.write_all(fragment_payload)?;
 
             if let Some(acked_header) = acked_header {
                 if reassembly_data.acked_header.is_none() {
@@ -146,13 +146,12 @@ impl Fragmentation {
 
             num_fragments_received = reassembly_data.num_fragments_received;
             num_fragments_total = reassembly_data.num_fragments_total;
-            sequence = reassembly_data.sequence as u16;
+            sequence = reassembly_data.sequence;
             total_buffer = reassembly_data.buffer.clone();
         }
 
         // if we received all fragments then remove entry and return the total received bytes.
         if num_fragments_received == num_fragments_total {
-            let sequence = sequence as u16;
             if let Some(mut reassembly_data) = self.fragments.remove(sequence) {
                 if reassembly_data.acked_header.is_none() {
                     return Err(FragmentErrorKind::MissingAckHeader.into());

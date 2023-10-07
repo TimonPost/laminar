@@ -34,10 +34,12 @@ pub use self::error::{ErrorKind, Result};
 pub use self::net::{
     Connection, ConnectionManager, ConnectionMessenger, DatagramSocket, LinkConditioner, Socket,
     SocketEvent, VirtualConnection,
+    constants::PROTOCOL_VERSION
 };
 pub use self::packet::{DeliveryGuarantee, OrderingGuarantee, Packet};
 #[cfg(feature = "tester")]
 pub use self::throughput::ThroughputMonitoring;
+
 
 mod config;
 mod either;
@@ -45,7 +47,6 @@ mod error;
 mod infrastructure;
 mod net;
 mod packet;
-mod protocol_version;
 mod sequence_buffer;
 
 #[cfg(feature = "tester")]
